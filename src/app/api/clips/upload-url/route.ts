@@ -12,7 +12,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const safeFilename = filename.replace(/\s+/g, "-");
+    const safeFilename = filename
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]/g, "")
+      .toLowerCase();
     const storagePath = `${project_id}/${safeFilename}`;
 
     const { data, error } = await supabaseAdmin.storage
