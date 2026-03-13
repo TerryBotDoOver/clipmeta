@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -21,6 +16,7 @@ export default function SignUpPage() {
     setLoading(true);
     setError("");
 
+    const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signUp({ email, password });
 
     if (error) {

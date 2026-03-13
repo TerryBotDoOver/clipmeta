@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -22,6 +17,7 @@ export default function AuthPage() {
     setLoading(true);
     setError("");
 
+    const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
@@ -39,7 +35,6 @@ export default function AuthPage() {
       <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6 py-12">
         <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:grid-cols-2">
 
-          {/* Left panel */}
           <section className="flex flex-col justify-between bg-slate-900 p-8 text-white md:p-10">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
@@ -49,8 +44,8 @@ export default function AuthPage() {
                 Stock footage metadata that needs less fixing
               </h1>
               <p className="mt-4 max-w-md text-sm leading-6 text-slate-300 md:text-base">
-                Upload clips, generate metadata, review results, and export clean CSV files
-                for stock footage platforms.
+                Upload clips, generate metadata, review results, and export clean CSV
+                files for stock footage platforms.
               </p>
             </div>
             <div className="mt-10 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -62,7 +57,6 @@ export default function AuthPage() {
             </div>
           </section>
 
-          {/* Right panel */}
           <section className="p-8 md:p-10">
             <div className="mx-auto max-w-md">
               <div className="mb-8">
