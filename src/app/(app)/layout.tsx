@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const dashboardIsActive = pathname === "/dashboard";
   const projectsIsActive =
     pathname === "/projects" || pathname.startsWith("/projects/");
+
+  async function handleSignOut() {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.push("/auth");
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -47,12 +56,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               Projects
             </Link>
 
-            <Link
-              href="/auth"
+            <button
+              onClick={handleSignOut}
               className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
               Sign Out
-            </Link>
+            </button>
           </nav>
         </div>
       </header>

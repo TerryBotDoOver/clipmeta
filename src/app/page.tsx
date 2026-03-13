@@ -79,8 +79,11 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-200 py-8">
-        <div className="mx-auto max-w-6xl px-6 text-center text-sm text-slate-500">
-          © 2026 ClipMeta. All rights reserved.
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 text-sm text-slate-500">
+          <span>© 2026 ClipMeta</span>
+          <Link href="/pricing" className="hover:text-slate-900">Pricing</Link>
+          <Link href="/legal/terms" className="hover:text-slate-900">Terms</Link>
+          <Link href="/legal/privacy" className="hover:text-slate-900">Privacy</Link>
         </div>
       </footer>
 

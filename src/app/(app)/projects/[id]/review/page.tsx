@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { GenerateMetadataButton } from "@/components/GenerateMetadataButton";
 import { MetadataEditor } from "@/components/MetadataEditor";
+import { BulkGenerateButton } from "@/components/BulkGenerateButton";
 
 type ReviewPageProps = {
   params: Promise<{ id: string }>;
@@ -11,19 +13,35 @@ type ReviewPageProps = {
 export default async function ProjectReviewPage({ params }: ReviewPageProps) {
   const { id } = await params;
 
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/auth");
+
   const { data: project } = await supabase
     .from("projects")
     .select("*")
     .eq("slug", id)
+    .eq("user_id", user.id)
     .single();
 
-  const { data: clips } = project
-    ? await supabase
-        .from("clips")
-        .select("*, metadata_results(*)")
-        .eq("project_id", project.id)
-        .order("created_at", { ascending: false })
-    : { data: null };
+  if (!project) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6 py-10">
+          <p className="text-sm text-slate-500">Project not found.</p>
+          <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-slate-900 underline">
+            Back to projects
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const { data: clips } = await supabase
+    .from("clips")
+    .select("*, metadata_results(*)")
+    .eq("project_id", project.id)
+    .order("created_at", { ascending: false });
 
   // Generate signed URLs for clips without metadata
   const clipUrls: Record<string, string> = {};
@@ -33,9 +51,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         const { data } = await supabaseAdmin.storage
           .from("project-uploads")
           .createSignedUrl(clip.storage_path, 600);
-        if (data?.signedUrl) {
-          clipUrls[clip.id] = data.signedUrl;
-        }
+        if (data?.signedUrl) clipUrls[clip.id] = data.signedUrl;
       }
     }
   }
@@ -44,15 +60,12 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
   const withMetadata = clips?.filter((c) => c.metadata_results).length ?? 0;
   const pending = totalClips - withMetadata;
 
-  if (!project) {
-    return (
-      <main className="min-h-screen bg-slate-50">
-        <div className="mx-auto max-w-7xl px-6 py-10">
-          <p className="text-sm text-slate-500">Project not found: {id}</p>
-        </div>
-      </main>
-    );
-  }
+  // Pending clips for bulk generate
+  const pendingClips = clips
+    ? clips
+        .filter((c) => !c.metadata_results && clipUrls[c.id])
+        .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id] }))
+    : [];
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -60,21 +73,28 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
 
         {/* Header */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Review Workspace
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-            {project.name}
-          </h1>
-          <p className="mt-3 text-sm text-slate-600">
-            {withMetadata} of {totalClips} clips have metadata.
-            {pending > 0 && ` ${pending} pending.`}
-          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Review Workspace
+              </p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+                {project.name}
+              </h1>
+              <p className="mt-2 text-sm text-slate-600">
+                {withMetadata} of {totalClips} clips have metadata.
+                {pending > 0 && ` ${pending} pending.`}
+              </p>
+            </div>
+            {pendingClips.length > 0 && (
+              <BulkGenerateButton clips={pendingClips} />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
 
-          {/* Clip review cards */}
+          {/* Clip cards */}
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
@@ -98,23 +118,17 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                     <div
                       key={clip.id}
                       className={`rounded-xl border p-4 ${
-                        meta
-                          ? "border-slate-200"
-                          : "border-dashed border-slate-300"
+                        meta ? "border-green-200 bg-green-50/30" : "border-dashed border-slate-300"
                       }`}
                     >
-                      {/* Clip header */}
                       <div className="flex items-center justify-between gap-4">
                         <p className="text-sm font-semibold text-slate-900">
                           {clip.original_filename}
                         </p>
                         <div className="flex shrink-0 items-center gap-2">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                            {clip.upload_status}
-                          </span>
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                              clip.metadata_status === "complete"
+                              meta
                                 ? "bg-green-100 text-green-700"
                                 : clip.metadata_status === "processing"
                                 ? "bg-blue-100 text-blue-700"
@@ -123,12 +137,11 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                                 : "bg-amber-100 text-amber-700"
                             }`}
                           >
-                            {clip.metadata_status}
+                            {meta ? "✓ ready" : clip.metadata_status}
                           </span>
                         </div>
                       </div>
 
-                      {/* Metadata results — editable */}
                       {meta ? (
                         <MetadataEditor
                           clipId={clip.id}
@@ -162,11 +175,8 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                 })
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-400">
-                  No clips uploaded yet.{" "}
-                  <Link
-                    href={`/projects/${id}/upload`}
-                    className="font-medium text-slate-700 underline"
-                  >
+                  No clips yet.{" "}
+                  <Link href={`/projects/${id}/upload`} className="font-medium text-slate-700 underline">
                     Upload your first clip
                   </Link>
                 </div>
@@ -214,15 +224,6 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                   Export CSV {withMetadata > 0 ? `(${withMetadata} clips)` : ""}
                 </a>
               </div>
-            </div>
-
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-700">Coming next</h2>
-              <ul className="mt-3 space-y-2 text-sm text-slate-500">
-                <li>→ Bulk approve / reject</li>
-                <li>→ Keyword cleanup tools</li>
-                <li>→ Location confidence handling</li>
-              </ul>
             </div>
           </aside>
         </div>
