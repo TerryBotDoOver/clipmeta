@@ -42,24 +42,24 @@ export default function NewProjectPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-6 py-10">
         <div className="border-b border-slate-200 pb-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             New Project
           </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
             Create a project
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
             A project holds a batch of clips and all the metadata you generate for them.
           </p>
         </div>
 
-        <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
           <form action={createProject} className="space-y-6">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-900">
+              <label htmlFor="name" className="block text-sm font-medium text-foreground">
                 Project name
               </label>
               <input
@@ -67,13 +67,13 @@ export default function NewProjectPage() {
                 name="name"
                 type="text"
                 placeholder="e.g. Hawaii Drone Batch"
-                className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-slate-900">
+              <label htmlFor="description" className="block text-sm font-medium text-foreground">
                 Description <span className="text-slate-400 font-normal">(optional)</span>
               </label>
               <textarea
@@ -81,7 +81,7 @@ export default function NewProjectPage() {
                 name="description"
                 rows={3}
                 placeholder="Short description for this batch."
-                className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
+                className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500"
               />
             </div>
 

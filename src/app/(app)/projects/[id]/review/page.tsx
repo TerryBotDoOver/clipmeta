@@ -26,9 +26,9 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
 
   if (!project) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-6 py-10">
-          <p className="text-sm text-slate-500">Project not found.</p>
+          <p className="text-sm text-muted-foreground">Project not found.</p>
           <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-slate-900 underline">
             Back to projects
           </Link>
@@ -68,20 +68,20 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     : [];
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
 
         {/* Header */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Review Workspace
               </p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+              <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
                 {project.name}
               </h1>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-muted-foreground">
                 {withMetadata} of {totalClips} clips have metadata.
                 {pending > 0 && ` ${pending} pending.`}
               </p>
@@ -95,11 +95,11 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
 
           {/* Clip cards */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <section className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Review queue</h2>
-                <p className="mt-1 text-sm text-slate-600">
+                <h2 className="text-xl font-semibold text-foreground">Review queue</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
                   Inspect and verify generated metadata before export.
                 </p>
               </div>
@@ -122,7 +122,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                       }`}
                     >
                       <div className="flex items-center justify-between gap-4">
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {clip.original_filename}
                         </p>
                         <div className="flex shrink-0 items-center gap-2">
@@ -186,30 +186,30 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
 
           {/* Sidebar */}
           <aside className="flex flex-col gap-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-900">Summary</h2>
+            <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-foreground">Summary</h2>
               <div className="mt-4 grid gap-3">
-                <div className="rounded-xl bg-slate-100 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total clips</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{totalClips}</p>
+                <div className="rounded-xl bg-muted px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total clips</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{totalClips}</p>
                 </div>
                 <div className="rounded-xl bg-green-50 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">With metadata</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">With metadata</p>
                   <p className="mt-1 text-2xl font-bold text-green-700">{withMetadata}</p>
                 </div>
                 <div className="rounded-xl bg-amber-50 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
                   <p className="mt-1 text-2xl font-bold text-amber-700">{pending}</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Actions</h2>
+            <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-foreground">Actions</h2>
               <div className="mt-4 space-y-3">
                 <Link
                   href={`/projects/${id}/upload`}
-                  className="block rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="block rounded-lg border border-input bg-card px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 >
                   Upload more clips
                 </Link>
@@ -218,7 +218,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                   className={`block rounded-lg border px-4 py-3 text-center text-sm font-medium transition ${
                     withMetadata > 0
                       ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-                      : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                      : "cursor-not-allowed border-slate-200 bg-muted text-slate-400"
                   }`}
                 >
                   Export CSV {withMetadata > 0 ? `(${withMetadata} clips)` : ""}

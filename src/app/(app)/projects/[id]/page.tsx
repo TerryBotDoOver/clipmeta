@@ -22,9 +22,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
 
   if (!project) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-6 py-10">
-          <p className="text-sm text-slate-500">Project not found.</p>
+          <p className="text-sm text-muted-foreground">Project not found.</p>
           <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-slate-900 underline">
             Back to projects
           </Link>
@@ -44,42 +44,42 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const pending = totalClips - withMeta;
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-6 py-10">
 
         {/* Header */}
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link href="/projects" className="text-xs font-medium text-slate-400 hover:text-slate-600">
+            <Link href="/projects" className="text-xs font-medium text-slate-400 hover:text-muted-foreground">
               ← All projects
             </Link>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
               {project.name}
             </h1>
             {project.description && (
-              <p className="mt-2 text-sm text-slate-600">{project.description}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
             )}
             <p className="mt-1 text-xs text-slate-400">
               Created {new Date(project.created_at).toLocaleDateString()}
             </p>
           </div>
-          <span className="inline-flex self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 sm:self-auto">
+          <span className="inline-flex self-start rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 sm:self-auto">
             {project.status ?? "active"}
           </span>
         </div>
 
         {/* Stats */}
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Total Clips</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{totalClips}</p>
+          <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Total Clips</p>
+            <p className="mt-2 text-3xl font-bold text-foreground">{totalClips}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Metadata Done</p>
+          <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Metadata Done</p>
             <p className="mt-2 text-3xl font-bold text-green-700">{withMeta}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Pending</p>
+          <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">Pending</p>
             <p className="mt-2 text-3xl font-bold text-amber-600">{pending}</p>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           </Link>
           <Link
             href={`/projects/${id}/review`}
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="flex items-center justify-center gap-2 rounded-xl border border-input bg-card px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             🔍 Review &amp; Edit
           </Link>
@@ -112,8 +112,8 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
 
         {/* Clip list */}
         {clips && clips.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">Clips</h2>
+          <section className="mt-8 rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">Clips</h2>
             <div className="space-y-2">
               {clips.map((clip) => (
                 <div
@@ -121,7 +121,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                   className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{clip.original_filename}</p>
+                    <p className="text-sm font-medium text-foreground">{clip.original_filename}</p>
                     <p className="text-xs text-slate-400">
                       {clip.file_size_bytes
                         ? `${(clip.file_size_bytes / 1024 / 1024).toFixed(1)} MB`

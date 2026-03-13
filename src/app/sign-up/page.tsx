@@ -30,9 +30,9 @@ export default function SignUpPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-6 py-12">
-        <div className="grid w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm md:grid-cols-2">
+        <div className="grid w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:grid-cols-2">
 
           <section className="flex flex-col justify-between bg-slate-900 p-8 text-white md:p-10">
             <div>
@@ -58,10 +58,10 @@ export default function SignUpPage() {
           <section className="p-8 md:p-10">
             <div className="mx-auto max-w-md">
               <div className="mb-8">
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                   Create your account
                 </h2>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="mt-2 text-sm text-muted-foreground">
                   Already have an account?{" "}
                   <Link href="/auth" className="font-medium text-slate-900 underline">
                     Sign in
@@ -102,7 +102,7 @@ export default function SignUpPage() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com"
                         required
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-500"
+                        className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-slate-500"
                       />
                     </div>
                     <div>
@@ -117,7 +117,7 @@ export default function SignUpPage() {
                         placeholder="At least 8 characters"
                         minLength={8}
                         required
-                        className="w-full rounded-lg border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-slate-500"
+                        className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-slate-500"
                       />
                     </div>
                     <button

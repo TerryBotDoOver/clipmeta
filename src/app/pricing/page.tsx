@@ -2,12 +2,12 @@ import Link from "next/link";
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-background">
 
       {/* Nav */}
-      <nav className="border-b border-slate-200">
+      <nav className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-bold text-slate-900">ClipMeta</Link>
+          <Link href="/" className="text-lg font-bold text-foreground">ClipMeta</Link>
           <Link href="/auth" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800">
             Sign In
           </Link>
@@ -16,11 +16,11 @@ export default function PricingPage() {
 
       {/* Header */}
       <section className="mx-auto max-w-6xl px-6 py-16 text-center">
-        <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">Pricing</p>
+        <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Pricing</p>
         <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
           Simple, transparent pricing
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-slate-600">
+        <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
           Start free. Upgrade when you need more.
         </p>
       </section>
@@ -30,11 +30,11 @@ export default function PricingPage() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 
           {/* Free */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Free</p>
-            <p className="mt-4 text-4xl font-bold text-slate-900">$0</p>
-            <p className="mt-1 text-sm text-slate-500">Forever free</p>
-            <ul className="mt-6 space-y-3 text-sm text-slate-600">
+          <div className="rounded-2xl border border-slate-200 bg-card p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Free</p>
+            <p className="mt-4 text-4xl font-bold text-foreground">$0</p>
+            <p className="mt-1 text-sm text-muted-foreground">Forever free</p>
+            <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
               <li className="flex gap-2"><span className="text-green-500">✓</span> 1 project</li>
               <li className="flex gap-2"><span className="text-green-500">✓</span> Up to 10 clips/month</li>
               <li className="flex gap-2"><span className="text-green-500">✓</span> AI metadata generation</li>
@@ -68,18 +68,18 @@ export default function PricingPage() {
             </ul>
             <Link
               href="/sign-up"
-              className="mt-8 block w-full rounded-lg bg-white py-3 text-center text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+              className="mt-8 block w-full rounded-lg bg-card py-3 text-center text-sm font-semibold text-slate-900 transition hover:bg-muted"
             >
               Start free trial
             </Link>
           </div>
 
           {/* Studio */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Studio</p>
-            <p className="mt-4 text-4xl font-bold text-slate-900">$49</p>
-            <p className="mt-1 text-sm text-slate-500">per month</p>
-            <ul className="mt-6 space-y-3 text-sm text-slate-600">
+          <div className="rounded-2xl border border-slate-200 bg-card p-8 shadow-sm">
+            <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Studio</p>
+            <p className="mt-4 text-4xl font-bold text-foreground">$49</p>
+            <p className="mt-1 text-sm text-muted-foreground">per month</p>
+            <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
               <li className="flex gap-2"><span className="text-green-500">✓</span> Unlimited projects</li>
               <li className="flex gap-2"><span className="text-green-500">✓</span> Unlimited clips</li>
               <li className="flex gap-2"><span className="text-green-500">✓</span> AI metadata generation</li>
@@ -97,17 +97,17 @@ export default function PricingPage() {
 
         </div>
 
-        <p className="mt-10 text-center text-sm text-slate-500">
+        <p className="mt-10 text-center text-sm text-muted-foreground">
           All plans include a 7-day free trial. No credit card required to start.
         </p>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-slate-200 py-8">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 text-sm text-slate-500">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 text-sm text-muted-foreground">
           <span>© 2026 ClipMeta</span>
-          <Link href="/legal/terms" className="hover:text-slate-900">Terms of Service</Link>
-          <Link href="/legal/privacy" className="hover:text-slate-900">Privacy Policy</Link>
+          <Link href="/legal/terms" className="hover:text-foreground">Terms of Service</Link>
+          <Link href="/legal/privacy" className="hover:text-foreground">Privacy Policy</Link>
         </div>
       </footer>
     </main>

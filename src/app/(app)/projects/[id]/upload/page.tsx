@@ -23,9 +23,9 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
 
   if (!project) {
     return (
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-6 py-10">
-          <p className="text-sm text-slate-500">Project not found.</p>
+          <p className="text-sm text-muted-foreground">Project not found.</p>
           <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-slate-900 underline">
             Back to projects
           </Link>
@@ -44,18 +44,18 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
   const withMeta = clips?.filter((c) => c.metadata_status === "complete").length ?? 0;
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
 
         {/* Header */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+        <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Upload
           </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
             {project.name}
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Files go directly to storage — no server size limits.
           </p>
         </div>
@@ -63,8 +63,8 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
 
           {/* Upload form */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="border-b border-slate-200 pb-4 text-xl font-semibold text-slate-900">
+          <section className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+            <h2 className="border-b border-slate-200 pb-4 text-xl font-semibold text-foreground">
               Upload a clip
             </h2>
             <div className="mt-6">
@@ -90,13 +90,13 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
               </Link>
             )}
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Clips</h2>
-              <p className="mt-2 text-4xl font-bold text-slate-900">{clipCount}</p>
-              <p className="mt-1 text-sm text-slate-500">uploaded to this project</p>
+            <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-foreground">Clips</h2>
+              <p className="mt-2 text-4xl font-bold text-foreground">{clipCount}</p>
+              <p className="mt-1 text-sm text-muted-foreground">uploaded to this project</p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-700">Navigation</h2>
               <div className="mt-3 space-y-2">
                 <Link
@@ -118,8 +118,8 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
 
         {/* Clip list */}
         {clips && clips.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          <section className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
               Uploaded clips
             </h2>
             <div className="space-y-3">
@@ -129,7 +129,7 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
                   className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">
+                    <p className="text-sm font-semibold text-foreground">
                       {clip.original_filename}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-400">

@@ -81,7 +81,7 @@ export function BulkGenerateButton({ clips }: Props) {
               style={{ width: `${(progress / total) * 100}%` }}
             />
           </div>
-          <span className="text-sm text-slate-600">
+          <span className="text-sm text-muted-foreground">
             {progress}/{total} generating…
           </span>
         </div>

@@ -140,8 +140,8 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
         onClick={() => inputRef.current?.click()}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
           isDragging
-            ? "border-slate-900 bg-slate-100 dark:border-white dark:bg-slate-800"
-            : "border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500"
+            ? "border-slate-900 bg-muted dark:border-white dark:bg-slate-800"
+            : "border-slate-300 bg-muted/50 hover:border-slate-400 hover:bg-muted dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500"
         }`}
       >
         <div className="text-3xl mb-3">🎬</div>
@@ -167,7 +167,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
           {queue.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-800"
+              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-card px-4 py-3 dark:border-slate-700 dark:bg-slate-800"
             >
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
@@ -200,7 +200,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
           <button
             onClick={processQueue}
             disabled={isRunning || queuedCount === 0}
-            className="rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            className="rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-muted"
           >
             {isRunning
               ? `Uploading… (${doneCount}/${queue.length})`
@@ -222,7 +222,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
 
 function StatusBadge({ status, progress }: { status: FileStatus; progress: number }) {
   const map: Record<FileStatus, { label: string; cls: string }> = {
-    queued:     { label: "queued",     cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400" },
+    queued:     { label: "queued",     cls: "bg-muted text-slate-600 dark:bg-slate-700 dark:text-slate-400" },
     extracting: { label: "extracting…", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
     uploading:  { label: `${progress}%`, cls: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
     generating: { label: "AI…",        cls: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },

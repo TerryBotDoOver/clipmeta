@@ -74,15 +74,15 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
     return (
       <div className="mt-4 space-y-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Title</p>
-          <p className="mt-1 text-sm text-slate-900">{title}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Title</p>
+          <p className="mt-1 text-sm text-foreground">{title}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Description</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
           <p className="mt-1 text-sm text-slate-700">{description}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Keywords ({keywordsText.split(",").filter((k) => k.trim()).length})
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -93,7 +93,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
               .map((kw, i) => (
                 <span
                   key={`${kw}-${i}`}
-                  className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                  className="rounded-md bg-muted px-2 py-0.5 text-xs text-slate-700"
                 >
                   {kw}
                 </span>
@@ -102,17 +102,17 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         </div>
         <div className="flex gap-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Category</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
             <p className="mt-1 text-sm text-slate-700">{category}</p>
           </div>
           {location && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Location</p>
               <p className="mt-1 text-sm text-slate-700">{location}</p>
             </div>
           )}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Confidence</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Confidence</p>
             <p className={`mt-1 text-sm font-medium ${
               initial.confidence === "high" ? "text-green-700"
               : initial.confidence === "medium" ? "text-amber-700"
@@ -123,7 +123,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         <div className="flex items-center gap-2 pt-1">
           <button
             onClick={() => setEditing(true)}
-            className="rounded-md bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
+            className="rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
           >
             Edit
           </button>
@@ -137,7 +137,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
   return (
     <div className="mt-4 space-y-3">
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Title
         </label>
         <input
@@ -148,7 +148,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         />
       </div>
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Description
         </label>
         <textarea
@@ -159,7 +159,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         />
       </div>
       <div>
-        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Keywords <span className="normal-case font-normal text-slate-400">(comma-separated)</span>
         </label>
         <textarea
@@ -171,7 +171,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Category
           </label>
           <select
@@ -185,7 +185,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Location <span className="normal-case font-normal text-slate-400">(optional)</span>
           </label>
           <input
@@ -206,7 +206,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         </button>
         <button
           onClick={handleCancel}
-          className="rounded-lg bg-slate-100 px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
+          className="rounded-lg bg-muted px-4 py-2 text-xs font-medium text-slate-700 transition hover:bg-slate-200"
         >
           Cancel
         </button>

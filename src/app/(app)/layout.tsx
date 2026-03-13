@@ -22,8 +22,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <div className="min-h-screen bg-muted dark:bg-slate-950">
+      <header className="border-b border-border bg-card dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
             <Link href="/dashboard" className="text-lg font-bold text-slate-900 dark:text-white">
@@ -39,8 +39,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               href="/dashboard"
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 dashboardIsActive
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-foreground"
+                  : "text-slate-700 hover:bg-muted dark:text-slate-300 dark:hover:bg-slate-800"
               }`}
             >
               Dashboard
@@ -50,8 +50,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               href="/projects"
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
                 projectsIsActive
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-foreground"
+                  : "text-slate-700 hover:bg-muted dark:text-slate-300 dark:hover:bg-slate-800"
               }`}
             >
               Projects
@@ -61,7 +61,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
             <button
               onClick={handleSignOut}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-muted/50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             >
               Sign Out
             </button>

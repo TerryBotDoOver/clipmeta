@@ -15,17 +15,17 @@ export default async function ProjectsPage() {
     .order("created_at", { ascending: false });
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Projects
             </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
               Your metadata projects
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Projects hold your clip uploads, metadata generation runs, review work,
               and export history.
             </p>
@@ -50,31 +50,31 @@ export default async function ProjectsPage() {
               <Link
                 key={project.id}
                 href={`/projects/${project.slug}`}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">
+                    <h2 className="text-xl font-semibold text-foreground">
                       {project.name}
                     </h2>
                     <p className="mt-1 text-xs text-slate-400">
                       {new Date(project.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     {project.status ?? "active"}
                   </span>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-slate-600">
+                <p className="mt-4 text-sm leading-6 text-muted-foreground">
                   {project.description || "No description yet."}
                 </p>
-                <div className="mt-6 text-sm font-medium text-slate-900">
+                <div className="mt-6 text-sm font-medium text-foreground">
                   Open project →
                 </div>
               </Link>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+            <div className="rounded-2xl border border-dashed border-input bg-card p-10 text-center text-sm text-slate-500 md:col-span-2 xl:col-span-3">
               No projects yet.{" "}
               <Link href="/projects/new" className="font-medium text-slate-900 underline">
                 Create your first one →
