@@ -1,5 +1,6 @@
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("project_id");
@@ -12,14 +13,14 @@ export async function GET(req: NextRequest) {
   }
 
   // Fetch project
-  const { data: project } = await supabase
+  const { data: project } = await supabaseAdmin
     .from("projects")
     .select("name, slug")
     .eq("id", projectId)
     .single();
 
   // Fetch clips with metadata
-  const { data: clips, error } = await supabase
+  const { data: clips, error } = await supabaseAdmin
     .from("clips")
     .select("*, metadata_results(*)")
     .eq("project_id", projectId)

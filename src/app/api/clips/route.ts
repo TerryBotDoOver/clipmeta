@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { supabase } from "@/lib/supabase";
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { error: insertError } = await supabase.from("clips").insert({
+    const { error: insertError } = await supabaseAdmin.from("clips").insert({
       project_id,
       original_filename,
       storage_path,
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch the newly created clip to return its ID
-    const { data: clip } = await supabase
+    const { data: clip } = await supabaseAdmin
       .from("clips")
       .select("id")
       .eq("project_id", project_id)

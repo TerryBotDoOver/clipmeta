@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateMetadata } from "@/lib/generateMetadata";
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch the clip and its project
-    const { data: clip, error: clipError } = await supabase
+    const { data: clip, error: clipError } = await supabaseAdmin
       .from("clips")
       .select("*, projects(name)")
       .eq("id", clip_id)
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mark clip as processing
-    await supabase
+    await supabaseAdmin
       .from("clips")
       .update({ metadata_status: "processing" })
       .eq("id", clip_id);
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (genError: unknown) {
       // Mark as failed
-      await supabase
+      await supabaseAdmin
         .from("clips")
         .update({ metadata_status: "failed" })
         .eq("id", clip_id);
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Store results in metadata_results table
-    const { error: insertError } = await supabase
+    const { error: insertError } = await supabaseAdmin
       .from("metadata_results")
       .upsert({
         clip_id,
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (insertError) {
-      await supabase
+      await supabaseAdmin
         .from("clips")
         .update({ metadata_status: "failed" })
         .eq("id", clip_id);
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mark clip as complete
-    await supabase
+    await supabaseAdmin
       .from("clips")
       .update({ metadata_status: "complete" })
       .eq("id", clip_id);
