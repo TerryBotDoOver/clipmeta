@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getR2UploadUrl } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
   try {
-    const { project_id, filename } = await req.json();
+    const { project_id, filename, content_type } = await req.json();
 
     if (!project_id || !filename) {
       return NextResponse.json(
@@ -16,27 +16,15 @@ export async function POST(req: NextRequest) {
       .replace(/\s+/g, "-")
       .replace(/[^a-zA-Z0-9._-]/g, "")
       .toLowerCase();
+
     const storagePath = `${project_id}/${safeFilename}`;
+    const signedUrl = await getR2UploadUrl(storagePath, content_type || "video/mp4");
 
-    const { data, error } = await supabaseAdmin.storage
-      .from("project-uploads")
-      .createSignedUploadUrl(storagePath);
-
-    if (error || !data) {
-      return NextResponse.json(
-        { message: error?.message || "Failed to generate upload URL." },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      signedUrl: data.signedUrl,
-      storagePath,
-      token: data.token,
-    });
+    return NextResponse.json({ signedUrl, storagePath });
   } catch (err) {
+    console.error("R2 upload URL error:", err);
     return NextResponse.json(
-      { message: "Unexpected error generating upload URL." },
+      { message: "Failed to generate upload URL." },
       { status: 500 }
     );
   }

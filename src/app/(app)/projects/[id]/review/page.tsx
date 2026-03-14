@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getR2ReadUrl } from "@/lib/r2";
 import { GenerateMetadataButton } from "@/components/GenerateMetadataButton";
 import { MetadataEditor } from "@/components/MetadataEditor";
 import { BulkGenerateButton } from "@/components/BulkGenerateButton";
@@ -43,15 +43,16 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
 
-  // Generate signed URLs for clips without metadata
+  // Generate signed read URLs for clips without metadata
   const clipUrls: Record<string, string> = {};
   if (clips) {
     for (const clip of clips) {
       if (!clip.metadata_results && clip.storage_path) {
-        const { data } = await supabaseAdmin.storage
-          .from("project-uploads")
-          .createSignedUrl(clip.storage_path, 600);
-        if (data?.signedUrl) clipUrls[clip.id] = data.signedUrl;
+        try {
+          clipUrls[clip.id] = await getR2ReadUrl(clip.storage_path, 3600);
+        } catch {
+          // skip if URL generation fails
+        }
       }
     }
   }

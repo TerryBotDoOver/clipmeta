@@ -1,32 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getR2ReadUrl } from "@/lib/r2";
 
-export async function POST(req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const storagePath = req.nextUrl.searchParams.get("path");
+
+  if (!storagePath) {
+    return NextResponse.json({ message: "path is required." }, { status: 400 });
+  }
+
   try {
-    const { storage_path } = await req.json();
-
-    if (!storage_path) {
-      return NextResponse.json(
-        { message: "storage_path is required." },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabaseAdmin.storage
-      .from("project-uploads")
-      .createSignedUrl(storage_path, 600); // 10 min expiry
-
-    if (error || !data) {
-      return NextResponse.json(
-        { message: error?.message || "Failed to generate URL." },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ url: data.signedUrl });
-  } catch {
+    const signedUrl = await getR2ReadUrl(storagePath);
+    return NextResponse.json({ signedUrl });
+  } catch (err) {
+    console.error("R2 read URL error:", err);
     return NextResponse.json(
-      { message: "Unexpected error." },
+      { message: "Failed to generate read URL." },
       { status: 500 }
     );
   }

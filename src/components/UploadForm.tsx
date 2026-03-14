@@ -68,7 +68,11 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
         const urlRes = await fetch("/api/clips/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ project_id: projectId, filename: item.file.name }),
+          body: JSON.stringify({
+            project_id: projectId,
+            filename: item.file.name,
+            content_type: item.file.type || "video/mp4",
+          }),
         });
         if (!urlRes.ok) {
           const err = await urlRes.json();
@@ -260,7 +264,6 @@ function uploadWithProgress(
 
     xhr.open("PUT", signedUrl);
     xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
-    xhr.setRequestHeader("x-upsert", "true");
     xhr.send(file);
   });
 }
