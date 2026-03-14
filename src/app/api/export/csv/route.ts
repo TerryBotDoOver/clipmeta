@@ -1,25 +1,26 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
+import { buildCSV, getExportFilename, type ExportPlatform } from "@/lib/csvExport";
 
+const VALID_PLATFORMS: ExportPlatform[] = ["blackbox", "shutterstock", "adobe", "pond5", "generic"];
 
 export async function GET(req: NextRequest) {
   const projectId = req.nextUrl.searchParams.get("project_id");
+  const platformParam = req.nextUrl.searchParams.get("platform") ?? "generic";
+  const platform = VALID_PLATFORMS.includes(platformParam as ExportPlatform)
+    ? (platformParam as ExportPlatform)
+    : "generic";
 
   if (!projectId) {
-    return NextResponse.json(
-      { message: "project_id is required." },
-      { status: 400 }
-    );
+    return NextResponse.json({ message: "project_id is required." }, { status: 400 });
   }
 
-  // Fetch project
   const { data: project } = await supabaseAdmin
     .from("projects")
     .select("name, slug")
     .eq("id", projectId)
     .single();
 
-  // Fetch clips with metadata
   const { data: clips, error } = await supabaseAdmin
     .from("clips")
     .select("*, metadata_results(*)")
@@ -34,35 +35,18 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Build CSV
-  const headers = [
-    "Filename",
-    "Title",
-    "Description",
-    "Keywords",
-    "Category",
-    "Location",
-    "Confidence",
-  ];
+  const rows = clips.map((clip) => ({
+    filename: clip.original_filename ?? "",
+    title: clip.metadata_results?.title ?? "",
+    description: clip.metadata_results?.description ?? "",
+    keywords: clip.metadata_results?.keywords ?? [],
+    category: clip.metadata_results?.category ?? "",
+    location: clip.metadata_results?.location ?? null,
+    confidence: clip.metadata_results?.confidence ?? "",
+  }));
 
-  const rows = clips.map((clip) => {
-    const meta = clip.metadata_results;
-    return [
-      csvEscape(clip.original_filename),
-      csvEscape(meta?.title ?? ""),
-      csvEscape(meta?.description ?? ""),
-      csvEscape((meta?.keywords ?? []).join(", ")),
-      csvEscape(meta?.category ?? ""),
-      csvEscape(meta?.location ?? ""),
-      csvEscape(meta?.confidence ?? ""),
-    ].join(",");
-  });
-
-  const csv = [headers.join(","), ...rows].join("\n");
-
-  const filename = project
-    ? `${project.slug || "project"}-metadata.csv`
-    : "clipmeta-export.csv";
+  const csv = buildCSV(platform, rows, project?.name ?? "project");
+  const filename = getExportFilename(platform, project?.slug ?? "project");
 
   return new NextResponse(csv, {
     status: 200,
@@ -71,13 +55,4 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
-}
-
-function csvEscape(value: string): string {
-  if (!value) return '""';
-  // If value contains comma, quote, or newline — wrap in quotes and escape inner quotes
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
 }
