@@ -29,7 +29,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             <Link href="/dashboard" className="text-lg font-bold text-slate-900 dark:text-white">
               ClipMeta
             </Link>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-muted-foreground">
               Stock footage metadata workspace
             </p>
           </div>

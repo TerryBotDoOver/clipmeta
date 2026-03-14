@@ -152,7 +152,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
         <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
           {isDragging ? "Drop clips here" : "Drag & drop clips here"}
         </p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">
           or click to browse — multiple files supported
         </p>
         <input
@@ -177,7 +177,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
                 <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
                   {item.file.name}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   {(item.file.size / 1024 / 1024).toFixed(1)} MB
                 </p>
                 {item.status === "uploading" && (
@@ -213,7 +213,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
           {!isRunning && (
             <button
               onClick={() => setQueue([])}
-              className="text-sm text-slate-500 underline hover:text-slate-700 dark:text-slate-400"
+              className="text-sm text-slate-500 underline hover:text-slate-700 dark:text-muted-foreground"
             >
               Clear
             </button>
@@ -226,11 +226,11 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
 
 function StatusBadge({ status, progress }: { status: FileStatus; progress: number }) {
   const map: Record<FileStatus, { label: string; cls: string }> = {
-    queued:     { label: "queued",     cls: "bg-muted text-slate-600 dark:bg-slate-700 dark:text-slate-400" },
+    queued:     { label: "queued",     cls: "bg-muted text-slate-600 dark:bg-slate-700 dark:text-muted-foreground" },
     extracting: { label: "extracting…", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
-    uploading:  { label: `${progress}%`, cls: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+    uploading:  { label: `${progress}%`, cls: "bg-amber-100 text-amber-400 dark:bg-amber-900 dark:text-amber-300" },
     generating: { label: "AI…",        cls: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
-    done:       { label: "✓ done",     cls: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" },
+    done:       { label: "✓ done",     cls: "bg-green-100 text-green-500 dark:bg-green-900 dark:text-green-300" },
     error:      { label: "error",      cls: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
   };
   const { label, cls } = map[status];

@@ -79,7 +79,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
-          <p className="mt-1 text-sm text-slate-700">{description}</p>
+          <p className="mt-1 text-sm text-foreground">{description}</p>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -93,7 +93,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
               .map((kw, i) => (
                 <span
                   key={`${kw}-${i}`}
-                  className="rounded-md bg-muted px-2 py-0.5 text-xs text-slate-700"
+                  className="rounded-md bg-muted px-2 py-0.5 text-xs text-foreground"
                 >
                   {kw}
                 </span>
@@ -103,19 +103,19 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         <div className="flex gap-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
-            <p className="mt-1 text-sm text-slate-700">{category}</p>
+            <p className="mt-1 text-sm text-foreground">{category}</p>
           </div>
           {location && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Location</p>
-              <p className="mt-1 text-sm text-slate-700">{location}</p>
+              <p className="mt-1 text-sm text-foreground">{location}</p>
             </div>
           )}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Confidence</p>
             <p className={`mt-1 text-sm font-medium ${
-              initial.confidence === "high" ? "text-green-700"
-              : initial.confidence === "medium" ? "text-amber-700"
+              initial.confidence === "high" ? "text-green-500"
+              : initial.confidence === "medium" ? "text-amber-400"
               : "text-red-700"
             }`}>{initial.confidence}</p>
           </div>
@@ -160,7 +160,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
       </div>
       <div>
         <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Keywords <span className="normal-case font-normal text-slate-400">(comma-separated)</span>
+          Keywords <span className="normal-case font-normal text-muted-foreground">(comma-separated)</span>
         </label>
         <textarea
           value={keywordsText}
@@ -186,7 +186,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         </div>
         <div>
           <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Location <span className="normal-case font-normal text-slate-400">(optional)</span>
+            Location <span className="normal-case font-normal text-muted-foreground">(optional)</span>
           </label>
           <input
             type="text"

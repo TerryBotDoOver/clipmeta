@@ -72,11 +72,11 @@ export default async function DashboardPage() {
                   <Link
                     key={p.id}
                     href={`/projects/${p.slug}`}
-                    className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 transition hover:border-slate-300 hover:bg-slate-50"
+                    className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 transition hover:border-slate-300 hover:bg-muted"
                   >
                     <div>
                       <p className="text-sm font-semibold text-foreground">{p.name}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {new Date(p.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -111,14 +111,14 @@ export default async function DashboardPage() {
               </Link>
               <Link
                 href="/projects"
-                className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-muted"
               >
                 <span>📁</span>
                 <span>All Projects</span>
               </Link>
               <Link
                 href="/pricing"
-                className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-muted"
               >
                 <span>⚡</span>
                 <span>Upgrade Plan</span>

@@ -97,17 +97,17 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-700">Navigation</h2>
+              <h2 className="text-sm font-semibold text-foreground">Navigation</h2>
               <div className="mt-3 space-y-2">
                 <Link
                   href={`/projects/${id}`}
-                  className="block rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="block rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:bg-muted"
                 >
                   Project overview
                 </Link>
                 <Link
                   href={`/projects/${id}/review`}
-                  className="block rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="block rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:bg-muted"
                 >
                   Review workspace
                 </Link>
@@ -132,7 +132,7 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
                     <p className="text-sm font-semibold text-foreground">
                       {clip.original_filename}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {clip.file_size_bytes
                         ? `${(clip.file_size_bytes / 1024 / 1024).toFixed(1)} MB`
                         : "—"}
@@ -141,10 +141,10 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                       clip.metadata_status === "complete"
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-green-100 text-green-500"
                         : clip.metadata_status === "processing"
                         ? "bg-blue-100 text-blue-700"
-                        : "bg-amber-100 text-amber-700"
+                        : "bg-amber-100 text-amber-400"
                     }`}
                   >
                     {clip.metadata_status}

@@ -72,14 +72,14 @@ export default function AuthPage() {
               </div>
 
               {error && (
-                <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="mb-5 rounded-lg border border-red-200 bg-muted px-4 py-3 text-sm text-red-700">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSignIn} className="space-y-5">
                 <div>
-                  <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-700">
+                  <label htmlFor="email" className="mb-2 block text-sm font-medium text-foreground">
                     Email
                   </label>
                   <input
@@ -93,7 +93,7 @@ export default function AuthPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">
+                  <label htmlFor="password" className="mb-2 block text-sm font-medium text-foreground">
                     Password
                   </label>
                   <input

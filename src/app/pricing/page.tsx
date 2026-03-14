@@ -44,7 +44,7 @@ export default function PricingPage() {
             </ul>
             <Link
               href="/sign-up"
-              className="mt-8 block w-full rounded-lg border border-slate-300 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              className="mt-8 block w-full rounded-lg border border-slate-300 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-muted"
             >
               Get started free
             </Link>
@@ -57,7 +57,7 @@ export default function PricingPage() {
               <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white">Most popular</span>
             </div>
             <p className="mt-4 text-4xl font-bold">$19</p>
-            <p className="mt-1 text-sm text-slate-400">per month</p>
+            <p className="mt-1 text-sm text-muted-foreground">per month</p>
             <ul className="mt-6 space-y-3 text-sm text-slate-300">
               <li className="flex gap-2"><span className="text-green-400">✓</span> Unlimited projects</li>
               <li className="flex gap-2"><span className="text-green-400">✓</span> 200 clips/month</li>
@@ -89,7 +89,7 @@ export default function PricingPage() {
             </ul>
             <Link
               href="/sign-up"
-              className="mt-8 block w-full rounded-lg border border-slate-300 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              className="mt-8 block w-full rounded-lg border border-slate-300 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-muted"
             >
               Contact us
             </Link>

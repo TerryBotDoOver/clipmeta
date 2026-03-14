@@ -119,7 +119,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                     <div
                       key={clip.id}
                       className={`rounded-xl border p-4 ${
-                        meta ? "border-green-200 bg-green-50/30" : "border-dashed border-slate-300"
+                        meta ? "border-green-200 bg-muted/30" : "border-dashed border-slate-300"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-4">
@@ -130,12 +130,12 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                           <span
                             className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                               meta
-                                ? "bg-green-100 text-green-700"
+                                ? "bg-green-100 text-green-500"
                                 : clip.metadata_status === "processing"
                                 ? "bg-blue-100 text-blue-700"
                                 : clip.metadata_status === "failed"
                                 ? "bg-red-100 text-red-700"
-                                : "bg-amber-100 text-amber-700"
+                                : "bg-amber-100 text-amber-400"
                             }`}
                           >
                             {meta ? "✓ ready" : clip.metadata_status}
@@ -175,7 +175,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                   );
                 })
               ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-400">
+                <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-muted-foreground">
                   No clips yet.{" "}
                   <Link href={`/projects/${id}/upload`} className="font-medium text-slate-700 underline">
                     Upload your first clip
@@ -194,13 +194,13 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total clips</p>
                   <p className="mt-1 text-2xl font-bold text-foreground">{totalClips}</p>
                 </div>
-                <div className="rounded-xl bg-green-50 px-4 py-3">
+                <div className="rounded-xl bg-muted px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">With metadata</p>
-                  <p className="mt-1 text-2xl font-bold text-green-700">{withMetadata}</p>
+                  <p className="mt-1 text-2xl font-bold text-green-500">{withMetadata}</p>
                 </div>
-                <div className="rounded-xl bg-amber-50 px-4 py-3">
+                <div className="rounded-xl bg-muted px-4 py-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
-                  <p className="mt-1 text-2xl font-bold text-amber-700">{pending}</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-400">{pending}</p>
                 </div>
               </div>
             </div>
@@ -210,7 +210,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
               <div className="mt-4 space-y-3">
                 <Link
                   href={`/projects/${id}/upload`}
-                  className="block rounded-lg border border-input bg-card px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="block rounded-lg border border-input bg-card px-4 py-3 text-center text-sm font-medium text-slate-700 transition hover:bg-muted"
                 >
                   Upload more clips
                 </Link>
@@ -219,7 +219,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                   className={`block rounded-lg border px-4 py-3 text-center text-sm font-medium transition ${
                     withMetadata > 0
                       ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-                      : "cursor-not-allowed border-slate-200 bg-muted text-slate-400"
+                      : "cursor-not-allowed border-slate-200 bg-muted text-muted-foreground"
                   }`}
                 >
                   Export CSV {withMetadata > 0 ? `(${withMetadata} clips)` : ""}

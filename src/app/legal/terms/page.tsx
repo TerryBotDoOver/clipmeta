@@ -13,7 +13,7 @@ export default function TermsPage() {
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Terms of Service</h1>
         <p className="mt-2 text-sm text-muted-foreground">Last updated: March 2026</p>
 
-        <div className="mt-8 space-y-8 text-sm leading-7 text-slate-700">
+        <div className="mt-8 space-y-8 text-sm leading-7 text-foreground">
           <section>
             <h2 className="text-lg font-semibold text-foreground">1. Acceptance of Terms</h2>
             <p className="mt-3">By accessing or using ClipMeta, you agree to be bound by these Terms of Service. If you do not agree, do not use the service.</p>

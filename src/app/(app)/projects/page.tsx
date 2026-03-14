@@ -39,7 +39,7 @@ export default async function ProjectsPage() {
         </div>
 
         {error && (
-          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mt-6 rounded-lg border border-red-200 bg-muted px-4 py-3 text-sm text-red-700">
             Error loading projects: {error.message}
           </div>
         )}
@@ -57,7 +57,7 @@ export default async function ProjectsPage() {
                     <h2 className="text-xl font-semibold text-foreground">
                       {project.name}
                     </h2>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {new Date(project.created_at).toLocaleDateString()}
                     </p>
                   </div>

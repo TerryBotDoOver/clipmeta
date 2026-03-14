@@ -53,7 +53,7 @@ export function GenerateMetadataButton({ clipId, filename, storageUrl }: Props) 
 
   if (status === "done") {
     return (
-      <span className="text-xs font-medium text-green-700">✓ Generated — refreshing…</span>
+      <span className="text-xs font-medium text-green-500">✓ Generated — refreshing…</span>
     );
   }
 

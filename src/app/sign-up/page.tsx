@@ -70,9 +70,9 @@ export default function SignUpPage() {
               </div>
 
               {success ? (
-                <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+                <div className="rounded-xl border border-green-200 bg-muted p-5">
                   <p className="text-sm font-semibold text-green-800">Check your email</p>
-                  <p className="mt-2 text-sm text-green-700">
+                  <p className="mt-2 text-sm text-green-500">
                     We sent a confirmation link to <strong>{email}</strong>. Click it to
                     activate your account, then sign in.
                   </p>
@@ -86,13 +86,13 @@ export default function SignUpPage() {
               ) : (
                 <>
                   {error && (
-                    <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    <div className="mb-5 rounded-lg border border-red-200 bg-muted px-4 py-3 text-sm text-red-700">
                       {error}
                     </div>
                   )}
                   <form onSubmit={handleSignUp} className="space-y-5">
                     <div>
-                      <label htmlFor="email" className="mb-2 block text-sm font-medium text-slate-700">
+                      <label htmlFor="email" className="mb-2 block text-sm font-medium text-foreground">
                         Email
                       </label>
                       <input
@@ -106,7 +106,7 @@ export default function SignUpPage() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-700">
+                      <label htmlFor="password" className="mb-2 block text-sm font-medium text-foreground">
                         Password
                       </label>
                       <input

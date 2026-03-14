@@ -59,7 +59,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             {project.description && (
               <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
             )}
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-muted-foreground">
               Created {new Date(project.created_at).toLocaleDateString()}
             </p>
           </div>
@@ -76,7 +76,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           </div>
           <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
             <p className="text-sm font-medium text-muted-foreground">Metadata Done</p>
-            <p className="mt-2 text-3xl font-bold text-green-700">{withMeta}</p>
+            <p className="mt-2 text-3xl font-bold text-green-500">{withMeta}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
             <p className="text-sm font-medium text-muted-foreground">Pending</p>
@@ -94,7 +94,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
           </Link>
           <Link
             href={`/projects/${id}/review`}
-            className="flex items-center justify-center gap-2 rounded-xl border border-input bg-card px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="flex items-center justify-center gap-2 rounded-xl border border-input bg-card px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-muted"
           >
             🔍 Review &amp; Edit
           </Link>
@@ -102,8 +102,8 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             href={withMeta > 0 ? `/api/export/csv?project_id=${project.id}` : "#"}
             className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-4 text-sm font-semibold transition ${
               withMeta > 0
-                ? "border-green-600 bg-green-50 text-green-800 hover:bg-green-100"
-                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400"
+                ? "border-green-600 bg-muted text-green-800 hover:bg-green-100"
+                : "cursor-not-allowed border-slate-200 bg-slate-50 text-muted-foreground"
             }`}
           >
             📋 Export CSV {withMeta > 0 ? `(${withMeta})` : ""}
@@ -122,7 +122,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                 >
                   <div>
                     <p className="text-sm font-medium text-foreground">{clip.original_filename}</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {clip.file_size_bytes
                         ? `${(clip.file_size_bytes / 1024 / 1024).toFixed(1)} MB`
                         : "—"}{" "}
@@ -132,10 +132,10 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                       clip.metadata_status === "complete"
-                        ? "bg-green-100 text-green-700"
+                        ? "bg-green-100 text-green-500"
                         : clip.metadata_status === "processing"
                         ? "bg-blue-100 text-blue-700"
-                        : "bg-amber-100 text-amber-700"
+                        : "bg-amber-100 text-amber-400"
                     }`}
                   >
                     {clip.metadata_status === "complete" ? "✓ ready" : clip.metadata_status}

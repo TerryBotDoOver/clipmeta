@@ -65,7 +65,7 @@ export function BulkGenerateButton({ clips }: Props) {
 
   if (done) {
     return (
-      <div className="text-sm font-medium text-green-700">
+      <div className="text-sm font-medium text-green-500">
         ✓ Done — {total - errors.length}/{total} generated. Refreshing…
       </div>
     );
