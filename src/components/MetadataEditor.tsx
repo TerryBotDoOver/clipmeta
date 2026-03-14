@@ -1,6 +1,21 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type MetadataEditorProps = {
   clipId: string;
@@ -32,6 +47,10 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
   const [dirty, setDirty] = useState(false);
   const kwInputRef = useRef<HTMLInputElement>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+  );
+
   const markDirty = () => setDirty(true);
 
   const removeKeyword = useCallback((index: number) => {
@@ -59,6 +78,16 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
       removeKeyword(keywords.length - 1);
     }
   };
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = keywords.indexOf(active.id as string);
+      const newIndex = keywords.indexOf(over.id as string);
+      setKeywords(arrayMove(keywords, oldIndex, newIndex));
+      setDirty(true);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -116,19 +145,27 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         />
       </div>
 
-      {/* Keywords */}
+      {/* Keywords — drag to reorder */}
       <div>
         <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
           Keywords <span className="normal-case font-normal">({keywords.length})</span>
         </label>
-        {/* Chip container — click anywhere to focus the input */}
         <div
           className="min-h-[44px] w-full rounded-lg border border-border bg-background px-2 py-2 flex flex-wrap gap-1.5 cursor-text focus-within:border-ring focus-within:ring-1 focus-within:ring-ring transition"
           onClick={() => kwInputRef.current?.focus()}
         >
-          {keywords.map((kw, i) => (
-            <KeywordChip key={`${kw}-${i}`} label={kw} onRemove={() => removeKeyword(i)} />
-          ))}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={keywords} strategy={horizontalListSortingStrategy}>
+              {keywords.map((kw, i) => (
+                <SortableKeywordChip
+                  key={kw}
+                  id={kw}
+                  label={kw}
+                  onRemove={() => removeKeyword(i)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
           <input
             ref={kwInputRef}
             type="text"
@@ -140,7 +177,9 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
             className="min-w-[120px] flex-1 bg-transparent px-1 py-0.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Press Enter or comma to add · Backspace to remove last · Hover chip to delete</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Enter or comma to add · Backspace removes last · Hover to delete · Drag to reorder
+        </p>
       </div>
 
       {/* Category + Location */}
@@ -192,32 +231,50 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
-        {saved && (
-          <span className="text-xs text-green-500 font-medium">✓ Saved</span>
-        )}
-        {dirty && !saving && (
-          <span className="text-xs text-muted-foreground">Unsaved changes</span>
-        )}
+        {saved && <span className="text-xs text-green-500 font-medium">✓ Saved</span>}
+        {dirty && !saving && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
       </div>
     </div>
   );
 }
 
-/* ── Keyword chip with hover-reveal X ── */
-function KeywordChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+/* ── Sortable keyword chip ── */
+function SortableKeywordChip({
+  id,
+  label,
+  onRemove,
+}: {
+  id: string;
+  label: string;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
   const [hovered, setHovered] = useState(false);
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
 
   return (
     <span
-      className="group relative flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-foreground transition"
+      ref={setNodeRef}
+      style={style}
+      className="relative flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-foreground select-none cursor-grab active:cursor-grabbing"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      {...attributes}
+      {...listeners}
     >
       {label}
-      {hovered && (
+      {hovered && !isDragging && (
         <button
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-muted-foreground/30 text-foreground hover:bg-red-500 hover:text-white transition"
+          className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-muted-foreground/30 text-foreground hover:bg-red-500 hover:text-white transition cursor-pointer"
           title={`Remove "${label}"`}
         >
           ×
