@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import Link from "next/link";
+import NameForm from "@/components/NameForm";
 
 const PLANS = {
   free: { label: "Free", color: "text-muted-foreground", badge: "bg-muted text-muted-foreground", clips: 10, projects: 1 },
@@ -49,6 +50,13 @@ export default async function SettingsPage() {
         <section className="rounded-2xl border border-border bg-card p-6">
           <h2 className="text-lg font-semibold text-foreground">Account</h2>
           <div className="mt-4 space-y-4">
+            <NameForm
+              initialName={
+                user.user_metadata?.full_name ||
+                user.user_metadata?.name ||
+                ""
+              }
+            />
             <div className="flex items-center justify-between py-3 border-b border-border">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Email</p>
