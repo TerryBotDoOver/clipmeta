@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { ExportButton } from "@/components/ExportButton";
 
 type ProjectDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -25,7 +26,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       <main className="min-h-screen bg-background">
         <div className="mx-auto max-w-7xl px-6 py-10">
           <p className="text-sm text-muted-foreground">Project not found.</p>
-          <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-slate-900 underline">
+          <Link href="/projects" className="mt-4 inline-block text-sm font-medium text-foreground underline">
             Back to projects
           </Link>
         </div>
@@ -48,9 +49,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       <div className="mx-auto max-w-7xl px-6 py-10">
 
         {/* Header */}
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link href="/projects" className="text-xs font-medium text-slate-400 hover:text-muted-foreground">
+            <Link href="/projects" className="text-xs font-medium text-muted-foreground hover:text-foreground transition">
               ← All projects
             </Link>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
@@ -63,24 +64,24 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
               Created {new Date(project.created_at).toLocaleDateString()}
             </p>
           </div>
-          <span className="inline-flex self-start rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600 sm:self-auto">
+          <span className="inline-flex self-start rounded-full bg-muted px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:self-auto">
             {project.status ?? "active"}
           </span>
         </div>
 
         {/* Stats */}
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-5">
             <p className="text-sm font-medium text-muted-foreground">Total Clips</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{totalClips}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-5">
             <p className="text-sm font-medium text-muted-foreground">Metadata Done</p>
             <p className="mt-2 text-3xl font-bold text-green-500">{withMeta}</p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-card p-5 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card p-5">
             <p className="text-sm font-medium text-muted-foreground">Pending</p>
-            <p className="mt-2 text-3xl font-bold text-amber-600">{pending}</p>
+            <p className="mt-2 text-3xl font-bold text-amber-400">{pending}</p>
           </div>
         </div>
 
@@ -88,37 +89,30 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <Link
             href={`/projects/${id}/upload`}
-            className="flex items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-900 px-4 py-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="flex items-center justify-center gap-2 rounded-xl border-2 border-foreground bg-foreground px-4 py-4 text-sm font-semibold text-background transition hover:opacity-80"
           >
             📤 Upload Clips
           </Link>
           <Link
             href={`/projects/${id}/review`}
-            className="flex items-center justify-center gap-2 rounded-xl border border-input bg-card px-4 py-4 text-sm font-semibold text-slate-700 transition hover:bg-muted"
+            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-4 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             🔍 Review &amp; Edit
           </Link>
-          <a
-            href={withMeta > 0 ? `/api/export/csv?project_id=${project.id}` : "#"}
-            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-4 text-sm font-semibold transition ${
-              withMeta > 0
-                ? "border-green-600 bg-muted text-green-800 hover:bg-green-100"
-                : "cursor-not-allowed border-slate-200 bg-slate-50 text-muted-foreground"
-            }`}
-          >
-            📋 Export CSV {withMeta > 0 ? `(${withMeta})` : ""}
-          </a>
+          <div className="flex items-center justify-center">
+            <ExportButton projectId={project.id} clipCount={withMeta} />
+          </div>
         </div>
 
         {/* Clip list */}
         {clips && clips.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
+          <section className="mt-8 rounded-2xl border border-border bg-card p-6">
             <h2 className="mb-4 text-lg font-semibold text-foreground">Clips</h2>
             <div className="space-y-2">
               {clips.map((clip) => (
                 <div
                   key={clip.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3"
+                  className="flex items-center justify-between rounded-xl border border-border px-4 py-3"
                 >
                   <div>
                     <p className="text-sm font-medium text-foreground">{clip.original_filename}</p>
@@ -132,10 +126,10 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
                   <span
                     className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                       clip.metadata_status === "complete"
-                        ? "bg-green-100 text-green-500"
+                        ? "bg-green-500/15 text-green-400"
                         : clip.metadata_status === "processing"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-amber-100 text-amber-400"
+                        ? "bg-blue-500/15 text-blue-400"
+                        : "bg-amber-500/15 text-amber-400"
                     }`}
                   >
                     {clip.metadata_status === "complete" ? "✓ ready" : clip.metadata_status}

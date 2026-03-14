@@ -11,8 +11,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const dashboardIsActive = pathname === "/dashboard";
-  const projectsIsActive =
-    pathname === "/projects" || pathname.startsWith("/projects/");
+  const projectsIsActive = pathname === "/projects" || pathname.startsWith("/projects/");
+  const settingsIsActive = pathname === "/settings";
+  const feedbackIsActive = pathname === "/feedback";
 
   async function handleSignOut() {
     const supabase = createSupabaseBrowserClient();
@@ -55,6 +56,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               }`}
             >
               Projects
+            </Link>
+
+            <Link
+              href="/feedback"
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                feedbackIsActive
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              Feedback
+            </Link>
+
+            <Link
+              href="/settings"
+              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                settingsIsActive
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              Settings
             </Link>
 
             <ThemeToggle />
