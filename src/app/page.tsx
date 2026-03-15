@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmailCapture from "@/components/EmailCapture";
 
 export default function HomePage() {
   return (
@@ -76,6 +77,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <EmailCapture source="homepage" headline="Stay in the loop" />
 
       {/* Footer */}
       <footer className="border-t border-slate-200 py-8">
