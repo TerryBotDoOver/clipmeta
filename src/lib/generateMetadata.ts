@@ -33,7 +33,7 @@ async function withRetry<T>(
   throw new Error("Max retry attempts exceeded");
 }
 
-const MODEL = "gpt-4o"; // gpt-5 requires explicit API access — reverting until confirmed available
+const MODEL = "gpt-4.1"; // Best available on Tier 1 — upgrade to gpt-5 once Tier 2 unlocks ($50 spent)
 
 export type ClipMetadata = {
   title: string;
