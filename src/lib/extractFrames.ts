@@ -75,6 +75,8 @@ async function captureFramesSequentially(
   return frames;
 }
 
+const MAX_FRAME_WIDTH = 768; // Keeps base64 payload small; GPT-4o low detail = 512px anyway
+
 function seekAndCapture(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
@@ -90,10 +92,20 @@ function seekAndCapture(
       "seeked",
       () => {
         clearTimeout(timeout);
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+
+        // Scale down to keep payload under Vercel's 4.5 MB body limit
+        let w = video.videoWidth;
+        let h = video.videoHeight;
+        if (w > MAX_FRAME_WIDTH) {
+          const scale = MAX_FRAME_WIDTH / w;
+          w = MAX_FRAME_WIDTH;
+          h = Math.round(h * scale);
+        }
+
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(video, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
         resolve({ dataUrl, timestampSeconds: timestamp });
       },
       { once: true }
