@@ -18,6 +18,39 @@ export const PLATFORM_LABELS: Record<ExportPlatform, string> = {
   generic: "Generic CSV",
 };
 
+// Blackbox.global valid categories — must match exactly
+const BLACKBOX_CATEGORIES = new Set([
+  "Animals", "Objects & Equipment", "Arts & Entertainment", "Beauty & Health",
+  "Business", "Food", "Drink", "Industry", "Location & Buildings", "Medical",
+  "Nature", "Objects & Graphics", "People", "Religion", "Science",
+  "Sport & Fitness", "Technology", "Time Lapse", "Transportation", "Travel",
+]);
+
+// Map common AI-generated categories to Blackbox equivalents
+const CATEGORY_MAP: Record<string, string> = {
+  "Wildlife": "Animals",
+  "Food & Drink": "Food",
+  "Sports & Fitness": "Sport & Fitness",
+  "Architecture": "Location & Buildings",
+  "Aerial": "Nature",
+  "Underwater": "Nature",
+  "Lifestyle": "People",
+  "Events": "Arts & Entertainment",
+  "Abstract": "Objects & Graphics",
+  "Health": "Beauty & Health",
+  "Entertainment": "Arts & Entertainment",
+};
+
+function normalizeBlackboxCategory(category: string): string {
+  if (BLACKBOX_CATEGORIES.has(category)) return category;
+  if (CATEGORY_MAP[category]) return CATEGORY_MAP[category];
+  // Case-insensitive fallback
+  for (const valid of BLACKBOX_CATEGORIES) {
+    if (valid.toLowerCase() === category.toLowerCase()) return valid;
+  }
+  return "Nature"; // Safe default
+}
+
 function csvEscape(value: string): string {
   if (!value) return '""';
   const str = String(value);
@@ -117,10 +150,10 @@ function buildBlackboxCSV(clips: ClipRow[], projectName: string): string {
     // Title: max 100 chars
     const title = (c.title || "").slice(0, 100);
     return [
-      csvEscape(c.filename),          // A: File Name
-      csvEscape(desc),                 // B: Description
-      csvEscape(kws),                  // C: Keywords
-      csvEscape(c.category),           // D: Category
+      csvEscape(c.filename),                        // A: File Name
+      csvEscape(desc),                               // B: Description
+      csvEscape(kws),                                // C: Keywords
+      csvEscape(normalizeBlackboxCategory(c.category)), // D: Category
       csvEscape(projectName),          // E: Batch name
       csvEscape("FALSE"),              // F: Editorial
       csvEscape(""),                   // G: Editorial Text

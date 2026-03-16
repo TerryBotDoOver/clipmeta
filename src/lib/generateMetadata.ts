@@ -98,7 +98,8 @@ KEYWORD RULES:
 - Use PLAIN language buyers type, not literary adjectives
 
 ⚡ CATEGORY RULES
-Pick exactly one: Nature, Wildlife, People, Business, Technology, Travel, Food & Drink, Sports & Fitness, Architecture, Abstract, Aerial, Underwater, Lifestyle, Events, Transportation
+Pick exactly one from this list (MUST match exactly, case-sensitive):
+Animals, Objects & Equipment, Arts & Entertainment, Beauty & Health, Business, Food, Drink, Industry, Location & Buildings, Medical, Nature, Objects & Graphics, People, Religion, Science, Sport & Fitness, Technology, Time Lapse, Transportation, Travel
 
 ⚡ LOCATION RULES
 Return the COUNTRY name (e.g. "United States", "Japan", "Costa Rica") — NOT a state or city.
