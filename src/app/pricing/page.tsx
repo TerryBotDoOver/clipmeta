@@ -1,6 +1,28 @@
+'use client';
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+async function handleUpgrade(plan: 'pro' | 'studio', setLoading: (v: string | null) => void, router: ReturnType<typeof useRouter>) {
+  setLoading(plan);
+  try {
+    const res = await fetch('/api/billing/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan }),
+    });
+    if (res.status === 401) { router.push('/auth'); return; }
+    const { url, error } = await res.json();
+    if (url) window.location.href = url;
+    else console.error('Checkout error:', error);
+  } finally {
+    setLoading(null);
+  }
+}
 
 export default function PricingPage() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const router = useRouter();
   const Check = () => <span className="text-green-500">✓</span>;
   const Dash  = () => <span className="text-muted-foreground/40">–</span>;
 
@@ -69,12 +91,13 @@ export default function PricingPage() {
               <li className="flex items-center gap-2"><span className="text-green-300">✓</span> Bulk generation</li>
               <li className="flex items-center gap-2"><span className="text-green-300">✓</span> Priority support</li>
             </ul>
-            <Link
-              href="/sign-up"
-              className="mt-8 block w-full rounded-lg bg-white py-3 text-center text-sm font-semibold text-primary transition hover:bg-white/90"
+            <button
+              onClick={() => handleUpgrade('pro', setLoadingPlan, router)}
+              disabled={loadingPlan === 'pro'}
+              className="mt-8 block w-full rounded-lg bg-white py-3 text-center text-sm font-semibold text-primary transition hover:bg-white/90 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Start free trial
-            </Link>
+              {loadingPlan === 'pro' ? 'Loading…' : 'Start free trial'}
+            </button>
           </div>
 
           {/* Studio */}
@@ -90,12 +113,13 @@ export default function PricingPage() {
               <li className="flex items-center gap-2"><Check /> Bulk generation</li>
               <li className="flex items-center gap-2"><Check /> Team access (coming soon)</li>
             </ul>
-            <Link
-              href="/sign-up"
-              className="mt-8 block w-full rounded-lg border border-border py-3 text-center text-sm font-medium text-foreground transition hover:bg-muted"
+            <button
+              onClick={() => handleUpgrade('studio', setLoadingPlan, router)}
+              disabled={loadingPlan === 'studio'}
+              className="mt-8 block w-full rounded-lg border border-border py-3 text-center text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Contact us
-            </Link>
+              {loadingPlan === 'studio' ? 'Loading…' : 'Get Studio'}
+            </button>
           </div>
 
         </div>

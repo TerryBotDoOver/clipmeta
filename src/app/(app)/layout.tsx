@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PlanBadge } from "@/components/PlanBadge";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "▦", exact: true },
@@ -62,6 +63,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         {/* Sidebar footer */}
         <div className="shrink-0 space-y-0.5 border-t border-sidebar-border p-2.5">
+          <div className="px-3 py-2">
+            <PlanBadge />
+          </div>
           <div className="flex items-center justify-between rounded-lg px-3 py-2">
             <span className="text-xs text-muted-foreground">Theme</span>
             <ThemeToggle />
