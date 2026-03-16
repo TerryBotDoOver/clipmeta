@@ -40,6 +40,10 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [editingFilename, setEditingFilename] = useState<string | null>(null);
+  const [editFilenameValue, setEditFilenameValue] = useState("");
+  const [savingFilename, setSavingFilename] = useState(false);
+  const [renamedFiles, setRenamedFiles] = useState<Record<string, string>>({});
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -80,6 +84,35 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
       });
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  function startEditFilename(clipId: string, currentName: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingFilename(clipId);
+    setEditFilenameValue(currentName);
+  }
+
+  async function saveFilename(clipId: string) {
+    const trimmed = editFilenameValue.trim();
+    if (!trimmed) {
+      setEditingFilename(null);
+      return;
+    }
+    setSavingFilename(true);
+    try {
+      const res = await fetch("/api/clips/rename", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clip_id: clipId, filename: trimmed }),
+      });
+      if (!res.ok) throw new Error("Rename failed");
+      setRenamedFiles((prev) => ({ ...prev, [clipId]: trimmed }));
+    } catch {
+      alert("Failed to rename clip.");
+    } finally {
+      setSavingFilename(false);
+      setEditingFilename(null);
     }
   }
 
@@ -234,10 +267,30 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
 
-                    {/* Filename */}
-                    <p className="flex-1 truncate text-sm font-medium text-foreground">
-                      {clip.original_filename}
-                    </p>
+                    {/* Filename — click to edit */}
+                    {editingFilename === clip.id ? (
+                      <input
+                        autoFocus
+                        value={editFilenameValue}
+                        onChange={(e) => setEditFilenameValue(e.target.value)}
+                        onBlur={() => saveFilename(clip.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveFilename(clip.id);
+                          if (e.key === "Escape") setEditingFilename(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={savingFilename}
+                        className="flex-1 min-w-0 rounded border border-primary bg-muted px-2 py-0.5 text-sm font-medium text-foreground outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    ) : (
+                      <p
+                        className="flex-1 truncate text-sm font-medium text-foreground hover:text-primary cursor-text transition"
+                        onClick={(e) => startEditFilename(clip.id, renamedFiles[clip.id] ?? clip.original_filename, e)}
+                        title="Click to rename"
+                      >
+                        {renamedFiles[clip.id] ?? clip.original_filename}
+                      </p>
+                    )}
 
                     {/* File size */}
                     {clip.file_size_bytes && (
