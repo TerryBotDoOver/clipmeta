@@ -16,6 +16,7 @@ type QueuedFile = {
   status: FileStatus;
   progress: number;
   error?: string;
+  cancelled?: boolean;
 };
 
 export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
@@ -23,6 +24,8 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelledRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   function updateFile(id: string, patch: Partial<QueuedFile>) {
     setQueue((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
@@ -52,16 +55,53 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
     addFiles(e.dataTransfer.files);
   }, []);
 
+  function handleCancelAll() {
+    cancelledRef.current = true;
+    abortControllerRef.current?.abort();
+  }
+
+  function handleCancelOne(id: string) {
+    const item = queue.find((f) => f.id === id);
+    if (!item) return;
+    if (item.status === "queued") {
+      setQueue((prev) => prev.filter((f) => f.id !== id));
+    } else {
+      cancelledRef.current = true;
+      abortControllerRef.current?.abort();
+    }
+  }
+
   async function processQueue() {
+    cancelledRef.current = false;
     const toProcess = queue.filter((f) => f.status === "queued");
     if (toProcess.length === 0) return;
     setIsRunning(true);
 
     for (const item of toProcess) {
+      // Check cancellation at start of each iteration
+      if (cancelledRef.current) {
+        setQueue((prev) =>
+          prev.map((f) =>
+            f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
+          )
+        );
+        break;
+      }
+
       try {
         // 1. Extract frames
         updateFile(item.id, { status: "extracting" });
         const frames = await extractFrames(item.file, 4);
+
+        if (cancelledRef.current) {
+          updateFile(item.id, { status: "error", error: "Cancelled" });
+          setQueue((prev) =>
+            prev.map((f) =>
+              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
+            )
+          );
+          break;
+        }
 
         // 2. Get signed URL
         updateFile(item.id, { status: "uploading", progress: 0 });
@@ -80,10 +120,23 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
         }
         const { signedUrl, storagePath } = await urlRes.json();
 
-        // 3. Upload to storage
+        // 3. Upload to storage with abort support
+        const ac = new AbortController();
+        abortControllerRef.current = ac;
         await uploadWithProgress(signedUrl, item.file, (pct) =>
-          updateFile(item.id, { progress: pct })
+          updateFile(item.id, { progress: pct }),
+          ac.signal
         );
+        abortControllerRef.current = null;
+
+        if (cancelledRef.current) {
+          setQueue((prev) =>
+            prev.map((f) =>
+              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
+            )
+          );
+          break;
+        }
 
         // 4. Create clip record
         const clipRes = await fetch("/api/clips", {
@@ -114,14 +167,24 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
 
         updateFile(item.id, { status: "done", progress: 100 });
       } catch (err) {
+        const msg = err instanceof Error ? err.message : "Upload failed.";
         updateFile(item.id, {
           status: "error",
-          error: err instanceof Error ? err.message : "Upload failed.",
+          error: msg,
         });
+        if (cancelledRef.current) {
+          setQueue((prev) =>
+            prev.map((f) =>
+              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
+            )
+          );
+          break;
+        }
       }
     }
 
     setIsRunning(false);
+    abortControllerRef.current = null;
     // If all done, reload after a beat
     const final = queue.filter((f) => f.status === "queued");
     if (final.length === 0) {
@@ -144,15 +207,15 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
         onClick={() => inputRef.current?.click()}
         className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-10 text-center transition ${
           isDragging
-            ? "border-slate-900 bg-muted dark:border-white dark:bg-slate-800"
-            : "border-slate-300 bg-muted/50 hover:border-slate-400 hover:bg-muted dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-500"
+            ? "border-primary bg-muted"
+            : "border-border bg-muted/30 hover:border-primary/50 hover:bg-muted"
         }`}
       >
         <div className="text-3xl mb-3">🎬</div>
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+        <p className="text-sm font-semibold text-foreground">
           {isDragging ? "Drop clips here" : "Drag & drop clips here"}
         </p>
-        <p className="mt-1 text-xs text-slate-500 dark:text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           or click to browse — multiple files supported
         </p>
         <input
@@ -171,19 +234,19 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
           {queue.map((item) => (
             <div
               key={item.id}
-              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-card px-4 py-3 dark:border-slate-700 dark:bg-slate-800"
+              className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
             >
               <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                <p className="truncate text-sm font-medium text-foreground">
                   {item.file.name}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {(item.file.size / 1024 / 1024).toFixed(1)} MB
                 </p>
                 {item.status === "uploading" && (
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-slate-900 transition-all dark:bg-white"
+                      className="h-full rounded-full bg-primary transition-all"
                       style={{ width: `${item.progress}%` }}
                     />
                   </div>
@@ -193,6 +256,14 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
                 )}
               </div>
               <StatusBadge status={item.status} progress={item.progress} />
+              {item.status === "queued" && !isRunning && (
+                <button
+                  onClick={() => handleCancelOne(item.id)}
+                  className="text-xs text-muted-foreground hover:text-red-500 transition"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -204,16 +275,24 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
           <button
             onClick={processQueue}
             disabled={isRunning || queuedCount === 0}
-            className="rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-muted"
+            className="rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40"
           >
             {isRunning
               ? `Uploading… (${doneCount}/${queue.length})`
               : `Upload ${queuedCount} clip${queuedCount !== 1 ? "s" : ""}`}
           </button>
+          {isRunning && (
+            <button
+              onClick={handleCancelAll}
+              className="rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition"
+            >
+              Cancel All
+            </button>
+          )}
           {!isRunning && (
             <button
               onClick={() => setQueue([])}
-              className="text-sm text-slate-500 underline hover:text-slate-700 dark:text-muted-foreground"
+              className="text-sm text-muted-foreground underline hover:text-foreground transition"
             >
               Clear
             </button>
@@ -226,12 +305,12 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
 
 function StatusBadge({ status, progress }: { status: FileStatus; progress: number }) {
   const map: Record<FileStatus, { label: string; cls: string }> = {
-    queued:     { label: "queued",     cls: "bg-muted text-slate-600 dark:bg-slate-700 dark:text-muted-foreground" },
-    extracting: { label: "extracting…", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
-    uploading:  { label: `${progress}%`, cls: "bg-amber-100 text-amber-400 dark:bg-amber-900 dark:text-amber-300" },
-    generating: { label: "AI…",        cls: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
-    done:       { label: "✓ done",     cls: "bg-green-100 text-green-500 dark:bg-green-900 dark:text-green-300" },
-    error:      { label: "error",      cls: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
+    queued:     { label: "queued",      cls: "bg-muted text-muted-foreground" },
+    extracting: { label: "extracting…", cls: "bg-blue-100 text-blue-700" },
+    uploading:  { label: `${progress}%`, cls: "bg-amber-100 text-amber-700" },
+    generating: { label: "AI…",         cls: "bg-purple-100 text-purple-700" },
+    done:       { label: "✓ done",      cls: "bg-green-100 text-green-700" },
+    error:      { label: "error",       cls: "bg-red-100 text-red-700" },
   };
   const { label, cls } = map[status];
   return (
@@ -244,7 +323,8 @@ function StatusBadge({ status, progress }: { status: FileStatus; progress: numbe
 function uploadWithProgress(
   signedUrl: string,
   file: File,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -261,6 +341,10 @@ function uploadWithProgress(
     });
     xhr.addEventListener("error", () => reject(new Error("Network error during upload.")));
     xhr.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
+
+    if (signal) {
+      signal.addEventListener("abort", () => xhr.abort());
+    }
 
     xhr.open("PUT", signedUrl);
     xhr.setRequestHeader("Content-Type", file.type || "video/mp4");

@@ -8,6 +8,7 @@ export type Platform =
 export type GenerationSettings = {
   keywordCount: number;
   titleStyle: "seo" | "descriptive";
+  descStyle: "detailed" | "concise";
   includeLocation: boolean;
   includeCameraDetails: boolean;
 };
@@ -30,32 +31,37 @@ export const PLATFORM_DESCRIPTIONS: Record<Platform, string> = {
 
 export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
   blackbox: {
-    keywordCount: 40,
+    keywordCount: 49,
     titleStyle: "seo",
+    descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
   },
   pond5: {
     keywordCount: 50,
     titleStyle: "descriptive",
+    descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
   },
   adobe_stock: {
     keywordCount: 45,
     titleStyle: "seo",
+    descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: false,
   },
   shutterstock: {
     keywordCount: 50,
     titleStyle: "seo",
+    descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: false,
   },
   generic: {
     keywordCount: 35,
     titleStyle: "seo",
+    descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
   },

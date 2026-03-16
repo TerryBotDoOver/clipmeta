@@ -84,6 +84,7 @@ export async function generateMetadata(
   const effectiveSettings: GenerationSettings = settings ?? {
     keywordCount: 35,
     titleStyle: "seo",
+    descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
   };
@@ -97,6 +98,11 @@ Title style: ${
     effectiveSettings.titleStyle === "seo"
       ? "SEO-optimized (concise, searchable, buyer-intent keywords in title)"
       : "Descriptive (natural language, scene-setting, conversational)"
+  }
+Description style: ${
+    effectiveSettings.descStyle === "concise"
+      ? "Write one concise punchy sentence as the description."
+      : "Write a 2-3 sentence description covering subject, mood, setting, and context."
   }
 ${
     effectiveSettings.includeLocation
