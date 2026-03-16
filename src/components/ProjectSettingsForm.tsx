@@ -11,34 +11,43 @@ import {
 const PLATFORMS: Platform[] = ["blackbox", "pond5", "adobe_stock", "shutterstock", "generic"];
 
 export function ProjectSettingsForm() {
+  const defaultPreset = PLATFORM_PRESETS["blackbox"];
   const [platform, setPlatform] = useState<Platform>("blackbox");
-  const [keywordCount, setKeywordCount] = useState(PLATFORM_PRESETS["blackbox"].keywordCount);
-  const [titleStyle, setTitleStyle] = useState<"seo" | "descriptive">("seo");
-  const [descStyle, setDescStyle] = useState<"detailed" | "concise">("detailed");
-  const [includeLocation, setIncludeLocation] = useState(true);
-  const [includeCameraDetails, setIncludeCameraDetails] = useState(true);
+  const [keywordCount, setKeywordCount] = useState(defaultPreset.keywordCount);
+  const [titleStyle, setTitleStyle] = useState<"seo" | "descriptive">(defaultPreset.titleStyle);
+  const [descStyle, setDescStyle] = useState<"detailed" | "concise">(defaultPreset.descStyle);
+  const [includeLocation, setIncludeLocation] = useState(defaultPreset.includeLocation);
+  const [includeCameraDetails, setIncludeCameraDetails] = useState(defaultPreset.includeCameraDetails);
+  const [titleMaxChars, setTitleMaxChars] = useState(defaultPreset.titleMaxChars);
+  const [descMaxChars, setDescMaxChars] = useState(defaultPreset.descMaxChars);
 
   function handlePlatformChange(p: Platform) {
+    const preset = PLATFORM_PRESETS[p];
     setPlatform(p);
-    setKeywordCount(PLATFORM_PRESETS[p].keywordCount);
-    setTitleStyle(PLATFORM_PRESETS[p].titleStyle);
+    setKeywordCount(preset.keywordCount);
+    setTitleStyle(preset.titleStyle);
+    setDescStyle(preset.descStyle);
+    setTitleMaxChars(preset.titleMaxChars);
+    setDescMaxChars(preset.descMaxChars);
   }
 
   return (
     <>
-      {/* Hidden inputs so the server action gets the values */}
+      {/* Hidden inputs for server action */}
       <input type="hidden" name="platform" value={platform} />
       <input type="hidden" name="keywordCount" value={keywordCount} />
       <input type="hidden" name="titleStyle" value={titleStyle} />
       <input type="hidden" name="descStyle" value={descStyle} />
       <input type="hidden" name="includeLocation" value={includeLocation ? "on" : "off"} />
       <input type="hidden" name="includeCameraDetails" value={includeCameraDetails ? "on" : "off"} />
+      <input type="hidden" name="titleMaxChars" value={titleMaxChars} />
+      <input type="hidden" name="descMaxChars" value={descMaxChars} />
 
       {/* Platform selector */}
       <div>
         <p className="block text-sm font-medium text-foreground">Target platform</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          ClipMeta will tailor keyword count, title style, and format automatically.
+          ClipMeta will tailor keyword count, title style, and character limits automatically.
         </p>
         <div className="mt-3 space-y-2">
           {PLATFORMS.map((p) => {
@@ -62,12 +71,18 @@ export function ProjectSettingsForm() {
                   className="mt-0.5 accent-violet-500"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
                       {PLATFORM_LABELS[p]}
                     </span>
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {preset.keywordCount} keywords
+                      {preset.keywordCount} kw
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {preset.titleMaxChars}c title
+                    </span>
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {preset.descMaxChars}c desc
                     </span>
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -89,24 +104,52 @@ export function ProjectSettingsForm() {
 
           {/* Keyword count */}
           <div>
-            <label className="block text-sm font-medium text-foreground">
-              Keyword count
-            </label>
+            <label className="block text-sm font-medium text-foreground">Keyword count</label>
             <p className="mt-0.5 text-xs text-muted-foreground">
               Override the platform default (15–50). Updating the platform resets this.
             </p>
             <div className="mt-2 flex items-center gap-3">
               <input
-                type="range"
-                min={15}
-                max={50}
+                type="range" min={15} max={50}
                 value={keywordCount}
                 onChange={(e) => setKeywordCount(Number(e.target.value))}
                 className="flex-1 accent-violet-500"
               />
-              <span className="w-8 text-right text-sm font-bold text-primary tabular-nums">
-                {keywordCount}
-              </span>
+              <span className="w-8 text-right text-sm font-bold text-primary tabular-nums">{keywordCount}</span>
+            </div>
+          </div>
+
+          {/* Title max chars */}
+          <div>
+            <label className="block text-sm font-medium text-foreground">Title max characters</label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Platform limit for the title field. Blackbox = 100, Shutterstock/Adobe = 200.
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <input
+                type="range" min={50} max={200} step={10}
+                value={titleMaxChars}
+                onChange={(e) => setTitleMaxChars(Number(e.target.value))}
+                className="flex-1 accent-violet-500"
+              />
+              <span className="w-12 text-right text-sm font-bold text-primary tabular-nums">{titleMaxChars}</span>
+            </div>
+          </div>
+
+          {/* Description max chars */}
+          <div>
+            <label className="block text-sm font-medium text-foreground">Description max characters</label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Platform limit for the description field. Blackbox = 200, Pond5 = 500.
+            </p>
+            <div className="mt-2 flex items-center gap-3">
+              <input
+                type="range" min={100} max={500} step={25}
+                value={descMaxChars}
+                onChange={(e) => setDescMaxChars(Number(e.target.value))}
+                className="flex-1 accent-violet-500"
+              />
+              <span className="w-12 text-right text-sm font-bold text-primary tabular-nums">{descMaxChars}</span>
             </div>
           </div>
 
@@ -121,23 +164,9 @@ export function ProjectSettingsForm() {
                 };
                 const selected = titleStyle === style;
                 return (
-                  <label
-                    key={style}
-                    className={`cursor-pointer rounded-lg border p-3 transition ${
-                      selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="_titleStyle_display"
-                      value={style}
-                      checked={selected}
-                      onChange={() => setTitleStyle(style)}
-                      className="sr-only"
-                    />
-                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
-                      {info[style].label}
-                    </p>
+                  <label key={style} className={`cursor-pointer rounded-lg border p-3 transition ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <input type="radio" name="_titleStyle_display" value={style} checked={selected} onChange={() => setTitleStyle(style)} className="sr-only" />
+                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{info[style].desc}</p>
                   </label>
                 );
@@ -156,23 +185,9 @@ export function ProjectSettingsForm() {
                 };
                 const selected = descStyle === style;
                 return (
-                  <label
-                    key={style}
-                    className={`cursor-pointer rounded-lg border p-3 transition ${
-                      selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="_descStyle_display"
-                      value={style}
-                      checked={selected}
-                      onChange={() => setDescStyle(style)}
-                      className="sr-only"
-                    />
-                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>
-                      {info[style].label}
-                    </p>
+                  <label key={style} className={`cursor-pointer rounded-lg border p-3 transition ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <input type="radio" name="_descStyle_display" value={style} checked={selected} onChange={() => setDescStyle(style)} className="sr-only" />
+                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{info[style].desc}</p>
                   </label>
                 );
@@ -191,7 +206,7 @@ export function ProjectSettingsForm() {
               />
               <div>
                 <span className="text-sm font-medium text-foreground">Include location / region</span>
-                <p className="text-xs text-muted-foreground">Add geography keywords when identifiable from frames.</p>
+                <p className="text-xs text-muted-foreground">Add geography keywords when identifiable from frames or titles.</p>
               </div>
             </label>
             <label className="flex cursor-pointer items-start gap-3">

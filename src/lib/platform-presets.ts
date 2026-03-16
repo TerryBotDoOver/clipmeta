@@ -11,6 +11,8 @@ export type GenerationSettings = {
   descStyle: "detailed" | "concise";
   includeLocation: boolean;
   includeCameraDetails: boolean;
+  titleMaxChars: number;
+  descMaxChars: number;
 };
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
@@ -36,6 +38,8 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
+    titleMaxChars: 100,
+    descMaxChars: 200,
   },
   pond5: {
     keywordCount: 50,
@@ -43,6 +47,8 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
+    titleMaxChars: 100,
+    descMaxChars: 500,
   },
   adobe_stock: {
     keywordCount: 45,
@@ -50,6 +56,8 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: false,
+    titleMaxChars: 200,
+    descMaxChars: 200,
   },
   shutterstock: {
     keywordCount: 50,
@@ -57,6 +65,8 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: false,
+    titleMaxChars: 200,
+    descMaxChars: 200,
   },
   generic: {
     keywordCount: 35,
@@ -64,6 +74,8 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
+    titleMaxChars: 200,
+    descMaxChars: 300,
   },
 };
 

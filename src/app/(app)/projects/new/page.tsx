@@ -28,12 +28,17 @@ export default function NewProjectPage() {
     const includeLocation = formData.get("includeLocation") === "on";
     const includeCameraDetails = formData.get("includeCameraDetails") === "on";
 
+    const titleMaxChars = Math.min(200, Math.max(50, parseInt(String(formData.get("titleMaxChars") || "200"), 10)));
+    const descMaxChars = Math.min(500, Math.max(100, parseInt(String(formData.get("descMaxChars") || "300"), 10)));
+
     const generation_settings: GenerationSettings = {
       keywordCount,
       titleStyle,
       descStyle,
       includeLocation,
       includeCameraDetails,
+      titleMaxChars,
+      descMaxChars,
     };
 
     if (!name) throw new Error("Project name is required.");

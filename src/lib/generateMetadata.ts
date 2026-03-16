@@ -87,6 +87,8 @@ export async function generateMetadata(
     descStyle: "detailed",
     includeLocation: true,
     includeCameraDetails: true,
+    titleMaxChars: 200,
+    descMaxChars: 300,
   };
 
   // Build platform-specific instructions to append to system prompt
@@ -106,9 +108,11 @@ Description style: ${
   }
 ${
     effectiveSettings.includeLocation
-      ? "Include location/region/geography keywords where identifiable from the frames."
+      ? "Include location/region/geography keywords where identifiable from the frames OR inferred from the clip title/filename (e.g. a filename like 'florida-beach-drone.mp4' or a title mentioning a place should inform the location field and geography keywords)."
       : "Do NOT include specific location or geography keywords."
   }
+Title must be ${effectiveSettings.titleMaxChars} characters or fewer.
+Description must be ${effectiveSettings.descMaxChars} characters or fewer.
 ${
     effectiveSettings.includeCameraDetails
       ? "Include relevant camera perspective keywords (aerial, drone, close-up, wide shot, handheld, etc.)."
@@ -138,7 +142,7 @@ I am providing ${Math.min(frames.length, 4)} extracted frames. Analyze them toge
 Return this exact JSON:
 {
   "title": "string (8-15 words)",
-  "description": "string (2-3 sentences, 100-200 chars)",
+  "description": "string (max ${effectiveSettings.descMaxChars} chars)",
   "keywords": ["string", "string", ... exactly ${effectiveSettings.keywordCount} keywords, strongest first],
   "category": "string (one of the allowed categories)",
   "location": "string or null",
@@ -193,8 +197,8 @@ Return this exact JSON:
   });
 
   return {
-    title: String(parsed.title ?? "").slice(0, 200),
-    description: String(parsed.description ?? "").slice(0, 1000),
+    title: String(parsed.title ?? "").slice(0, effectiveSettings.titleMaxChars),
+    description: String(parsed.description ?? "").slice(0, effectiveSettings.descMaxChars),
     keywords: cleanedKeywords.slice(0, effectiveSettings.keywordCount),
     category: String(parsed.category ?? "Nature"),
     location: parsed.location ? String(parsed.location) : null,
