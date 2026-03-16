@@ -30,6 +30,8 @@ export default function NewProjectPage() {
 
     const titleMaxChars = Math.min(200, Math.max(50, parseInt(String(formData.get("titleMaxChars") || "200"), 10)));
     const descMaxChars = Math.min(500, Math.max(100, parseInt(String(formData.get("descMaxChars") || "300"), 10)));
+    const rawFormat = String(formData.get("keywordFormat") || "mixed");
+    const keywordFormat = (["mixed", "single", "phrases"].includes(rawFormat) ? rawFormat : "mixed") as "mixed" | "single" | "phrases";
 
     const generation_settings: GenerationSettings = {
       keywordCount,
@@ -39,6 +41,7 @@ export default function NewProjectPage() {
       includeCameraDetails,
       titleMaxChars,
       descMaxChars,
+      keywordFormat,
     };
 
     if (!name) throw new Error("Project name is required.");

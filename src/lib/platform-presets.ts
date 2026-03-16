@@ -13,6 +13,7 @@ export type GenerationSettings = {
   includeCameraDetails: boolean;
   titleMaxChars: number;
   descMaxChars: number;
+  keywordFormat: "mixed" | "single" | "phrases";
 };
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
@@ -40,6 +41,7 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     includeCameraDetails: true,
     titleMaxChars: 100,
     descMaxChars: 200,
+    keywordFormat: "mixed",
   },
   pond5: {
     keywordCount: 50,
@@ -49,6 +51,7 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     includeCameraDetails: true,
     titleMaxChars: 100,
     descMaxChars: 500,
+    keywordFormat: "mixed",
   },
   adobe_stock: {
     keywordCount: 45,
@@ -58,6 +61,7 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     includeCameraDetails: false,
     titleMaxChars: 200,
     descMaxChars: 200,
+    keywordFormat: "mixed",
   },
   shutterstock: {
     keywordCount: 50,
@@ -67,6 +71,7 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     includeCameraDetails: false,
     titleMaxChars: 200,
     descMaxChars: 200,
+    keywordFormat: "mixed",
   },
   generic: {
     keywordCount: 35,
@@ -76,6 +81,7 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     includeCameraDetails: true,
     titleMaxChars: 200,
     descMaxChars: 300,
+    keywordFormat: "mixed",
   },
 };
 

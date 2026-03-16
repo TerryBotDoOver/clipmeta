@@ -20,6 +20,7 @@ export function ProjectSettingsForm() {
   const [includeCameraDetails, setIncludeCameraDetails] = useState(defaultPreset.includeCameraDetails);
   const [titleMaxChars, setTitleMaxChars] = useState(defaultPreset.titleMaxChars);
   const [descMaxChars, setDescMaxChars] = useState(defaultPreset.descMaxChars);
+  const [keywordFormat, setKeywordFormat] = useState<"mixed" | "single" | "phrases">(defaultPreset.keywordFormat);
 
   function handlePlatformChange(p: Platform) {
     const preset = PLATFORM_PRESETS[p];
@@ -29,6 +30,7 @@ export function ProjectSettingsForm() {
     setDescStyle(preset.descStyle);
     setTitleMaxChars(preset.titleMaxChars);
     setDescMaxChars(preset.descMaxChars);
+    setKeywordFormat(preset.keywordFormat);
   }
 
   return (
@@ -42,6 +44,7 @@ export function ProjectSettingsForm() {
       <input type="hidden" name="includeCameraDetails" value={includeCameraDetails ? "on" : "off"} />
       <input type="hidden" name="titleMaxChars" value={titleMaxChars} />
       <input type="hidden" name="descMaxChars" value={descMaxChars} />
+      <input type="hidden" name="keywordFormat" value={keywordFormat} />
 
       {/* Platform selector */}
       <div>
@@ -189,6 +192,28 @@ export function ProjectSettingsForm() {
                     <input type="radio" name="_descStyle_display" value={style} checked={selected} onChange={() => setDescStyle(style)} className="sr-only" />
                     <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{info[style].desc}</p>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Keyword format */}
+          <div>
+            <p className="block text-sm font-medium text-foreground">Keyword format</p>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {(["mixed", "single", "phrases"] as const).map((fmt) => {
+                const info = {
+                  mixed: { label: "Mixed", desc: "Best coverage. Combines single words and phrases for maximum discoverability." },
+                  single: { label: "Single words", desc: 'One word per keyword. e.g. "waterfall", "aerial", "sunset".' },
+                  phrases: { label: "Phrases only", desc: 'Multi-word only. e.g. "golden hour", "aerial view", "slow motion".' },
+                };
+                const selected = keywordFormat === fmt;
+                return (
+                  <label key={fmt} className={`cursor-pointer rounded-lg border p-3 transition ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
+                    <input type="radio" name="_keywordFormat_display" value={fmt} checked={selected} onChange={() => setKeywordFormat(fmt)} className="sr-only" />
+                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[fmt].label}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{info[fmt].desc}</p>
                   </label>
                 );
               })}

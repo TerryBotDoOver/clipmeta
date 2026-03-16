@@ -92,6 +92,7 @@ export async function generateMetadata(
     includeCameraDetails: true,
     titleMaxChars: 200,
     descMaxChars: 300,
+    keywordFormat: "mixed",
   };
 
   // Build platform-specific instructions
@@ -110,6 +111,13 @@ Description style: ${
     effectiveSettings.descStyle === "concise"
       ? "Write one concise punchy sentence."
       : "Write 2–3 sentences covering subject, mood, setting, and potential use cases."
+  }
+Keyword format: ${
+    effectiveSettings.keywordFormat === "single"
+      ? 'SINGLE WORDS ONLY — every keyword must be exactly one word (e.g. "waterfall", "aerial", "sunset"). No spaces. No multi-word phrases whatsoever.'
+      : effectiveSettings.keywordFormat === "phrases"
+      ? 'PHRASES ONLY — every keyword must be two or more words (e.g. "golden hour", "aerial view", "flowing water"). No single-word keywords.'
+      : "MIXED — use a natural blend of single words and multi-word phrases for maximum search coverage."
   }
 ${
     effectiveSettings.includeLocation
