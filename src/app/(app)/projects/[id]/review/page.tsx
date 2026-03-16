@@ -47,7 +47,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
 
-  // Generate signed read URLs for clips without metadata
+  // Generate signed read URLs for all clips with a storage path
   const clipUrls: Record<string, string> = {};
   if (clips) {
     for (const clip of clips) {
@@ -55,7 +55,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         try {
           clipUrls[clip.id] = await getR2ReadUrl(clip.storage_path, 3600);
         } catch {
-          // skip if URL generation fails
+          // skip if URL generation fails (e.g. video already deleted)
         }
       }
     }
@@ -71,6 +71,14 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id] }))
     : [];
 
+  const EXPORT_PLATFORMS = [
+    { key: "blackbox", label: "Blackbox.global", primary: true },
+    { key: "shutterstock", label: "Shutterstock", primary: false },
+    { key: "adobe", label: "Adobe Stock", primary: false },
+    { key: "pond5", label: "Pond5", primary: false },
+    { key: "generic", label: "Generic CSV", primary: false },
+  ] as const;
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
@@ -79,13 +87,13 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         <div className="rounded-2xl border border-border bg-card p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary">
                 Review Workspace
               </p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+              <h1 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
                 {project.name}
               </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {withMetadata} of {totalClips} clips have metadata.
                 {pending > 0 && ` ${pending} pending.`}
               </p>
@@ -130,7 +138,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                     >
                       {/* Clip header */}
                       <div className="flex items-center justify-between gap-4">
-                        <p className="text-sm font-semibold text-foreground truncate max-w-[60%]">
+                        <p className="truncate max-w-[60%] text-sm font-semibold text-foreground">
                           {clip.original_filename}
                         </p>
                         <div className="flex shrink-0 items-center gap-2">
@@ -154,15 +162,17 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                                 : "bg-amber-500/15 text-amber-400"
                             }`}
                           >
-                            {meta ? "✓ ready" : clip.metadata_status}
+                            {meta ? "ready" : clip.metadata_status}
                           </span>
                         </div>
                       </div>
 
+                      {/* Video player — hides itself if video is gone */}
                       {clipUrls[clip.id] && (
                         <VideoPlayer src={clipUrls[clip.id]} />
                       )}
 
+                      {/* Metadata editor or generate button */}
                       {meta ? (
                         <MetadataEditor
                           clipId={clip.id}
@@ -177,9 +187,9 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                         />
                       ) : (
                         <div className="mt-3 flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground italic">
+                          <p className="text-sm italic text-muted-foreground">
                             {clip.metadata_status === "processing"
-                              ? "Generating metadata…"
+                              ? "Generating metadata..."
                               : "No metadata yet."}
                           </p>
                           {clipUrls[clip.id] && clip.metadata_status !== "processing" && (
@@ -209,21 +219,22 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
           </section>
 
           {/* Sidebar */}
-          <aside className="flex min-w-0 flex-col gap-6">
+          <aside className="flex min-w-0 flex-col gap-4">
+
             {/* Stats */}
             <div className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-semibold text-foreground">Summary</h2>
-              <div className="mt-4 grid gap-3">
-                <div className="rounded-xl bg-muted px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total clips</p>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Summary</h2>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-muted px-3 py-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total</p>
                   <p className="mt-1 text-2xl font-bold text-foreground">{totalClips}</p>
                 </div>
-                <div className="rounded-xl bg-muted px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">With metadata</p>
+                <div className="rounded-xl bg-muted px-3 py-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ready</p>
                   <p className="mt-1 text-2xl font-bold text-green-500">{withMetadata}</p>
                 </div>
-                <div className="rounded-xl bg-muted px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
+                <div className="rounded-xl bg-muted px-3 py-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Pending</p>
                   <p className="mt-1 text-2xl font-bold text-amber-400">{pending}</p>
                 </div>
               </div>
@@ -233,52 +244,52 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
             <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="text-lg font-semibold text-foreground">Export</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Platform-optimized CSV — each format matches the target site&apos;s exact requirements.
+                Platform-optimized CSV — each format matches the exact column requirements.
               </p>
               <div className="mt-4 space-y-2">
-                {(["blackbox", "shutterstock", "adobe", "pond5", "generic"] as const).map((p) => {
-                  const labels: Record<string, string> = {
-                    blackbox: "Blackbox.global",
-                    shutterstock: "Shutterstock",
-                    adobe: "Adobe Stock",
-                    pond5: "Pond5",
-                    generic: "Generic CSV",
-                  };
-                  return (
-                    <a
-                      key={p}
-                      href={withMetadata > 0 ? `/api/export/csv?project_id=${project.id}&platform=${p}` : "#"}
-                      className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
-                        withMetadata > 0
-                          ? "border-border text-foreground hover:bg-muted"
-                          : "cursor-not-allowed border-border text-muted-foreground opacity-40"
-                      }`}
-                    >
-                      <span>{labels[p]}</span>
-                      {p === "blackbox" && withMetadata > 0 && (
-                        <span className="text-xs text-indigo-400">★ primary</span>
-                      )}
-                    </a>
-                  );
-                })}
+                {EXPORT_PLATFORMS.map(({ key, label, primary }) => (
+                  <a
+                    key={key}
+                    href={withMetadata > 0 ? `/api/export/csv?project_id=${project.id}&platform=${key}` : "#"}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
+                      withMetadata > 0
+                        ? "border-border text-foreground hover:bg-muted"
+                        : "cursor-not-allowed border-border text-muted-foreground opacity-40"
+                    }`}
+                  >
+                    <span>{label}</span>
+                    {primary && withMetadata > 0 && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                        primary
+                      </span>
+                    )}
+                  </a>
+                ))}
               </div>
               {withMetadata === 0 && (
-                <p className="mt-3 text-xs text-muted-foreground">Generate metadata on at least one clip to enable export.</p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Generate metadata on at least one clip to enable export.
+                </p>
               )}
             </div>
 
-            {/* Upload more */}
+            {/* Actions */}
             <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="text-lg font-semibold text-foreground">Actions</h2>
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
                 <Link
                   href={`/projects/${id}/upload`}
                   className="block rounded-lg border border-border px-4 py-3 text-center text-sm font-medium text-foreground transition hover:bg-muted"
                 >
                   Upload more clips
                 </Link>
+                <MarkCompleteButton
+                  projectId={project.id}
+                  isComplete={project.status === "complete"}
+                />
               </div>
             </div>
+
           </aside>
         </div>
       </div>
