@@ -33,7 +33,7 @@ async function withRetry<T>(
   throw new Error("Max retry attempts exceeded");
 }
 
-const MODEL = "gpt-4o-mini"; // Vision-capable, cost-efficient
+const MODEL = "gpt-4o"; // Flagship vision model — best scene/frame understanding
 
 export type ClipMetadata = {
   title: string;
