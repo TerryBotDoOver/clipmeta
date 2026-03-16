@@ -7,10 +7,11 @@ const SKIP_KEY = "clipmeta_skip_complete_warning";
 
 type Props = {
   projectId: string;
+  projectSlug: string;
   isComplete: boolean;
 };
 
-export function MarkCompleteButton({ projectId, isComplete }: Props) {
+export function MarkCompleteButton({ projectId, projectSlug, isComplete }: Props) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [skipFuture, setSkipFuture] = useState(false);
@@ -42,7 +43,7 @@ export function MarkCompleteButton({ projectId, isComplete }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: projectId }),
       });
-      router.refresh();
+      router.push(`/projects/${projectSlug}`);
     } catch (e) {
       console.error("Failed to mark complete", e);
     } finally {

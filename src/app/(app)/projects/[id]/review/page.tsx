@@ -285,6 +285,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                 </Link>
                 <MarkCompleteButton
                   projectId={project.id}
+                  projectSlug={project.slug}
                   isComplete={project.status === "complete"}
                 />
               </div>
