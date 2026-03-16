@@ -11,7 +11,7 @@ export default function HomePage() {
           <span className="text-lg font-bold text-foreground">ClipMeta</span>
           <Link
             href="/auth"
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             Sign In
           </Link>
@@ -20,10 +20,10 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 py-24 text-center">
-        <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+        <p className="text-sm font-semibold uppercase tracking-widest text-primary">
           For stock footage contributors
         </p>
-        <h1 className="mt-4 text-5xl font-bold tracking-tight text-slate-900 md:text-6xl">
+        <h1 className="mt-4 text-5xl font-bold tracking-tight text-foreground md:text-6xl">
           Metadata that needs less fixing
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
@@ -33,13 +33,13 @@ export default function HomePage() {
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/sign-up"
-            className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
           >
             Get Started Free
           </Link>
           <Link
             href="/auth"
-            className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-muted"
+            className="rounded-lg border border-border px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
           >
             Sign In
           </Link>
@@ -47,10 +47,10 @@ export default function HomePage() {
       </section>
 
       {/* Features */}
-      <section className="border-t border-slate-100 bg-muted/50 py-20">
+      <section className="border-t border-border bg-muted/50 py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid gap-8 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-card p-8 shadow-sm">
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
               <div className="text-3xl">📤</div>
               <h3 className="mt-4 text-lg font-semibold text-foreground">Upload & Organize</h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -58,7 +58,7 @@ export default function HomePage() {
                 footage into batches. Large files supported.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-card p-8 shadow-sm">
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
               <div className="text-3xl">🤖</div>
               <h3 className="mt-4 text-lg font-semibold text-foreground">AI Metadata Generation</h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -66,7 +66,7 @@ export default function HomePage() {
                 titles, descriptions, keywords, categories, and location — automatically.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-card p-8 shadow-sm">
+            <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
               <div className="text-3xl">📋</div>
               <h3 className="mt-4 text-lg font-semibold text-foreground">Review, Edit & Export</h3>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -81,12 +81,12 @@ export default function HomePage() {
       <EmailCapture source="homepage" headline="Stay in the loop" />
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-8">
+      <footer className="border-t border-border py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 text-sm text-muted-foreground">
           <span>© 2026 ClipMeta</span>
-          <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
-          <Link href="/legal/terms" className="hover:text-foreground">Terms</Link>
-          <Link href="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+          <Link href="/pricing" className="hover:text-foreground transition">Pricing</Link>
+          <Link href="/legal/terms" className="hover:text-foreground transition">Terms</Link>
+          <Link href="/legal/privacy" className="hover:text-foreground transition">Privacy</Link>
         </div>
       </footer>
 
