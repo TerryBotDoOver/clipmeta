@@ -33,7 +33,7 @@ async function withRetry<T>(
   throw new Error("Max retry attempts exceeded");
 }
 
-const MODEL = "gpt-5-mini";
+const MODEL = "gpt-5";
 
 export type ClipMetadata = {
   title: string;
