@@ -5,7 +5,35 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const MODEL = "gpt-4o";
+// Retry with exponential backoff — handles 429 rate limit errors gracefully
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 4,
+  baseDelayMs = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const isRateLimit =
+        err instanceof Error &&
+        (err.message.includes("429") ||
+          err.message.toLowerCase().includes("rate limit") ||
+          (err as { status?: number }).status === 429);
+
+      if (isRateLimit && attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1); // 1s, 2s, 4s, 8s
+        console.warn(`Rate limit hit, retrying in ${delay}ms (attempt ${attempt}/${maxAttempts})`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Max retry attempts exceeded");
+}
+
+const MODEL = "gpt-5-mini";
 
 export type ClipMetadata = {
   title: string;
@@ -177,18 +205,20 @@ Return this exact JSON:
   "confidence": "high|medium|low"
 }`;
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    max_tokens: 1500,
-    temperature: 0.55,
-    messages: [
-      { role: "system", content: systemPrompt },
-      {
-        role: "user",
-        content: [...imageBlocks, { type: "text", text: userMessage }],
-      },
-    ],
-  });
+  const response = await withRetry(() =>
+    openai.chat.completions.create({
+      model: MODEL,
+      max_tokens: 1500,
+      temperature: 0.55,
+      messages: [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [...imageBlocks, { type: "text", text: userMessage }],
+        },
+      ],
+    })
+  );
 
   const raw = response.choices[0]?.message?.content ?? "";
 
