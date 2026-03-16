@@ -7,6 +7,7 @@ import { MetadataEditor } from "@/components/MetadataEditor";
 import { BulkGenerateButton } from "@/components/BulkGenerateButton";
 import { ExportButton } from "@/components/ExportButton";
 import { QualityBadge } from "@/components/QualityBadge";
+import { VideoPlayer } from "@/components/VideoPlayer";
 
 type ReviewPageProps = {
   params: Promise<{ id: string }>;
@@ -49,7 +50,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
   const clipUrls: Record<string, string> = {};
   if (clips) {
     for (const clip of clips) {
-      if (!clip.metadata_results && clip.storage_path) {
+      if (clip.storage_path) {
         try {
           clipUrls[clip.id] = await getR2ReadUrl(clip.storage_path, 3600);
         } catch {
@@ -156,6 +157,10 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                           </span>
                         </div>
                       </div>
+
+                      {clipUrls[clip.id] && (
+                        <VideoPlayer src={clipUrls[clip.id]} />
+                      )}
 
                       {meta ? (
                         <MetadataEditor

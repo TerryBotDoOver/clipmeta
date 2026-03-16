@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateMetadata } from "@/lib/generateMetadata";
-import { deleteR2Object } from "@/lib/r2";
 import { Platform, GenerationSettings } from "@/lib/platform-presets";
 
 export async function POST(req: NextRequest) {
@@ -118,20 +117,6 @@ export async function POST(req: NextRequest) {
       .from("clips")
       .update({ metadata_status: "complete" })
       .eq("id", clip_id);
-
-    // Delete source video from R2 after successful metadata generation
-    // We only need the metadata/frames, not the raw video file
-    try {
-      await deleteR2Object(clip.storage_path);
-      // Mark source as deleted (useful for debugging/auditing)
-      await supabaseAdmin
-        .from("clips")
-        .update({ upload_status: "source_deleted" })
-        .eq("id", clip_id);
-    } catch (deleteErr) {
-      // Non-fatal — log but don't fail the request
-      console.warn("R2 delete failed (non-fatal):", deleteErr);
-    }
 
     return NextResponse.json({ ok: true, metadata });
   } catch (err) {
