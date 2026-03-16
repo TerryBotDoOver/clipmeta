@@ -84,7 +84,7 @@ export default function PricingPage() {
             <p className="mt-1 text-sm text-muted-foreground">per month</p>
             <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
               <li className="flex items-center gap-2"><Check /> Unlimited projects</li>
-              <li className="flex items-center gap-2"><Check /> Unlimited clips</li>
+              <li className="flex items-center gap-2"><Check /> 2,000 clips/month</li>
               <li className="flex items-center gap-2"><Check /> AI metadata generation</li>
               <li className="flex items-center gap-2"><Check /> CSV export</li>
               <li className="flex items-center gap-2"><Check /> Bulk generation</li>

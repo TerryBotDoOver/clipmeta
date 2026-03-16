@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID!;
@@ -39,4 +39,12 @@ export async function getR2ReadUrl(
     Key: key,
   });
   return getSignedUrl(r2, command, { expiresIn });
+}
+
+/** Delete an object from R2 by key */
+export async function deleteR2Object(key: string): Promise<void> {
+  await r2.send(new DeleteObjectCommand({
+    Bucket: R2_BUCKET,
+    Key: key,
+  }));
 }
