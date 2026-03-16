@@ -75,9 +75,9 @@ export function BulkGenerateButton({ clips }: Props) {
     <div className="flex items-center gap-3">
       {running ? (
         <div className="flex items-center gap-3">
-          <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-2 w-32 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-2 rounded-full bg-slate-900 transition-all"
+              className="h-2 rounded-full bg-primary transition-all"
               style={{ width: `${(progress / total) * 100}%` }}
             />
           </div>
@@ -88,7 +88,7 @@ export function BulkGenerateButton({ clips }: Props) {
       ) : (
         <button
           onClick={handleBulkGenerate}
-          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
         >
           ⚡ Generate All ({clips.length})
         </button>
