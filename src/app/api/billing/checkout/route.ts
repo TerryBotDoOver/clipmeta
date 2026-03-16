@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true,
       success_url: `${appUrl}/dashboard?upgraded=true`,
       cancel_url: `${appUrl}/pricing`,
       metadata: { supabase_uid: user.id, plan },
