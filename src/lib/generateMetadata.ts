@@ -33,7 +33,7 @@ async function withRetry<T>(
   throw new Error("Max retry attempts exceeded");
 }
 
-const MODEL = "gpt-5.4-pro"; // Latest flagship — verified available on Tier 1
+const MODEL = "gpt-4o-mini"; // Vision-capable, cost-efficient
 
 export type ClipMetadata = {
   title: string;

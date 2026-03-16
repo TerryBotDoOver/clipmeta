@@ -16,12 +16,10 @@ type Props = {
 
 async function runGenerate(
   targetClips: PendingClip[],
-  setRunning: (v: boolean) => void,
   setProgress: (fn: (p: number) => number) => void,
   setErrors: (e: string[]) => void,
-  setDone: (v: boolean) => void
+  setDone: () => void
 ) {
-  setRunning(true);
   setProgress(() => 0);
   setErrors([]);
   const errs: string[] = [];
@@ -56,8 +54,7 @@ async function runGenerate(
   }
 
   setErrors(errs);
-  setRunning(false);
-  setDone(true);
+  setDone();
   setTimeout(() => window.location.reload(), 1500);
 }
 
@@ -78,10 +75,12 @@ export function BulkGenerateButton({ clips, failedClips = [] }: Props) {
     setRunning(type);
     await runGenerate(
       target,
-      () => setRunning(null),
       setProgress,
       setErrors,
-      () => setDone(type)
+      () => {
+        setRunning(null);
+        setDone(type);
+      }
     );
   }
 
