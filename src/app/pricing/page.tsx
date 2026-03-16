@@ -3,7 +3,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-async function handleUpgrade(plan: 'pro' | 'studio', setLoading: (v: string | null) => void, router: ReturnType<typeof useRouter>) {
+async function handleUpgrade(
+  plan: 'pro' | 'studio',
+  setLoading: (v: string | null) => void,
+  router: ReturnType<typeof useRouter>
+) {
   setLoading(plan);
   try {
     const res = await fetch('/api/billing/checkout', {
@@ -11,10 +15,39 @@ async function handleUpgrade(plan: 'pro' | 'studio', setLoading: (v: string | nu
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan }),
     });
-    if (res.status === 401) { router.push('/auth'); return; }
-    const { url, error } = await res.json();
-    if (url) window.location.href = url;
-    else console.error('Checkout error:', error);
+
+    if (res.status === 401) {
+      router.push('/auth');
+      return;
+    }
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error('Checkout error:', text);
+      return;
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const { url, error } = await res.json();
+      if (url) {
+        window.location.assign(url);
+        return;
+      }
+      console.error('Checkout error:', error);
+      return;
+    }
+
+    const url = await res.text();
+    if (url) {
+      window.location.assign(url);
+      return;
+    }
+
+    console.error('Checkout error: No redirect URL returned');
+  } catch (error) {
+    console.error('Checkout request failed:', error);
   } finally {
     setLoading(null);
   }
@@ -24,12 +57,11 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const router = useRouter();
   const Check = () => <span className="text-green-500">✓</span>;
-  const Dash  = () => <span className="text-muted-foreground/40">–</span>;
+  const Dash = () => <span className="text-muted-foreground/40">–</span>;
 
   return (
     <main className="min-h-screen bg-background">
 
-      {/* Nav */}
       <nav className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-lg font-bold text-foreground">ClipMeta</Link>
@@ -39,7 +71,6 @@ export default function PricingPage() {
         </div>
       </nav>
 
-      {/* Header */}
       <section className="mx-auto max-w-6xl px-6 py-16 text-center">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Pricing</p>
         <h1 className="mt-4 text-4xl font-bold tracking-tight text-foreground md:text-5xl">
@@ -50,11 +81,9 @@ export default function PricingPage() {
         </p>
       </section>
 
-      {/* Plans */}
       <section className="mx-auto max-w-6xl px-6 pb-20">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-          {/* Free */}
           <div className="rounded-2xl border border-border bg-card p-8">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Free</p>
             <p className="mt-4 text-4xl font-bold text-foreground">$0</p>
@@ -75,7 +104,6 @@ export default function PricingPage() {
             </Link>
           </div>
 
-          {/* Pro — highlighted */}
           <div className="rounded-2xl border-2 border-primary bg-primary p-8 shadow-lg shadow-primary/20">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-widest text-white/70">Pro</p>
@@ -94,13 +122,12 @@ export default function PricingPage() {
             <button
               onClick={() => handleUpgrade('pro', setLoadingPlan, router)}
               disabled={loadingPlan === 'pro'}
-              className="mt-8 block w-full rounded-lg bg-white py-3 text-center text-sm font-semibold text-primary transition hover:bg-white/90 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-8 block w-full rounded-lg bg-white py-3 text-center text-sm font-semibold text-primary transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingPlan === 'pro' ? 'Loading…' : 'Start free trial'}
             </button>
           </div>
 
-          {/* Studio */}
           <div className="rounded-2xl border border-border bg-card p-8">
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Studio</p>
             <p className="mt-4 text-4xl font-bold text-foreground">$49</p>
@@ -116,7 +143,7 @@ export default function PricingPage() {
             <button
               onClick={() => handleUpgrade('studio', setLoadingPlan, router)}
               disabled={loadingPlan === 'studio'}
-              className="mt-8 block w-full rounded-lg border border-border py-3 text-center text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-8 block w-full rounded-lg border border-border py-3 text-center text-sm font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loadingPlan === 'studio' ? 'Loading…' : 'Get Studio'}
             </button>
@@ -129,12 +156,11 @@ export default function PricingPage() {
         </p>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 text-sm text-muted-foreground">
           <span>© 2026 ClipMeta</span>
-          <Link href="/legal/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
-          <Link href="/legal/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
+          <Link href="/legal/terms" className="transition-colors hover:text-foreground">Terms of Service</Link>
+          <Link href="/legal/privacy" className="transition-colors hover:text-foreground">Privacy Policy</Link>
         </div>
       </footer>
     </main>
