@@ -123,7 +123,7 @@ export function UploadForm({ projectId, projectSlug }: UploadFormProps) {
         // 3. Upload to storage with abort support
         const ac = new AbortController();
         abortControllerRef.current = ac;
-        await uploadWithProgress(signedUrl, item.file, (pct) =>
+        await uploadWithProgress(signedUrl, item.file, storagePath, (pct) =>
           updateFile(item.id, { progress: pct }),
           ac.signal
         );
@@ -320,6 +320,122 @@ function StatusBadge({ status, progress }: { status: FileStatus; progress: numbe
   );
 }
 
+const CHUNK_SIZE = 25 * 1024 * 1024; // 25 MB per chunk
+const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
+
+function uploadChunkXHR(
+  url: string,
+  blob: Blob,
+  signal?: AbortSignal
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const etag = xhr.getResponseHeader("ETag") || "";
+        resolve(etag);
+      } else {
+        reject(new Error(`Chunk upload failed with status ${xhr.status}`));
+      }
+    });
+    xhr.addEventListener("error", () => reject(new Error("Network error during chunk upload.")));
+    xhr.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
+    if (signal) signal.addEventListener("abort", () => xhr.abort());
+    xhr.open("PUT", url);
+    xhr.send(blob);
+  });
+}
+
+async function uploadChunkWithRetry(
+  url: string,
+  blob: Blob,
+  signal?: AbortSignal,
+  maxRetries = 4
+): Promise<string> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await uploadChunkXHR(url, blob, signal);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
+      if (msg.includes("status 4")) throw err;
+      if (attempt < maxRetries) {
+        const delay = 1500 * Math.pow(2, attempt - 1);
+        console.warn(`Chunk upload attempt ${attempt} failed (${msg}), retrying in ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw new Error(`Chunk upload failed after ${maxRetries} attempts: ${msg}`);
+    }
+  }
+  throw new Error("Unexpected retry exit");
+}
+
+async function multipartUpload(
+  file: File,
+  storagePath: string,
+  contentType: string,
+  onProgress: (pct: number) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  // 1. Start multipart upload
+  const startRes = await fetch("/api/clips/multipart/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ storage_path: storagePath, content_type: contentType }),
+  });
+  if (!startRes.ok) throw new Error("Failed to start multipart upload.");
+  const { uploadId } = await startRes.json();
+
+  const totalSize = file.size;
+  const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+  const parts: { partNumber: number; etag: string }[] = [];
+  let uploaded = 0;
+
+  // 2. Upload each chunk
+  for (let i = 0; i < totalChunks; i++) {
+    if (signal?.aborted) throw new Error("Upload cancelled.");
+
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, totalSize);
+    const chunk = file.slice(start, end);
+    const partNumber = i + 1;
+
+    // Get presigned URL for this part
+    const partRes = await fetch("/api/clips/multipart/part-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        storage_path: storagePath,
+        upload_id: uploadId,
+        part_number: partNumber,
+      }),
+    });
+    if (!partRes.ok) throw new Error(`Failed to get URL for part ${partNumber}.`);
+    const { signedUrl } = await partRes.json();
+
+    // Upload chunk with retry
+    const etag = await uploadChunkWithRetry(signedUrl, chunk, signal);
+    parts.push({ partNumber, etag });
+
+    uploaded += (end - start);
+    onProgress(Math.round((uploaded / totalSize) * 100));
+  }
+
+  // 3. Complete multipart upload
+  const completeRes = await fetch("/api/clips/multipart/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      storage_path: storagePath,
+      upload_id: uploadId,
+      parts,
+    }),
+  });
+  if (!completeRes.ok) throw new Error("Failed to complete multipart upload.");
+  onProgress(100);
+}
+
 function singleUploadAttempt(
   signedUrl: string,
   file: File,
@@ -336,16 +452,12 @@ function singleUploadAttempt(
         onProgress(100);
         resolve();
       } else {
-        reject(new Error(`Storage upload failed with status ${xhr.status}. Response: ${xhr.responseText}`));
+        reject(new Error(`Storage upload failed with status ${xhr.status}`));
       }
     });
     xhr.addEventListener("error", () => reject(new Error("Network error during upload.")));
     xhr.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
-
-    if (signal) {
-      signal.addEventListener("abort", () => xhr.abort());
-    }
-
+    if (signal) signal.addEventListener("abort", () => xhr.abort());
     xhr.open("PUT", signedUrl);
     xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
     xhr.send(file);
@@ -355,29 +467,32 @@ function singleUploadAttempt(
 async function uploadWithProgress(
   signedUrl: string,
   file: File,
+  storagePath: string,
   onProgress: (pct: number) => void,
-  signal?: AbortSignal,
-  maxRetries = 3
+  signal?: AbortSignal
 ): Promise<void> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+  // Use multipart for large files
+  if (file.size > MULTIPART_THRESHOLD) {
+    return multipartUpload(file, storagePath, file.type || "video/mp4", onProgress, signal);
+  }
+
+  // Small files: single PUT with retry
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       onProgress(0);
       await singleUploadAttempt(signedUrl, file, onProgress, signal);
       return;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      // Don't retry cancellations
       if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
-      // Don't retry server rejections (4xx)
       if (msg.includes("status 4")) throw err;
-      // Retry on network errors and 5xx
-      if (attempt < maxRetries) {
-        const delay = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s
+      if (attempt < 3) {
+        const delay = 2000 * Math.pow(2, attempt - 1);
         console.warn(`Upload attempt ${attempt} failed (${msg}), retrying in ${delay}ms...`);
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
-      throw new Error(`Upload failed after ${maxRetries} attempts: ${msg}`);
+      throw new Error(`Upload failed after 3 attempts: ${msg}`);
     }
   }
 }
