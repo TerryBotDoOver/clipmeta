@@ -8,6 +8,7 @@ import { BulkGenerateButton } from "@/components/BulkGenerateButton";
 import { ExportButton } from "@/components/ExportButton";
 import { QualityBadge } from "@/components/QualityBadge";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { MarkCompleteButton } from "@/components/MarkCompleteButton";
 
 type ReviewPageProps = {
   params: Promise<{ id: string }>;

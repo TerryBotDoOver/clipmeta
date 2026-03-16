@@ -15,10 +15,10 @@ const command = new PutBucketLifecycleConfigurationCommand({
   LifecycleConfiguration: {
     Rules: [
       {
-        ID: "delete-source-videos-after-30-days",
+        ID: "delete-source-videos-after-7-days",
         Status: "Enabled",
         Filter: { Prefix: "" },
-        Expiration: { Days: 30 },
+        Expiration: { Days: 7 },
       },
     ],
   },
