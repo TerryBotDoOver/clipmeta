@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ExportButton } from "@/components/ExportButton";
+import { Platform, PLATFORM_LABELS } from "@/lib/platform-presets";
 
 type ProjectDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -57,6 +58,11 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
               {project.name}
             </h1>
+            {project.platform && (
+              <span className="mt-2 inline-block rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                {PLATFORM_LABELS[project.platform as Platform] ?? "Generic / Other"}
+              </span>
+            )}
             {project.description && (
               <p className="mt-2 text-sm text-muted-foreground">{project.description}</p>
             )}

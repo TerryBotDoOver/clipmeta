@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { Platform, GenerationSettings, PLATFORM_LABELS } from "@/lib/platform-presets";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -17,9 +18,11 @@ type GenerateMetadataInput = {
   filename: string;
   frames: string[]; // base64 data URLs (jpeg)
   projectName?: string;
+  platform?: Platform;
+  settings?: GenerationSettings;
 };
 
-const SYSTEM_PROMPT = `You are an elite stock footage metadata specialist with deep expertise in what makes footage discoverable and sell well on platforms like Shutterstock, Adobe Stock, Pond5, and Blackbox.global.
+const BASE_SYSTEM_PROMPT = `You are an elite stock footage metadata specialist with deep expertise in what makes footage discoverable and sell well on platforms like Shutterstock, Adobe Stock, Pond5, and Blackbox.global.
 
 Your metadata must reflect how BUYERS search — not how photographers describe. Buyers search for concepts, emotions, use cases, and technical qualities, not just objects.
 
@@ -29,9 +32,9 @@ Your metadata must reflect how BUYERS search — not how photographers describe.
 - Include mood or lighting if notable (golden hour, dramatic, serene).
 - No clickbait. No ALL CAPS. No "Stock Footage" in the title.
 - Examples of GOOD titles:
-  • "Aerial View of Turquoise Ocean Waves Crashing on Tropical Beach at Sunset"
-  • "Young Couple Walking Hand in Hand Through Autumn Forest at Dusk"
-  • "Close-Up of Fresh Green Leaves Gently Moving in Breeze"
+  ✦ "Aerial View of Turquoise Ocean Waves Crashing on Tropical Beach at Sunset"
+  ✦ "Young Couple Walking Hand in Hand Through Autumn Forest at Dusk"
+  ✦ "Close-Up of Fresh Green Leaves Gently Moving in Breeze"
 
 ━━━ DESCRIPTION RULES ━━━
 - 2-3 sentences, 100-200 characters.
@@ -39,7 +42,7 @@ Your metadata must reflect how BUYERS search — not how photographers describe.
 - Example: "Stunning aerial footage of pristine turquoise ocean waves breaking on a white sandy beach at golden hour. Ideal for travel, vacation, nature documentaries, and luxury brand campaigns."
 
 ━━━ KEYWORD RULES (CRITICAL) ━━━
-Generate EXACTLY 45-50 keywords. Order matters — strongest first.
+Order matters — strongest first.
 
 Structure your keywords in this priority order:
 1. PRIMARY SUBJECTS (3-5): The main subjects. "ocean waves", "tropical beach", "aerial view"
@@ -76,7 +79,37 @@ Return ONLY valid JSON. No extra text. No markdown code blocks.`;
 export async function generateMetadata(
   input: GenerateMetadataInput
 ): Promise<ClipMetadata> {
-  const { filename, frames, projectName } = input;
+  const { filename, frames, projectName, platform = "generic", settings } = input;
+
+  const effectiveSettings: GenerationSettings = settings ?? {
+    keywordCount: 35,
+    titleStyle: "seo",
+    includeLocation: true,
+    includeCameraDetails: true,
+  };
+
+  // Build platform-specific instructions to append to system prompt
+  const platformInstructions = `
+━━━ PLATFORM-SPECIFIC INSTRUCTIONS ━━━
+Target platform: ${PLATFORM_LABELS[platform]}
+Required keywords: generate EXACTLY ${effectiveSettings.keywordCount} keywords
+Title style: ${
+    effectiveSettings.titleStyle === "seo"
+      ? "SEO-optimized (concise, searchable, buyer-intent keywords in title)"
+      : "Descriptive (natural language, scene-setting, conversational)"
+  }
+${
+    effectiveSettings.includeLocation
+      ? "Include location/region/geography keywords where identifiable from the frames."
+      : "Do NOT include specific location or geography keywords."
+  }
+${
+    effectiveSettings.includeCameraDetails
+      ? "Include relevant camera perspective keywords (aerial, drone, close-up, wide shot, handheld, etc.)."
+      : "Focus on subject matter only — skip technical camera perspective details."
+  }`;
+
+  const systemPrompt = BASE_SYSTEM_PROMPT + platformInstructions;
 
   // Use up to 4 frames for cost efficiency
   const imageBlocks: OpenAI.Chat.ChatCompletionContentPart[] = frames
@@ -92,6 +125,7 @@ export async function generateMetadata(
   const userMessage = `Generate professional stock footage metadata for this clip.
 
 Filename: ${filename}${projectName ? `\nProject: ${projectName}` : ""}
+Platform: ${PLATFORM_LABELS[platform]}
 
 I am providing ${Math.min(frames.length, 4)} extracted frames. Analyze them together to understand the full scene, motion, mood, and content.
 
@@ -99,7 +133,7 @@ Return this exact JSON:
 {
   "title": "string (8-15 words)",
   "description": "string (2-3 sentences, 100-200 chars)",
-  "keywords": ["string", "string", ... exactly 45-50 keywords, strongest first],
+  "keywords": ["string", "string", ... exactly ${effectiveSettings.keywordCount} keywords, strongest first],
   "category": "string (one of the allowed categories)",
   "location": "string or null",
   "confidence": "high|medium|low"
@@ -110,7 +144,7 @@ Return this exact JSON:
     max_tokens: 1200,
     temperature: 0.3, // lower = more consistent, less hallucination
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: [...imageBlocks, { type: "text", text: userMessage }],
@@ -155,7 +189,7 @@ Return this exact JSON:
   return {
     title: String(parsed.title ?? "").slice(0, 200),
     description: String(parsed.description ?? "").slice(0, 1000),
-    keywords: cleanedKeywords.slice(0, 50),
+    keywords: cleanedKeywords.slice(0, effectiveSettings.keywordCount),
     category: String(parsed.category ?? "Nature"),
     location: parsed.location ? String(parsed.location) : null,
     confidence: ["high", "medium", "low"].includes(parsed.confidence)

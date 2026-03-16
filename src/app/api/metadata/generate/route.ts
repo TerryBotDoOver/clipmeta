@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateMetadata } from "@/lib/generateMetadata";
 import { deleteR2Object } from "@/lib/r2";
+import { Platform, GenerationSettings } from "@/lib/platform-presets";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,6 +37,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get project platform settings for this clip
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("platform, generation_settings")
+      .eq("id", clip.project_id)
+      .single();
+
+    const settings: GenerationSettings = project?.generation_settings ?? {
+      keywordCount: 35,
+      titleStyle: "seo",
+      includeLocation: true,
+      includeCameraDetails: true,
+    };
+    const platform: Platform = (project?.platform as Platform) ?? "generic";
+
     // Mark clip as processing
     await supabaseAdmin
       .from("clips")
@@ -49,6 +65,8 @@ export async function POST(req: NextRequest) {
         filename: clip.original_filename,
         frames,
         projectName: clip.projects?.name,
+        platform,
+        settings,
       });
     } catch (genError: unknown) {
       // Mark as failed
