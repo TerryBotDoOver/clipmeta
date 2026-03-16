@@ -64,7 +64,13 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
 
   const pendingClips = clips
     ? clips
-        .filter((c) => !c.metadata_results && clipUrls[c.id])
+        .filter((c) => !c.metadata_results && c.metadata_status !== "failed" && clipUrls[c.id])
+        .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id] }))
+    : [];
+
+  const failedClips = clips
+    ? clips
+        .filter((c) => c.metadata_status === "failed" && clipUrls[c.id])
         .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id] }))
     : [];
 
@@ -96,7 +102,9 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
               </p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              {pendingClips.length > 0 && <BulkGenerateButton clips={pendingClips} />}
+              {(pendingClips.length > 0 || failedClips.length > 0) && (
+                <BulkGenerateButton clips={pendingClips} failedClips={failedClips} />
+              )}
               <ExportButton projectId={project.id} clipCount={withMetadata} />
             </div>
           </div>

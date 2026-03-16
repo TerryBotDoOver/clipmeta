@@ -11,59 +11,82 @@ type PendingClip = {
 
 type Props = {
   clips: PendingClip[];
+  failedClips?: PendingClip[];
 };
 
-export function BulkGenerateButton({ clips }: Props) {
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [total] = useState(clips.length);
-  const [done, setDone] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
+async function runGenerate(
+  targetClips: PendingClip[],
+  setRunning: (v: boolean) => void,
+  setProgress: (fn: (p: number) => number) => void,
+  setErrors: (e: string[]) => void,
+  setDone: (v: boolean) => void
+) {
+  setRunning(true);
+  setProgress(() => 0);
+  setErrors([]);
+  const errs: string[] = [];
 
-  if (clips.length === 0) return null;
+  for (const clip of targetClips) {
+    try {
+      const res = await fetch(clip.storageUrl);
+      if (!res.ok) throw new Error(`Failed to fetch ${clip.filename}`);
+      const blob = await res.blob();
+      const file = new File([blob], clip.filename, { type: blob.type || "video/mp4" });
 
-  async function handleBulkGenerate() {
-    setRunning(true);
-    setProgress(0);
-    setErrors([]);
-    const errs: string[] = [];
+      const frames = await extractFrames(file, 4);
 
-    for (const clip of clips) {
-      try {
-        const res = await fetch(clip.storageUrl);
-        if (!res.ok) throw new Error(`Failed to fetch ${clip.filename}`);
-        const blob = await res.blob();
-        const file = new File([blob], clip.filename, { type: blob.type || "video/mp4" });
+      const metaRes = await fetch("/api/metadata/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clip_id: clip.id,
+          frames: frames.map((f) => f.dataUrl),
+        }),
+      });
 
-        const frames = await extractFrames(file, 4);
-
-        const metaRes = await fetch("/api/metadata/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clip_id: clip.id,
-            frames: frames.map((f) => f.dataUrl),
-          }),
-        });
-
-        if (!metaRes.ok) {
-          const err = await metaRes.json();
-          throw new Error(err.message || "Generation failed");
-        }
-      } catch (err) {
-        errs.push(`${clip.filename}: ${err instanceof Error ? err.message : "failed"}`);
+      if (!metaRes.ok) {
+        const err = await metaRes.json();
+        throw new Error(err.message || "Generation failed");
       }
-
-      setProgress((prev) => prev + 1);
+    } catch (err) {
+      errs.push(`${clip.filename}: ${err instanceof Error ? err.message : "failed"}`);
     }
 
-    setErrors(errs);
-    setRunning(false);
-    setDone(true);
-    setTimeout(() => window.location.reload(), 1500);
+    setProgress((prev) => prev + 1);
+  }
+
+  setErrors(errs);
+  setRunning(false);
+  setDone(true);
+  setTimeout(() => window.location.reload(), 1500);
+}
+
+export function BulkGenerateButton({ clips, failedClips = [] }: Props) {
+  const [running, setRunning] = useState<"pending" | "failed" | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [activeTotal, setActiveTotal] = useState(0);
+  const [done, setDone] = useState<"pending" | "failed" | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const isRunning = running !== null;
+
+  if (clips.length === 0 && failedClips.length === 0) return null;
+
+  async function handleGenerate(type: "pending" | "failed") {
+    const target = type === "pending" ? clips : failedClips;
+    setActiveTotal(target.length);
+    setRunning(type);
+    await runGenerate(
+      target,
+      () => setRunning(null),
+      setProgress,
+      setErrors,
+      () => setDone(type)
+    );
   }
 
   if (done) {
+    const total = done === "pending" ? clips.length : failedClips.length;
     return (
       <div className="text-sm font-medium text-green-500">
         ✓ Done — {total - errors.length}/{total} generated. Refreshing…
@@ -72,26 +95,38 @@ export function BulkGenerateButton({ clips }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      {running ? (
+    <div className="flex items-center gap-3 flex-wrap">
+      {isRunning ? (
         <div className="flex items-center gap-3">
           <div className="h-2 w-32 overflow-hidden rounded-full bg-muted">
             <div
               className="h-2 rounded-full bg-primary transition-all"
-              style={{ width: `${(progress / total) * 100}%` }}
+              style={{ width: `${(progress / activeTotal) * 100}%` }}
             />
           </div>
           <span className="text-sm text-muted-foreground">
-            {progress}/{total} generating…
+            {progress}/{activeTotal} {running === "failed" ? "retrying" : "generating"}…
           </span>
         </div>
       ) : (
-        <button
-          onClick={handleBulkGenerate}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-        >
-          ⚡ Generate All ({clips.length})
-        </button>
+        <>
+          {clips.length > 0 && (
+            <button
+              onClick={() => handleGenerate("pending")}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              ⚡ Generate All ({clips.length})
+            </button>
+          )}
+          {failedClips.length > 0 && (
+            <button
+              onClick={() => handleGenerate("failed")}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-400 transition hover:bg-amber-500/20"
+            >
+              ↺ Retry Failed ({failedClips.length})
+            </button>
+          )}
+        </>
       )}
     </div>
   );
