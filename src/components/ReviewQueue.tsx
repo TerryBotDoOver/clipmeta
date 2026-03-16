@@ -35,8 +35,11 @@ type Filter = "all" | "pending" | "ready" | "reviewed";
 export function ReviewQueue({ clips, clipUrls }: Props) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<Filter>("all");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -80,6 +83,44 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
     }
   }
 
+  function toggleSelected(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function deleteClips(ids: string[]) {
+    if (ids.length === 0) return;
+    const confirmed = window.confirm(
+      `Delete ${ids.length} clip${ids.length > 1 ? "s" : ""}? This removes the file from storage and cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeletingIds(new Set(ids));
+    try {
+      const res = await fetch("/api/clips/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clip_ids: ids }),
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      window.location.reload();
+    } catch {
+      alert("Failed to delete clips. Please try again.");
+      setDeletingIds(new Set());
+    }
+  }
+
+  async function handleBulkDelete() {
+    setBulkDeleting(true);
+    await deleteClips(Array.from(selectedIds));
+    setBulkDeleting(false);
+  }
+
   const counts = {
     all: clips.length,
     pending: clips.filter((c) => !c.metadata_results).length,
@@ -99,6 +140,30 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
 
   return (
     <div>
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 mb-4">
+          <span className="text-sm font-medium text-foreground">
+            {selectedIds.size} clip{selectedIds.size > 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-muted-foreground hover:text-foreground transition"
+            >
+              Clear selection
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+            >
+              {bulkDeleting ? "Deleting…" : `Delete ${selectedIds.size} clip${selectedIds.size > 1 ? "s" : ""}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filter tabs */}
       <div className="flex gap-1 rounded-xl bg-muted p-1 mb-4">
         {(["all", "pending", "ready", "reviewed"] as const).map((tab) => (
@@ -129,7 +194,7 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
             return (
               <div
                 key={clip.id}
-                className={`rounded-xl border px-4 py-3 transition ${
+                className={`group rounded-xl border px-4 py-3 transition ${
                   isReviewed
                     ? "border-primary/20 bg-primary/5"
                     : hasMetadata
@@ -138,59 +203,94 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                 }`}
               >
                 {/* Compact header row — always visible */}
-                <div
-                  className="flex items-center gap-3 cursor-pointer"
-                  onClick={() => toggleExpand(clip.id)}
-                >
-                  {/* Expand chevron */}
-                  <svg
-                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
-                      expanded ? "rotate-90" : ""
-                    }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="flex items-center gap-3">
+                  {/* Selection checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(clip.id)}
+                    onChange={(e) => toggleSelected(clip.id, e as unknown as React.MouseEvent)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 shrink-0 rounded border-border accent-primary cursor-pointer"
+                  />
+
+                  {/* Clickable area for expand */}
+                  <div
+                    className="flex flex-1 items-center gap-3 cursor-pointer min-w-0"
+                    onClick={() => toggleExpand(clip.id)}
                   >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                    {/* Expand chevron */}
+                    <svg
+                      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                        expanded ? "rotate-90" : ""
+                      }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
 
-                  {/* Filename */}
-                  <p className="flex-1 truncate text-sm font-medium text-foreground">
-                    {clip.original_filename}
-                  </p>
+                    {/* Filename */}
+                    <p className="flex-1 truncate text-sm font-medium text-foreground">
+                      {clip.original_filename}
+                    </p>
 
-                  {/* File size */}
-                  {clip.file_size_bytes && (
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {(clip.file_size_bytes / 1024 / 1024).toFixed(1)} MB
+                    {/* File size */}
+                    {clip.file_size_bytes && (
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {(clip.file_size_bytes / 1024 / 1024).toFixed(1)} MB
+                      </span>
+                    )}
+
+                    {/* Reviewed badge */}
+                    {isReviewed && (
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                        reviewed
+                      </span>
+                    )}
+
+                    {/* Status badge */}
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        hasMetadata
+                          ? "bg-green-500/15 text-green-400"
+                          : clip.metadata_status === "processing"
+                          ? "bg-blue-500/15 text-blue-400"
+                          : clip.metadata_status === "failed"
+                          ? "bg-red-500/15 text-red-400"
+                          : "bg-amber-500/15 text-amber-400"
+                      }`}
+                    >
+                      {hasMetadata ? "ready" : clip.metadata_status}
                     </span>
-                  )}
+                  </div>
 
-                  {/* Reviewed badge */}
-                  {isReviewed && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                      reviewed
-                    </span>
-                  )}
-
-                  {/* Status badge */}
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      hasMetadata
-                        ? "bg-green-500/15 text-green-400"
-                        : clip.metadata_status === "processing"
-                        ? "bg-blue-500/15 text-blue-400"
-                        : clip.metadata_status === "failed"
-                        ? "bg-red-500/15 text-red-400"
-                        : "bg-amber-500/15 text-amber-400"
-                    }`}
+                  {/* Delete button — visible on hover */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteClips([clip.id]);
+                    }}
+                    disabled={deletingIds.has(clip.id)}
+                    className="shrink-0 rounded-lg p-1.5 text-muted-foreground opacity-0 transition hover:bg-red-500/15 hover:text-red-400 group-hover:opacity-100 focus:opacity-100"
+                    title="Delete clip"
                   >
-                    {hasMetadata ? "ready" : clip.metadata_status}
-                  </span>
+                    {deletingIds.has(clip.id) ? (
+                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8V4z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    )}
+                  </button>
                 </div>
 
                 {/* Expanded content */}
