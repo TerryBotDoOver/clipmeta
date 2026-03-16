@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         location: metadata.location,
         confidence: metadata.confidence,
         generated_at: new Date().toISOString(),
-        model_used: "gpt-5",
+        model_used: "gpt-4o",
       });
 
     if (insertError) {

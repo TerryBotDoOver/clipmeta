@@ -33,7 +33,7 @@ async function withRetry<T>(
   throw new Error("Max retry attempts exceeded");
 }
 
-const MODEL = "gpt-5";
+const MODEL = "gpt-4o"; // gpt-5 requires explicit API access — reverting until confirmed available
 
 export type ClipMetadata = {
   title: string;

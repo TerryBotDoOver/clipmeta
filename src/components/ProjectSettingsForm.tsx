@@ -162,14 +162,17 @@ export function ProjectSettingsForm() {
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(["seo", "descriptive"] as const).map((style) => {
                 const info = {
-                  seo: { label: "SEO-focused", desc: "Short, keyword-rich. Optimized for search algorithms and buyer intent." },
-                  descriptive: { label: "Descriptive", desc: "Natural language. Scene-setting sentences that read like a human wrote them." },
+                  seo: { label: "SEO-focused", desc: "Short, keyword-rich. Optimized for search algorithms and buyer intent.", recommended: true },
+                  descriptive: { label: "Descriptive", desc: "Natural language. Scene-setting sentences that read like a human wrote them.", recommended: false },
                 };
                 const selected = titleStyle === style;
                 return (
                   <label key={style} className={`cursor-pointer rounded-lg border p-3 transition ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
                     <input type="radio" name="_titleStyle_display" value={style} checked={selected} onChange={() => setTitleStyle(style)} className="sr-only" />
-                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
+                      {info[style].recommended && <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-green-400">recommended</span>}
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">{info[style].desc}</p>
                   </label>
                 );
@@ -183,14 +186,17 @@ export function ProjectSettingsForm() {
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(["detailed", "concise"] as const).map((style) => {
                 const info = {
-                  detailed: { label: "Detailed", desc: "2–3 sentences covering subject, mood, and context. Better for platforms that surface descriptions." },
-                  concise: { label: "Concise", desc: "1 punchy sentence. Fast to review, works well when descriptions matter less." },
+                  detailed: { label: "Detailed", desc: "2–3 sentences covering subject, mood, and context. Better for platforms that surface descriptions.", recommended: true },
+                  concise: { label: "Concise", desc: "1 punchy sentence. Fast to review, works well when descriptions matter less.", recommended: false },
                 };
                 const selected = descStyle === style;
                 return (
                   <label key={style} className={`cursor-pointer rounded-lg border p-3 transition ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
                     <input type="radio" name="_descStyle_display" value={style} checked={selected} onChange={() => setDescStyle(style)} className="sr-only" />
-                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[style].label}</p>
+                      {info[style].recommended && <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-green-400">recommended</span>}
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">{info[style].desc}</p>
                   </label>
                 );
@@ -204,15 +210,18 @@ export function ProjectSettingsForm() {
             <div className="mt-2 grid grid-cols-3 gap-2">
               {(["mixed", "single", "phrases"] as const).map((fmt) => {
                 const info = {
-                  mixed: { label: "Mixed", desc: "Best coverage. Combines single words and phrases for maximum discoverability." },
-                  single: { label: "Single words", desc: 'One word per keyword. e.g. "waterfall", "aerial", "sunset".' },
-                  phrases: { label: "Phrases only", desc: 'Multi-word only. e.g. "golden hour", "aerial view", "slow motion".' },
+                  mixed: { label: "Mixed", desc: "Best coverage. Combines single words and phrases for maximum discoverability.", recommended: true },
+                  single: { label: "Single words", desc: 'One word per keyword. e.g. "waterfall", "aerial", "sunset".', recommended: false },
+                  phrases: { label: "Phrases only", desc: 'Multi-word only. e.g. "golden hour", "aerial view", "slow motion".', recommended: false },
                 };
                 const selected = keywordFormat === fmt;
                 return (
                   <label key={fmt} className={`cursor-pointer rounded-lg border p-3 transition ${selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}>
                     <input type="radio" name="_keywordFormat_display" value={fmt} checked={selected} onChange={() => setKeywordFormat(fmt)} className="sr-only" />
-                    <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[fmt].label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm font-semibold ${selected ? "text-primary" : "text-foreground"}`}>{info[fmt].label}</p>
+                      {info[fmt].recommended && <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-green-400">recommended</span>}
+                    </div>
                     <p className="mt-1 text-xs text-muted-foreground">{info[fmt].desc}</p>
                   </label>
                 );
