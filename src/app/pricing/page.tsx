@@ -35,7 +35,7 @@ async function handleUpgrade(
         window.location.assign(url);
         return;
       }
-      console.error('Checkout error:', error);
+      alert(`Checkout error: ${error}`);
       return;
     }
 
@@ -45,7 +45,7 @@ async function handleUpgrade(
       return;
     }
 
-    console.error('Checkout error: No redirect URL returned');
+    alert('Checkout error: No redirect URL returned. Check console.');
   } catch (error) {
     console.error('Checkout request failed:', error);
   } finally {
