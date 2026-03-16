@@ -17,7 +17,7 @@ export default async function ProjectsPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Projects
@@ -32,7 +32,7 @@ export default async function ProjectsPage() {
           </div>
           <Link
             href="/projects/new"
-            className="inline-flex items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
+            className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
           >
             + New project
           </Link>
@@ -50,7 +50,7 @@ export default async function ProjectsPage() {
               <Link
                 key={project.id}
                 href={`/projects/${project.slug}`}
-                className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                className="rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -68,15 +68,15 @@ export default async function ProjectsPage() {
                 <p className="mt-4 text-sm leading-6 text-muted-foreground">
                   {project.description || "No description yet."}
                 </p>
-                <div className="mt-6 text-sm font-medium text-foreground">
+                <div className="mt-6 text-sm font-medium text-primary">
                   Open project →
                 </div>
               </Link>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-input bg-card p-10 text-center text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+            <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
               No projects yet.{" "}
-              <Link href="/projects/new" className="font-medium text-slate-900 underline">
+              <Link href="/projects/new" className="font-medium text-primary underline hover:text-primary/80">
                 Create your first one →
               </Link>
             </div>

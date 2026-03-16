@@ -29,117 +29,114 @@ export default async function DashboardPage() {
     user.email?.split("@")[0] ||
     "there";
 
+  const stats = [
+    { label: "Projects", value: projectCount, icon: "⊞", hint: "Active batches" },
+    { label: "Clips Uploaded", value: totalClips ?? 0, icon: "▶", hint: "Total footage" },
+    { label: "Metadata Generated", value: totalMeta ?? 0, icon: "✦", hint: "AI-tagged clips" },
+  ];
+
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+    <main className="flex-1 p-8">
+      {/* Page header */}
+      <div className="mb-8">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">Dashboard</p>
+        <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">
+          Welcome back, {displayName}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+      </div>
 
-        {/* Header */}
-        <div className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Dashboard
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
-            Welcome back, {displayName}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+      {/* Stats row */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</p>
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm">{s.icon}</span>
+            </div>
+            <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">{s.value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{s.hint}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        {/* Recent projects */}
+        <div className="rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="text-sm font-semibold text-foreground">Recent Projects</h2>
+            <Link href="/projects" className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+              View all →
+            </Link>
+          </div>
+          <div className="p-3 space-y-1">
+            {projects && projects.length > 0 ? (
+              projects.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.slug}`}
+                  className="flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors hover:bg-muted"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(p.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground capitalize">
+                    {p.status}
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <p className="text-sm text-muted-foreground">No projects yet.</p>
+                <Link href="/projects/new" className="mt-2 inline-block text-sm font-medium text-primary hover:text-primary/80">
+                  Create your first project →
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground">Projects</p>
-            <p className="mt-2 text-4xl font-bold text-foreground">{projectCount}</p>
+        {/* Quick actions */}
+        <div className="rounded-xl border border-border bg-card">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-sm font-semibold text-foreground">Quick Actions</h2>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground">Clips Uploaded</p>
-            <p className="mt-2 text-4xl font-bold text-foreground">{totalClips ?? 0}</p>
+          <div className="p-4 space-y-2">
+            <Link
+              href="/projects/new"
+              className="flex items-center gap-3 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <span>+</span>
+              New Project
+            </Link>
+            <Link
+              href="/projects"
+              className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <span>⊞</span>
+              All Projects
+            </Link>
+            <Link
+              href="/pricing"
+              className="flex items-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              <span>⚡</span>
+              Upgrade Plan
+            </Link>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground">Metadata Generated</p>
-            <p className="mt-2 text-4xl font-bold text-foreground">{totalMeta ?? 0}</p>
-          </div>
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-
-          {/* Recent projects */}
-          <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h2 className="text-lg font-semibold text-foreground">Recent Projects</h2>
-              <Link href="/projects" className="text-sm font-medium text-slate-500 hover:text-foreground">
-                View all →
-              </Link>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {projects && projects.length > 0 ? (
-                projects.map((p) => (
-                  <Link
-                    key={p.id}
-                    href={`/projects/${p.slug}`}
-                    className="flex items-center justify-between rounded-xl border border-slate-100 px-4 py-3 transition hover:border-slate-300 hover:bg-muted"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{p.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(p.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                      {p.status}
-                    </span>
-                  </Link>
-                ))
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-muted-foreground">
-                  No projects yet.{" "}
-                  <Link href="/projects/new" className="font-medium text-slate-900 underline">
-                    Create your first →
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="rounded-2xl border border-slate-200 bg-card p-6 shadow-sm">
-            <h2 className="border-b border-slate-100 pb-4 text-lg font-semibold text-foreground">
-              Quick Actions
-            </h2>
-            <div className="mt-4 space-y-3">
-              <Link
-                href="/projects/new"
-                className="flex items-center gap-3 rounded-xl border border-slate-900 bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
-              >
-                <span>+</span>
-                <span>New Project</span>
-              </Link>
-              <Link
-                href="/projects"
-                className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-muted"
-              >
-                <span>📁</span>
-                <span>All Projects</span>
-              </Link>
-              <Link
-                href="/pricing"
-                className="flex items-center gap-3 rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-muted"
-              >
-                <span>⚡</span>
-                <span>Upgrade Plan</span>
-              </Link>
-            </div>
-
-            <div className="mt-6 rounded-xl bg-muted/50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">How it works</p>
-              <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <li>1. Create a project</li>
-                <li>2. Upload your clips</li>
-                <li>3. Generate AI metadata</li>
-                <li>4. Review &amp; edit</li>
-                <li>5. Export CSV</li>
-              </ol>
-            </div>
+          <div className="mx-4 mb-4 rounded-lg bg-muted p-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">How it works</p>
+            <ol className="mt-3 space-y-1.5">
+              {["Create a project", "Upload your clips", "Generate AI metadata", "Review & edit", "Export CSV"].map((step, i) => (
+                <li key={i} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">{i + 1}</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </div>
