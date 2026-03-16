@@ -2,13 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getR2ReadUrl } from "@/lib/r2";
-import { GenerateMetadataButton } from "@/components/GenerateMetadataButton";
-import { MetadataEditor } from "@/components/MetadataEditor";
 import { BulkGenerateButton } from "@/components/BulkGenerateButton";
 import { ExportButton } from "@/components/ExportButton";
-import { QualityBadge } from "@/components/QualityBadge";
-import { VideoPlayer } from "@/components/VideoPlayer";
 import { MarkCompleteButton } from "@/components/MarkCompleteButton";
+import { ReviewQueue } from "@/components/ReviewQueue";
 
 type ReviewPageProps = {
   params: Promise<{ id: string }>;
@@ -109,113 +106,23 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
 
           {/* Clip cards */}
           <section className="min-w-0 rounded-2xl border border-border bg-card p-6">
-            <div className="flex items-center justify-between border-b border-border pb-4">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Review queue</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Inspect and edit metadata before export.
-                </p>
+            {clips && clips.length > 0 ? (
+              <ReviewQueue
+                clips={clips ?? []}
+                clipUrls={clipUrls}
+                pendingClips={pendingClips}
+              />
+            ) : (
+              <div className="rounded-xl border border-dashed border-border p-8 text-center">
+                <p className="text-sm text-muted-foreground">No clips yet.</p>
+                <Link
+                  href={`/projects/${id}/upload`}
+                  className="mt-2 inline-block text-sm font-medium text-foreground underline"
+                >
+                  Upload your first clip
+                </Link>
               </div>
-              {withMetadata > 0 && (
-                <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-400">
-                  {withMetadata} ready
-                </span>
-              )}
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {clips && clips.length > 0 ? (
-                clips.map((clip) => {
-                  const meta = clip.metadata_results;
-                  return (
-                    <div
-                      key={clip.id}
-                      className={`rounded-xl border p-4 transition ${
-                        meta
-                          ? "border-green-500/20 bg-muted/20"
-                          : "border-dashed border-border"
-                      }`}
-                    >
-                      {/* Clip header */}
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="truncate max-w-[60%] text-sm font-semibold text-foreground">
-                          {clip.original_filename}
-                        </p>
-                        <div className="flex shrink-0 items-center gap-2">
-                          {meta && (
-                            <QualityBadge
-                              title={meta.title ?? ""}
-                              description={meta.description ?? ""}
-                              keywords={meta.keywords ?? []}
-                              category={meta.category ?? ""}
-                              location={meta.location}
-                            />
-                          )}
-                          <span
-                            className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              meta
-                                ? "bg-green-500/15 text-green-400"
-                                : clip.metadata_status === "processing"
-                                ? "bg-blue-500/15 text-blue-400"
-                                : clip.metadata_status === "failed"
-                                ? "bg-red-500/15 text-red-400"
-                                : "bg-amber-500/15 text-amber-400"
-                            }`}
-                          >
-                            {meta ? "ready" : clip.metadata_status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Video player — hides itself if video is gone */}
-                      {clipUrls[clip.id] && (
-                        <VideoPlayer src={clipUrls[clip.id]} />
-                      )}
-
-                      {/* Metadata editor or generate button */}
-                      {meta ? (
-                        <MetadataEditor
-                          clipId={clip.id}
-                          initial={{
-                            title: meta.title ?? "",
-                            description: meta.description ?? "",
-                            keywords: meta.keywords ?? [],
-                            category: meta.category ?? "",
-                            location: meta.location,
-                            confidence: meta.confidence ?? "medium",
-                          }}
-                        />
-                      ) : (
-                        <div className="mt-3 flex items-center justify-between">
-                          <p className="text-sm italic text-muted-foreground">
-                            {clip.metadata_status === "processing"
-                              ? "Generating metadata..."
-                              : "No metadata yet."}
-                          </p>
-                          {clipUrls[clip.id] && clip.metadata_status !== "processing" && (
-                            <GenerateMetadataButton
-                              clipId={clip.id}
-                              filename={clip.original_filename}
-                              storageUrl={clipUrls[clip.id]}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                  <p className="text-sm text-muted-foreground">No clips yet.</p>
-                  <Link
-                    href={`/projects/${id}/upload`}
-                    className="mt-2 inline-block text-sm font-medium text-foreground underline"
-                  >
-                    Upload your first clip
-                  </Link>
-                </div>
-              )}
-            </div>
+            )}
           </section>
 
           {/* Sidebar */}
