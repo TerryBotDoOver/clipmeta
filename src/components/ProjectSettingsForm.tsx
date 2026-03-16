@@ -96,9 +96,9 @@ export function ProjectSettingsForm() {
       </div>
 
       {/* Advanced settings */}
-      <details className="rounded-xl border border-border bg-card">
+      <details open className="rounded-xl border border-border bg-card">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40 transition">
-          ⚙ Advanced settings
+          ⚙ Advanced settings — click to collapse
         </summary>
         <div className="space-y-5 border-t border-border px-4 py-4">
 
