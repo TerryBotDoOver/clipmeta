@@ -33,7 +33,7 @@ async function withRetry<T>(
   throw new Error("Max retry attempts exceeded");
 }
 
-const MODEL = "gpt-4.1"; // Best available on Tier 1 — upgrade to gpt-5 once Tier 2 unlocks ($50 spent)
+const MODEL = "gpt-5.4-pro"; // Latest flagship — verified available on Tier 1
 
 export type ClipMetadata = {
   title: string;
@@ -205,7 +205,9 @@ Return this exact JSON:
   "confidence": "high|medium|low"
 }`;
 
-  const response = await withRetry(() =>
+  let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+  try {
+    response = await withRetry(() =>
     openai.chat.completions.create({
       model: MODEL,
       max_tokens: 1500,
@@ -219,6 +221,12 @@ Return this exact JSON:
       ],
     })
   );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const status = (err as { status?: number })?.status;
+    console.error(`[generateMetadata] OpenAI API error — model: ${MODEL}, status: ${status}, message: ${msg}`);
+    throw err;
+  }
 
   const raw = response.choices[0]?.message?.content ?? "";
 
