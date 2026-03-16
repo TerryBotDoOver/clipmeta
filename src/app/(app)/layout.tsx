@@ -77,7 +77,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* ── Main content ── */}
-      <div className="ml-56 flex min-h-screen flex-1 flex-col">
+      <div className="ml-56 flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
         {children}
       </div>
     </div>

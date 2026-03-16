@@ -98,7 +98,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
 
           {/* Clip cards */}
-          <section className="rounded-2xl border border-border bg-card p-6">
+          <section className="min-w-0 rounded-2xl border border-border bg-card p-6">
             <div className="flex items-center justify-between border-b border-border pb-4">
               <div>
                 <h2 className="text-xl font-semibold text-foreground">Review queue</h2>
@@ -203,7 +203,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
           </section>
 
           {/* Sidebar */}
-          <aside className="flex flex-col gap-6">
+          <aside className="flex min-w-0 flex-col gap-6">
             {/* Stats */}
             <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="text-lg font-semibold text-foreground">Summary</h2>
