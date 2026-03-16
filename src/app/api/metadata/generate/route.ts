@@ -9,17 +9,11 @@ export async function POST(req: NextRequest) {
     const { clip_id, frames } = await req.json();
 
     if (!clip_id) {
-      return NextResponse.json(
-        { message: "clip_id is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "clip_id is required." }, { status: 400 });
     }
 
     if (!Array.isArray(frames) || frames.length === 0) {
-      return NextResponse.json(
-        { message: "frames array is required." },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "frames array is required." }, { status: 400 });
     }
 
     // Fetch the clip and its project
@@ -30,13 +24,10 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (clipError || !clip) {
-      return NextResponse.json(
-        { message: "Clip not found." },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: "Clip not found." }, { status: 404 });
     }
 
-    // Get project platform settings for this clip
+    // Get project platform settings
     const { data: project } = await supabaseAdmin
       .from("projects")
       .select("platform, generation_settings")
@@ -46,10 +37,26 @@ export async function POST(req: NextRequest) {
     const settings: GenerationSettings = project?.generation_settings ?? {
       keywordCount: 35,
       titleStyle: "seo",
+      descStyle: "detailed",
       includeLocation: true,
       includeCameraDetails: true,
+      titleMaxChars: 200,
+      descMaxChars: 300,
     };
     const platform: Platform = (project?.platform as Platform) ?? "generic";
+
+    // Fetch titles already generated in this batch — used to enforce uniqueness
+    const { data: existingResults } = await supabaseAdmin
+      .from("metadata_results")
+      .select("title, clips!inner(project_id)")
+      .eq("clips.project_id", clip.project_id)
+      .neq("clip_id", clip_id)
+      .order("generated_at", { ascending: false })
+      .limit(25);
+
+    const existingTitles: string[] = (existingResults ?? [])
+      .map((r: { title?: string }) => r.title)
+      .filter((t): t is string => typeof t === "string" && t.length > 0);
 
     // Mark clip as processing
     await supabaseAdmin
@@ -57,7 +64,7 @@ export async function POST(req: NextRequest) {
       .update({ metadata_status: "processing" })
       .eq("id", clip_id);
 
-    // Generate metadata via OpenAI
+    // Generate metadata
     let metadata;
     try {
       metadata = await generateMetadata({
@@ -66,26 +73,21 @@ export async function POST(req: NextRequest) {
         projectName: clip.projects?.name,
         platform,
         settings,
+        existingTitles,
       });
     } catch (genError: unknown) {
-      // Mark as failed
       await supabaseAdmin
         .from("clips")
         .update({ metadata_status: "failed" })
         .eq("id", clip_id);
 
       return NextResponse.json(
-        {
-          message:
-            genError instanceof Error
-              ? genError.message
-              : "Metadata generation failed.",
-        },
+        { message: genError instanceof Error ? genError.message : "Metadata generation failed." },
         { status: 500 }
       );
     }
 
-    // Store results in metadata_results table
+    // Store results
     const { error: insertError } = await supabaseAdmin
       .from("metadata_results")
       .upsert({
@@ -97,7 +99,7 @@ export async function POST(req: NextRequest) {
         location: metadata.location,
         confidence: metadata.confidence,
         generated_at: new Date().toISOString(),
-        model_used: "gpt-4o-mini",
+        model_used: "gpt-4o",
       });
 
     if (insertError) {
@@ -106,23 +108,17 @@ export async function POST(req: NextRequest) {
         .update({ metadata_status: "failed" })
         .eq("id", clip_id);
 
-      return NextResponse.json(
-        { message: "Failed to save metadata results." },
-        { status: 500 }
-      );
+      return NextResponse.json({ message: "Failed to save metadata results." }, { status: 500 });
     }
 
-    // Mark clip as complete
+    // Mark complete
     await supabaseAdmin
       .from("clips")
       .update({ metadata_status: "complete" })
       .eq("id", clip_id);
 
     return NextResponse.json({ ok: true, metadata });
-  } catch (err) {
-    return NextResponse.json(
-      { message: "Unexpected error during metadata generation." },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ message: "Unexpected error during metadata generation." }, { status: 500 });
   }
 }
