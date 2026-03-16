@@ -320,7 +320,7 @@ function StatusBadge({ status, progress }: { status: FileStatus; progress: numbe
   );
 }
 
-function uploadWithProgress(
+function singleUploadAttempt(
   signedUrl: string,
   file: File,
   onProgress: (pct: number) => void,
@@ -350,4 +350,34 @@ function uploadWithProgress(
     xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
     xhr.send(file);
   });
+}
+
+async function uploadWithProgress(
+  signedUrl: string,
+  file: File,
+  onProgress: (pct: number) => void,
+  signal?: AbortSignal,
+  maxRetries = 3
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      onProgress(0);
+      await singleUploadAttempt(signedUrl, file, onProgress, signal);
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Don't retry cancellations
+      if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
+      // Don't retry server rejections (4xx)
+      if (msg.includes("status 4")) throw err;
+      // Retry on network errors and 5xx
+      if (attempt < maxRetries) {
+        const delay = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s
+        console.warn(`Upload attempt ${attempt} failed (${msg}), retrying in ${delay}ms...`);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+      throw new Error(`Upload failed after ${maxRetries} attempts: ${msg}`);
+    }
+  }
 }
