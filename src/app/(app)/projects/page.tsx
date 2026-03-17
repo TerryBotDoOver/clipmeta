@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { redirect, useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -19,9 +19,11 @@ type Project = {
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     async function loadProjects() {
@@ -58,6 +60,28 @@ export default function ProjectsPage() {
     loadProjects();
   }, []);
 
+  const allSelected = useMemo(
+    () => projects.length > 0 && projects.every((project) => selectedIds.has(project.id)),
+    [projects, selectedIds]
+  );
+
+  function toggleSelected(projectId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(checked: boolean) {
+    if (checked) {
+      setSelectedIds(new Set(projects.map((project) => project.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  }
+
   async function handleDelete(projectId: string) {
     const confirmed = window.confirm(
       "Are you sure you want to delete this project? This will permanently delete all clips and project data."
@@ -83,11 +107,54 @@ export default function ProjectsPage() {
       }
 
       setProjects((prev) => prev.filter((project) => project.id !== projectId));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(projectId);
+        return next;
+      });
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete project.");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedIds.size} project${selectedIds.size > 1 ? "s" : ""}? This will permanently delete all clips and project data.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setBulkDeleting(true);
+
+      for (const projectId of Array.from(selectedIds)) {
+        const res = await fetch("/api/projects/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ project_id: projectId }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to delete project.");
+        }
+      }
+
+      setProjects((prev) => prev.filter((project) => !selectedIds.has(project.id)));
+      setSelectedIds(new Set());
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete selected projects.");
+    } finally {
+      setBulkDeleting(false);
     }
   }
 
@@ -102,17 +169,45 @@ export default function ProjectsPage() {
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground">
               Your metadata projects
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Projects hold your clip uploads, metadata generation runs, review work,
-              and export history.
-            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                Projects hold your clip uploads, metadata generation runs, review work,
+                and export history.
+              </p>
+              {!loading && projects.length > 0 && (
+                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-primary"
+                  />
+                  <span>Select All</span>
+                  <span>({projects.length})</span>
+                </label>
+              )}
+            </div>
           </div>
-          <Link
-            href="/projects/new"
-            className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-          >
-            + New project
-          </Link>
+          <div className="flex items-center gap-3">
+            {selectedIds.size > 0 && (
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                className="inline-flex items-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                {bulkDeleting
+                  ? "Deleting..."
+                  : `Delete Selected (${selectedIds.size})`}
+              </button>
+            )}
+            <Link
+              href="/projects/new"
+              className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+            >
+              + New project
+            </Link>
+          </div>
         </div>
 
         {error && (
@@ -125,6 +220,15 @@ export default function ProjectsPage() {
           {loading ? null : projects && projects.length > 0 ? (
             projects.map((project) => (
               <div key={project.id} className="relative">
+                <input
+                  type="checkbox"
+                  aria-label={`Select ${project.name}`}
+                  checked={selectedIds.has(project.id)}
+                  onChange={() => toggleSelected(project.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute left-4 top-4 z-10 h-4 w-4 rounded border-border accent-primary"
+                />
+
                 <button
                   type="button"
                   aria-label={`Delete ${project.name}`}
@@ -141,7 +245,7 @@ export default function ProjectsPage() {
 
                 <Link
                   href={`/projects/${project.slug}`}
-                  className="block rounded-2xl border border-border bg-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md"
+                  className="block rounded-2xl border border-border bg-card p-6 pt-10 shadow-sm transition hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>

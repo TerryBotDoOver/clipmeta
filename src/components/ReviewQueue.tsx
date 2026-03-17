@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { MetadataEditor } from "@/components/MetadataEditor";
 import { GenerateMetadataButton } from "@/components/GenerateMetadataButton";
@@ -58,7 +58,6 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
     const currentlyReviewed = reviewedIds.has(clip.id) || clip.is_reviewed;
     const newValue = !currentlyReviewed;
 
-    // Optimistic update
     setReviewedIds((prev) => {
       const next = new Set(prev);
       if (newValue) next.add(clip.id);
@@ -75,7 +74,6 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
       });
       if (!res.ok) throw new Error("Failed to update review status");
     } catch {
-      // Revert optimistic update on error
       setReviewedIds((prev) => {
         const next = new Set(prev);
         if (currentlyReviewed) next.add(clip.id);
@@ -168,12 +166,30 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
     if (filter === "pending") return !hasMetadata;
     if (filter === "ready") return hasMetadata && !isReviewed;
     if (filter === "reviewed") return isReviewed;
-    return true; // "all"
+    return true;
   });
+
+  const allFilteredSelected = useMemo(
+    () =>
+      filteredClips.length > 0 &&
+      filteredClips.every((clip) => selectedIds.has(clip.id)),
+    [filteredClips, selectedIds]
+  );
+
+  function toggleSelectAll(checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        filteredClips.forEach((clip) => next.add(clip.id));
+      } else {
+        filteredClips.forEach((clip) => next.delete(clip.id));
+      }
+      return next;
+    });
+  }
 
   return (
     <div>
-      {/* Bulk action bar */}
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 mb-4">
           <span className="text-sm font-medium text-foreground">
@@ -197,7 +213,6 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
         </div>
       )}
 
-      {/* Filter tabs */}
       <div className="flex gap-1 rounded-xl bg-muted p-1 mb-4">
         {(["all", "pending", "ready", "reviewed"] as const).map((tab) => (
           <button
@@ -214,7 +229,23 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
         ))}
       </div>
 
-      {/* Clip list */}
+      {filteredClips.length > 0 && (
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={allFilteredSelected}
+              onChange={(e) => toggleSelectAll(e.target.checked)}
+              className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+            />
+            <span>Select All</span>
+          </label>
+          <span className="text-xs text-muted-foreground">
+            {filteredClips.length} clip{filteredClips.length > 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
+
       <div className="space-y-2">
         {filteredClips.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No clips in this filter.</p>
@@ -235,9 +266,7 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                     : "border-dashed border-border"
                 }`}
               >
-                {/* Compact header row — always visible */}
                 <div className="flex items-center gap-3">
-                  {/* Selection checkbox */}
                   <input
                     type="checkbox"
                     checked={selectedIds.has(clip.id)}
@@ -246,12 +275,10 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                     className="h-4 w-4 shrink-0 rounded border-border accent-primary cursor-pointer"
                   />
 
-                  {/* Clickable area for expand */}
                   <div
                     className="flex flex-1 items-center gap-3 cursor-pointer min-w-0"
                     onClick={() => toggleExpand(clip.id)}
                   >
-                    {/* Expand chevron */}
                     <svg
                       className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
                         expanded ? "rotate-90" : ""
@@ -267,7 +294,6 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                       <polyline points="9 18 15 12 9 6" />
                     </svg>
 
-                    {/* Filename — click to edit */}
                     {editingFilename === clip.id ? (
                       <input
                         autoFocus
@@ -292,21 +318,18 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                       </p>
                     )}
 
-                    {/* File size */}
                     {clip.file_size_bytes && (
                       <span className="text-xs text-muted-foreground tabular-nums">
                         {(clip.file_size_bytes / 1024 / 1024).toFixed(1)} MB
                       </span>
                     )}
 
-                    {/* Reviewed badge */}
                     {isReviewed && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                         reviewed
                       </span>
                     )}
 
-                    {/* Status badge */}
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                         hasMetadata
@@ -322,7 +345,6 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                     </span>
                   </div>
 
-                  {/* Delete button — visible on hover */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -346,13 +368,10 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                   </button>
                 </div>
 
-                {/* Expanded content */}
                 {expanded && (
                   <div className="mt-3 border-t border-border pt-3 space-y-3">
-                    {/* Video player if available */}
                     {clipUrls[clip.id] && <VideoPlayer src={clipUrls[clip.id]} />}
 
-                    {/* Metadata editor or generate button */}
                     {hasMetadata ? (
                       <>
                         <MetadataEditor
@@ -367,7 +386,6 @@ export function ReviewQueue({ clips, clipUrls }: Props) {
                           }}
                         />
 
-                        {/* Mark as Reviewed button */}
                         <div className="flex items-center justify-between pt-2 border-t border-border">
                           <p className="text-xs text-muted-foreground">
                             {isReviewed

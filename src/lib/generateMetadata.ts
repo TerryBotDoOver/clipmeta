@@ -71,6 +71,7 @@ Write metadata the way BUYERS search — not the way photographers describe. Buy
 
 ⚡ DESCRIPTION RULES
 - Describe what is visually happening, the mood, and 1-2 specific use cases.
+- NEVER start the description with "Aerial view", "Aerial footage", "Drone footage", "Drone shot", or any variation. Start with the subject or action instead (e.g. "Dolphins swim gracefully..." or "A sweeping coastline unfolds..." or "Crystal clear waters stretch...").
 - Stay within the character limit specified in platform instructions.
 - Write naturally — avoid purple prose and thesaurus words.
 
