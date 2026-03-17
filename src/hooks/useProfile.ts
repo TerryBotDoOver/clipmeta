@@ -14,20 +14,32 @@ export function useProfile() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
     );
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { setLoading(false); return; }
-      supabase
+
+      // Get plan
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('plan, clips_used_this_month')
+        .select('plan')
         .eq('id', user.id)
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            setPlan((data.plan as Plan) || 'free');
-            setClipsUsed(data.clips_used_this_month || 0);
-          }
-          setLoading(false);
-        });
+        .single();
+      setPlan((profile?.plan as Plan) || 'free');
+
+      // Live clip count this month
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { data: projects } = await supabase.from('projects').select('id').eq('user_id', user.id);
+      const projectIds = (projects ?? []).map((p: { id: string }) => p.id);
+
+      if (projectIds.length > 0) {
+        const { count } = await supabase
+          .from('clips')
+          .select('id', { count: 'exact', head: true })
+          .in('project_id', projectIds)
+          .gte('created_at', startOfMonth);
+        setClipsUsed(count ?? 0);
+      }
+
+      setLoading(false);
     });
   }, []);
 
