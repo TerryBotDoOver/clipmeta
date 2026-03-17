@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { PLANS, Plan } from '@/lib/stripe';
+import { PLANS, Plan } from '@/lib/plans';
 
 export function useProfile() {
   const [plan, setPlan] = useState<Plan>('free');

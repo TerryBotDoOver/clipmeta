@@ -1,5 +1,6 @@
 'use client';
 import { useProfile } from '@/hooks/useProfile';
+
 import { useRouter } from 'next/navigation';
 
 export function PlanBadge() {
