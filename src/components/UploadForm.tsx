@@ -320,7 +320,7 @@ function StatusBadge({ status, progress }: { status: FileStatus; progress: numbe
   );
 }
 
-const CHUNK_SIZE = 25 * 1024 * 1024; // 25 MB per chunk
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB per chunk
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
 
 function uploadChunkXHR(
@@ -392,7 +392,7 @@ async function multipartUpload(
   const parts: { partNumber: number; etag: string }[] = [];
   let uploaded = 0;
 
-  // 2. Upload each chunk
+  // 2. Upload each chunk — fetch fresh presigned URL on every retry
   for (let i = 0; i < totalChunks; i++) {
     if (signal?.aborted) throw new Error("Upload cancelled.");
 
@@ -401,23 +401,41 @@ async function multipartUpload(
     const chunk = file.slice(start, end);
     const partNumber = i + 1;
 
-    // Get presigned URL for this part
-    const partRes = await fetch("/api/clips/multipart/part-url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        storage_path: storagePath,
-        upload_id: uploadId,
-        part_number: partNumber,
-      }),
-    });
-    if (!partRes.ok) throw new Error(`Failed to get URL for part ${partNumber}.`);
-    const { signedUrl } = await partRes.json();
+    // Retry loop: get a FRESH presigned URL on each attempt
+    let etag = '';
+    const maxRetries = 5;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      if (signal?.aborted) throw new Error("Upload cancelled.");
+      try {
+        // Fresh URL every attempt
+        const partRes = await fetch("/api/clips/multipart/part-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storage_path: storagePath,
+            upload_id: uploadId,
+            part_number: partNumber,
+          }),
+        });
+        if (!partRes.ok) throw new Error(`Failed to get URL for part ${partNumber}.`);
+        const { signedUrl } = await partRes.json();
 
-    // Upload chunk with retry
-    const etag = await uploadChunkWithRetry(signedUrl, chunk, signal);
+        etag = await uploadChunkXHR(signedUrl, chunk, signal);
+        break; // success
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
+        if (attempt < maxRetries) {
+          const delay = 2000 * Math.pow(2, attempt - 1); // 2s, 4s, 8s, 16s
+          console.warn(`Part ${partNumber} attempt ${attempt} failed (${msg}), retrying in ${delay}ms…`);
+          await new Promise((r) => setTimeout(r, delay));
+        } else {
+          throw new Error(`Part ${partNumber} failed after ${maxRetries} attempts: ${msg}`);
+        }
+      }
+    }
+
     parts.push({ partNumber, etag });
-
     uploaded += (end - start);
     onProgress(Math.round((uploaded / totalSize) * 100));
   }
