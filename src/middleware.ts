@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // Redirect old domain to new custom domain
+  if (request.headers.get("host")?.includes("clipmeta.vercel.app")) {
+    const url = new URL(request.url);
+    url.hostname = "clipmeta.app";
+    url.port = "";
+    return NextResponse.redirect(url, 308);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

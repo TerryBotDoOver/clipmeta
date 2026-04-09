@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -27,20 +27,50 @@ type MetadataEditorProps = {
     location: string | null;
     confidence: string;
   };
+  pinnedKeywords?: string | null;
+  pinnedKeywordsPosition?: string | null;
 };
 
-const CATEGORIES = [
-  "Nature", "Wildlife", "People", "Business", "Technology",
-  "Travel", "Food & Drink", "Sports & Fitness", "Architecture",
-  "Abstract", "Aerial", "Underwater", "Lifestyle", "Events", "Transportation",
+const BLACKBOX_CATEGORIES = [
+  "Animals", "Arts & Entertainment", "Beauty & Health", "Business",
+  "Drink", "Food", "Industry", "Location & Buildings", "Medical",
+  "Nature", "Objects & Equipment", "Objects & Graphics", "People",
+  "Religion", "Science", "Sport & Fitness", "Technology", "Time Lapse",
+  "Transportation", "Travel",
 ];
 
-export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
+export function MetadataEditor({ clipId, initial, pinnedKeywords: pinnedRaw, pinnedKeywordsPosition: position }: MetadataEditorProps) {
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
-  const [keywords, setKeywords] = useState<string[]>(initial.keywords);
+
+  // Merge pinned keywords into display
+  const pinned = useMemo(() => {
+    if (!pinnedRaw) return [];
+    return pinnedRaw.split(",").map(k => k.trim()).filter(Boolean);
+  }, [pinnedRaw]);
+
+  const pinnedLower = useMemo(() => new Set(pinned.map(k => k.toLowerCase())), [pinned]);
+
+  const mergedInitialKeywords = useMemo(() => {
+    if (pinned.length === 0) return initial.keywords;
+    const filtered = initial.keywords.filter(k => !pinnedLower.has(k.toLowerCase()));
+    const pos = position || "beginning";
+    if (pos === "end") return [...filtered, ...pinned];
+    if (pos === "middle") {
+      const mid = Math.floor(filtered.length / 2);
+      return [...filtered.slice(0, mid), ...pinned, ...filtered.slice(mid)];
+    }
+    return [...pinned, ...filtered];
+  }, [initial.keywords, pinned, pinnedLower, position]);
+
+  const [keywords, setKeywords] = useState<string[]>(mergedInitialKeywords);
   const [category, setCategory] = useState(initial.category);
   const [location, setLocation] = useState(initial.location ?? "");
+
+  // Update keywords when pinned keywords change (e.g. user adds them in project settings)
+  useEffect(() => {
+    setKeywords(mergedInitialKeywords);
+  }, [mergedInitialKeywords]);
   const [newKeyword, setNewKeyword] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -162,6 +192,7 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
                   id={kw}
                   label={kw}
                   onRemove={() => removeKeyword(i)}
+                  isPinned={pinnedLower.has(kw.toLowerCase())}
                 />
               ))}
             </SortableContext>
@@ -182,34 +213,34 @@ export function MetadataEditor({ clipId, initial }: MetadataEditorProps) {
         </p>
       </div>
 
-      {/* Category + Location */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-            Category
-          </label>
-          <select
-            value={category}
-            onChange={(e) => { setCategory(e.target.value); markDirty(); }}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-            Location <span className="normal-case font-normal text-muted-foreground">(optional)</span>
-          </label>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => { setLocation(e.target.value); markDirty(); }}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition"
-            placeholder="e.g. Florida, USA"
-          />
-        </div>
+      {/* Category */}
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+          Category
+        </label>
+        <select
+          value={category}
+          onChange={(e) => { setCategory(e.target.value); markDirty(); }}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition"
+        >
+          {BLACKBOX_CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Location */}
+      <div>
+        <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+          Location <span className="normal-case font-normal text-muted-foreground">(optional)</span>
+        </label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => { setLocation(e.target.value); markDirty(); }}
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition"
+          placeholder="e.g. Florida, USA"
+        />
       </div>
 
       {/* Confidence (read-only) */}
@@ -243,10 +274,12 @@ function SortableKeywordChip({
   id,
   label,
   onRemove,
+  isPinned = false,
 }: {
   id: string;
   label: string;
   onRemove: () => void;
+  isPinned?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id });
@@ -263,7 +296,7 @@ function SortableKeywordChip({
     <span
       ref={setNodeRef}
       style={style}
-      className="relative flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-foreground select-none cursor-grab active:cursor-grabbing"
+      className={`relative flex items-center gap-1 rounded-md px-2 py-0.5 text-xs select-none cursor-grab active:cursor-grabbing ${isPinned ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-muted text-foreground'}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       {...attributes}

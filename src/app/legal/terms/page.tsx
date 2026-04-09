@@ -1,11 +1,23 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "ClipMeta Terms of Service — read our terms for using the AI metadata generation platform for stock footage.",
+  alternates: { canonical: "https://clipmeta.app/legal/terms" },
+  robots: { index: true, follow: false },
+};
 
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-background">
       <nav className="border-b border-border">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-bold text-foreground">ClipMeta</Link>
+          <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <img src="/logo-icon.svg" className="h-7 w-7" alt="ClipMeta" />
+            ClipMeta
+          </Link>
         </div>
       </nav>
 
@@ -61,7 +73,7 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
-            <p className="mt-3">Questions about these Terms? Contact us at <a href="mailto:hello@clipmeta.com" className="text-slate-900 underline">hello@clipmeta.com</a>.</p>
+            <p className="mt-3">Questions about these Terms? Contact us at <a href="mailto:hello@clipmeta.app" className="text-slate-900 underline">hello@clipmeta.app</a>.</p>
           </section>
         </div>
       </article>

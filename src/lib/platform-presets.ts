@@ -14,6 +14,7 @@ export type GenerationSettings = {
   titleMaxChars: number;
   descMaxChars: number;
   keywordFormat: "mixed" | "single" | "phrases";
+  hasDescription: boolean; // false for platforms with no description field (Adobe Stock)
 };
 
 export const PLATFORM_LABELS: Record<Platform, string> = {
@@ -26,9 +27,9 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
 
 export const PLATFORM_DESCRIPTIONS: Record<Platform, string> = {
   blackbox: "Aggregates to 20+ platforms. Blackbox-optimized keywords.",
-  pond5: "50 keyword limit. Descriptive, natural language titles.",
+  pond5: "50 keywords, single words preferred. Descriptive titles. CSV includes location fields.",
   adobe_stock: "45 keywords. SEO-focused titles, commercial tone.",
-  shutterstock: "50 keywords. Competitive SEO targeting.",
+  shutterstock: "50 keywords, single words. Description max 200 chars. Category from Shutterstock's fixed list.",
   generic: "Balanced defaults for any platform.",
 };
 
@@ -42,16 +43,18 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     titleMaxChars: 100,
     descMaxChars: 200,
     keywordFormat: "mixed",
+    hasDescription: true,
   },
   pond5: {
     keywordCount: 50,
     titleStyle: "descriptive",
     descStyle: "detailed",
     includeLocation: true,
-    includeCameraDetails: true,
+    includeCameraDetails: false,
     titleMaxChars: 100,
     descMaxChars: 500,
-    keywordFormat: "mixed",
+    keywordFormat: "single",
+    hasDescription: true,
   },
   adobe_stock: {
     keywordCount: 45,
@@ -62,16 +65,18 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     titleMaxChars: 200,
     descMaxChars: 200,
     keywordFormat: "mixed",
+    hasDescription: false, // Adobe Stock has no description field — title only
   },
   shutterstock: {
     keywordCount: 50,
     titleStyle: "seo",
-    descStyle: "detailed",
+    descStyle: "concise",
     includeLocation: true,
     includeCameraDetails: false,
     titleMaxChars: 200,
     descMaxChars: 200,
-    keywordFormat: "mixed",
+    keywordFormat: "single",
+    hasDescription: true,
   },
   generic: {
     keywordCount: 35,
@@ -82,6 +87,7 @@ export const PLATFORM_PRESETS: Record<Platform, GenerationSettings> = {
     titleMaxChars: 200,
     descMaxChars: 300,
     keywordFormat: "mixed",
+    hasDescription: true,
   },
 };
 

@@ -11,13 +11,32 @@ export type ExtractedFrame = {
  * @param count    - How many frames to extract (default: 4)
  * @returns        - Array of ExtractedFrame objects
  */
+/** Codecs the browser usually can't decode — resolve empty instead of hanging */
+const UNSUPPORTED_EXTENSIONS = ['.mov', '.mxf', '.avi', '.r3d', '.braw', '.dng'];
+
 export async function extractFrames(
   file: File,
   count = 4
 ): Promise<ExtractedFrame[]> {
+  // Skip frame extraction entirely for very large files (>500 MB) or known-unsupported codecs
+  // These would require downloading the full file to the browser which is wasteful,
+  // and ProRes / RAW codecs can't be decoded in Chrome anyway.
+  const ext = (file.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
+  if (file.size > 500 * 1024 * 1024 || UNSUPPORTED_EXTENSIONS.includes(ext)) {
+    console.warn(`Skipping frame extraction: ${file.name} (${(file.size / 1024 / 1024).toFixed(0)} MB, ext=${ext})`);
+    return [];
+  }
+
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
     const objectUrl = URL.createObjectURL(file);
+
+    // Global timeout — if frame extraction takes more than 20s total, give up gracefully
+    const globalTimeout = setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+      console.warn(`Frame extraction timed out for ${file.name}, proceeding without frames`);
+      resolve([]);
+    }, 20_000);
 
     video.preload = "metadata";
     video.muted = true;
@@ -28,8 +47,9 @@ export async function extractFrames(
       const duration = video.duration;
 
       if (!duration || duration === Infinity) {
+        clearTimeout(globalTimeout);
         URL.revokeObjectURL(objectUrl);
-        reject(new Error("Could not read video duration."));
+        resolve([]); // graceful fallback instead of reject
         return;
       }
 
@@ -41,13 +61,20 @@ export async function extractFrames(
       );
 
       captureFramesSequentially(video, timestamps, objectUrl)
-        .then(resolve)
-        .catch(reject);
+        .then((frames) => {
+          clearTimeout(globalTimeout);
+          resolve(frames);
+        })
+        .catch(() => {
+          clearTimeout(globalTimeout);
+          resolve([]); // graceful fallback
+        });
     });
 
     video.addEventListener("error", () => {
+      clearTimeout(globalTimeout);
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("Failed to load video for frame extraction."));
+      resolve([]); // graceful fallback instead of reject
     });
   });
 }

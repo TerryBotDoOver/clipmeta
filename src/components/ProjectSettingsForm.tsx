@@ -7,10 +7,17 @@ import {
   PLATFORM_DESCRIPTIONS,
   PLATFORM_PRESETS,
 } from "@/lib/platform-presets";
+import { BLACKBOX_COUNTRIES } from "@/lib/blackbox-countries";
 
 const PLATFORMS: Platform[] = ["blackbox", "pond5", "adobe_stock", "shutterstock", "generic"];
 
-export function ProjectSettingsForm() {
+interface ProjectSettingsFormProps {
+  initialPinnedKeywords?: string;
+  initialLocation?: string;
+  initialShootingDate?: string;
+}
+
+export function ProjectSettingsForm({ initialPinnedKeywords, initialLocation, initialShootingDate }: ProjectSettingsFormProps = {}) {
   const defaultPreset = PLATFORM_PRESETS["blackbox"];
   const [platform, setPlatform] = useState<Platform>("blackbox");
   const [keywordCount, setKeywordCount] = useState(defaultPreset.keywordCount);
@@ -33,8 +40,77 @@ export function ProjectSettingsForm() {
     setKeywordFormat(preset.keywordFormat);
   }
 
+  const [pinnedKeywords, setPinnedKeywords] = useState(initialPinnedKeywords ?? "");
+  const [location, setLocation] = useState(initialLocation ?? "");
+  const [shootingDate, setShootingDate] = useState(initialShootingDate ?? "");
+
   return (
     <>
+      {/* Mandatory keywords (shown when editing existing projects) */}
+      {initialPinnedKeywords !== undefined && (
+        <div>
+          <label htmlFor="pinnedKeywords" className="block text-sm font-medium text-foreground">
+            Mandatory Keywords <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <input
+            id="pinnedKeywords"
+            name="pinnedKeywords"
+            type="text"
+            value={pinnedKeywords}
+            onChange={(e) => setPinnedKeywords(e.target.value)}
+            placeholder="e.g. Vikos Gorge, Greece, Zagori, Epirus, mountain pass"
+            className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            These keywords will always appear first in every clip. Comma-separated.
+          </p>
+        </div>
+      )}
+
+      {/* Shooting Country (shown when editing existing projects) */}
+      {initialLocation !== undefined && (
+        <div>
+          <label htmlFor="location" className="block text-sm font-medium text-foreground">
+            Shooting Country <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <select
+            id="location"
+            name="location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+          >
+            <option value="">Select a country...</option>
+            {BLACKBOX_COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Populates the Shooting Country column in your Blackbox CSV export.
+          </p>
+        </div>
+      )}
+
+      {/* Shooting Date (shown when editing existing projects) */}
+      {initialShootingDate !== undefined && (
+        <div>
+          <label htmlFor="shootingDate" className="block text-sm font-medium text-foreground">
+            Shooting Date <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <input
+            id="shootingDate"
+            name="shootingDate"
+            type="date"
+            value={shootingDate}
+            onChange={(e) => setShootingDate(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+          />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Populates the Shooting Date column in your Blackbox CSV export.
+          </p>
+        </div>
+      )}
+
       {/* Hidden inputs for server action */}
       <input type="hidden" name="platform" value={platform} />
       <input type="hidden" name="keywordCount" value={keywordCount} />
@@ -84,9 +160,16 @@ export function ProjectSettingsForm() {
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                       {preset.titleMaxChars}c title
                     </span>
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {preset.descMaxChars}c desc
-                    </span>
+                    {preset.hasDescription && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {preset.descMaxChars}c desc
+                      </span>
+                    )}
+                    {!preset.hasDescription && (
+                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                        title only
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {PLATFORM_DESCRIPTIONS[p]}
@@ -139,7 +222,8 @@ export function ProjectSettingsForm() {
             </div>
           </div>
 
-          {/* Description max chars */}
+          {/* Description max chars — hidden for platforms with no description field */}
+          {PLATFORM_PRESETS[platform].hasDescription && (
           <div>
             <label className="block text-sm font-medium text-foreground">Description max characters</label>
             <p className="mt-0.5 text-xs text-muted-foreground">
@@ -155,6 +239,13 @@ export function ProjectSettingsForm() {
               <span className="w-12 text-right text-sm font-bold text-primary tabular-nums">{descMaxChars}</span>
             </div>
           </div>
+          )}
+          {!PLATFORM_PRESETS[platform].hasDescription && (
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <p className="text-sm font-medium text-amber-400">No description field</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Adobe Stock uses title only (up to 200 characters). The AI will write a richer, more descriptive title to compensate.</p>
+          </div>
+          )}
 
           {/* Title style */}
           <div>
@@ -180,8 +271,8 @@ export function ProjectSettingsForm() {
             </div>
           </div>
 
-          {/* Description style */}
-          <div>
+          {/* Description style — hidden for platforms with no description field */}
+          {PLATFORM_PRESETS[platform].hasDescription && <div>
             <p className="block text-sm font-medium text-foreground">Description style</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {(["detailed", "concise"] as const).map((style) => {
@@ -202,7 +293,7 @@ export function ProjectSettingsForm() {
                 );
               })}
             </div>
-          </div>
+          </div>}
 
           {/* Keyword format */}
           <div>

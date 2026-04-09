@@ -42,6 +42,7 @@ export default function ProjectsPage() {
           .from("projects")
           .select("*")
           .eq("user_id", user.id)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
 
         if (error) {
@@ -160,7 +161,7 @@ export default function ProjectsPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">

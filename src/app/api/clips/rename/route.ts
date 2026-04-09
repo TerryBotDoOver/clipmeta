@@ -9,9 +9,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "clip_id and filename are required." }, { status: 400 });
     }
 
+    // Preserve the original file extension if the user drops it during rename
+    const { data: existing } = await supabaseAdmin
+      .from("clips")
+      .select("original_filename")
+      .eq("id", clip_id)
+      .single();
+
+    let newFilename = filename.trim();
+    if (existing?.original_filename) {
+      const origExt = existing.original_filename.match(/\.[^.]+$/)?.[0] ?? "";
+      const newExt = newFilename.match(/\.[^.]+$/)?.[0] ?? "";
+      // If original had an extension but new name doesn't, re-add it
+      if (origExt && !newExt) {
+        newFilename += origExt;
+      }
+    }
+
     const { error } = await supabaseAdmin
       .from("clips")
-      .update({ original_filename: filename.trim() })
+      .update({ original_filename: newFilename })
       .eq("id", clip_id);
 
     if (error) {

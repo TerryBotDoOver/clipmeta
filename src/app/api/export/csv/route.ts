@@ -1,4 +1,20 @@
+/*
+ * SUPABASE MIGRATION — run in the SQL editor:
+ *
+ * create table if not exists exports (
+ *   id           uuid        primary key default gen_random_uuid(),
+ *   user_id      uuid        references auth.users(id) on delete set null,
+ *   project_id   uuid        references projects(id) on delete set null,
+ *   platform     text        not null,
+ *   clip_count   integer     not null,
+ *   exported_at  timestamptz not null default now()
+ * );
+ *
+ * alter table exports enable row level security;
+ */
+
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { NextRequest, NextResponse } from "next/server";
 import { buildCSV, getExportFilename, type ExportPlatform } from "@/lib/csvExport";
 
@@ -17,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   const { data: project } = await supabaseAdmin
     .from("projects")
-    .select("name, slug")
+    .select("name, slug, location, shooting_date, pinned_keywords, pinned_keywords_position, is_editorial, editorial_text, editorial_city, editorial_state, editorial_country, editorial_date")
     .eq("id", projectId)
     .single();
 
@@ -35,18 +51,73 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const rows = clips.map((clip) => ({
-    filename: clip.original_filename ?? "",
-    title: clip.metadata_results?.title ?? "",
-    description: clip.metadata_results?.description ?? "",
-    keywords: clip.metadata_results?.keywords ?? [],
-    category: clip.metadata_results?.category ?? "",
-    location: clip.metadata_results?.location ?? null,
-    confidence: clip.metadata_results?.confidence ?? "",
-  }));
+  // Parse pinned keywords and position from project settings
+  const pinnedRaw = project?.pinned_keywords ?? "";
+  const pinned = pinnedRaw.split(",").map((k: string) => k.trim()).filter(Boolean);
+  const pinnedPosition = project?.pinned_keywords_position ?? "beginning";
+  const pinnedLower = new Set(pinned.map((k: string) => k.toLowerCase()));
 
-  const csv = buildCSV(platform, rows, project?.name ?? "project");
+  const rows = clips.map((clip) => {
+    // Start with the clip's generated keywords
+    let keywords: string[] = clip.metadata_results?.keywords ?? [];
+
+    // Apply pinned keywords at export time (ensures they're always present even if added after generation)
+    if (pinned.length > 0) {
+      // Remove any existing instances of pinned keywords to avoid duplicates
+      const filtered = keywords.filter((k: string) => !pinnedLower.has(k.toLowerCase()));
+      if (pinnedPosition === "end") {
+        keywords = [...filtered, ...pinned];
+      } else if (pinnedPosition === "middle") {
+        const mid = Math.floor(filtered.length / 2);
+        keywords = [...filtered.slice(0, mid), ...pinned, ...filtered.slice(mid)];
+      } else {
+        // beginning (default)
+        keywords = [...pinned, ...filtered];
+      }
+    }
+
+    return {
+      filename: clip.original_filename ?? "",
+      title: clip.metadata_results?.title ?? "",
+      description: clip.metadata_results?.description ?? "",
+      keywords,
+      category: clip.metadata_results?.category ?? "",
+      location: clip.metadata_results?.location ?? null,
+      confidence: clip.metadata_results?.confidence ?? "",
+      is_editorial: clip.is_editorial ?? null,
+      editorial_text: clip.editorial_text ?? null,
+      editorial_city: clip.editorial_city ?? null,
+      editorial_state: clip.editorial_state ?? null,
+      editorial_country: clip.editorial_country ?? null,
+      editorial_date: clip.editorial_date ?? null,
+    };
+  });
+
+  const csv = buildCSV(platform, rows, project?.name ?? "project", project?.location ?? undefined, project?.shooting_date ?? undefined, {
+    isEditorial: project?.is_editorial ?? false,
+    editorialText: project?.editorial_text ?? undefined,
+    editorialCity: project?.editorial_city ?? undefined,
+    editorialState: project?.editorial_state ?? undefined,
+    editorialCountry: project?.editorial_country ?? undefined,
+    editorialDate: project?.editorial_date ?? undefined,
+  });
   const filename = getExportFilename(platform, project?.slug ?? "project");
+
+  // Log the export
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabaseAdmin.from("export_logs").insert({
+        user_id: user.id,
+        project_id: projectId,
+        platform,
+        clip_count: clips.length,
+      });
+    }
+  } catch {
+    // Non-fatal — don't block the download if logging fails
+  }
 
   return new NextResponse(csv, {
     status: 200,

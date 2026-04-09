@@ -41,6 +41,13 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
 
+  // Fetch metadata separately for complete clips to avoid join array issues
+  const completeClipIds = (clips ?? []).filter(c => c.metadata_status === "complete").map(c => c.id);
+  const { data: metaRows } = completeClipIds.length > 0
+    ? await supabase.from("metadata_results").select("clip_id, title, description, keywords").in("clip_id", completeClipIds)
+    : { data: [] };
+  const metaByClipId = Object.fromEntries((metaRows ?? []).map(m => [m.clip_id, m]));
+
   const totalClips = clips?.length ?? 0;
   const withMeta = clips?.filter((c) => c.metadata_status === "complete").length ?? 0;
   const pending = totalClips - withMeta;
@@ -106,7 +113,16 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             🔍 Review &amp; Edit
           </Link>
           <div className="flex items-center justify-center">
-            <ExportButton projectId={project.id} clipCount={withMeta} />
+            <ExportButton
+              projectId={project.id}
+              clipCount={withMeta}
+              clips={(clips ?? []).filter((c) => c.metadata_status === "complete" && metaByClipId[c.id]).map((c) => ({
+                filename: c.original_filename ?? '',
+                title: metaByClipId[c.id]?.title ?? '',
+                description: metaByClipId[c.id]?.description ?? '',
+                keywords: metaByClipId[c.id]?.keywords ?? [],
+              }))}
+            />
           </div>
         </div>
 

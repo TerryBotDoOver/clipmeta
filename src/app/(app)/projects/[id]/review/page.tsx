@@ -6,6 +6,9 @@ import { BulkGenerateButton } from "@/components/BulkGenerateButton";
 import { ExportButton } from "@/components/ExportButton";
 import { MarkCompleteButton } from "@/components/MarkCompleteButton";
 import { ReviewQueue } from "@/components/ReviewQueue";
+import { BlackboxFtpButton } from "@/components/BlackboxFtpButton";
+import { ClipLimitWarning } from "@/components/ClipLimitWarning";
+import { ProjectMetaCard } from "@/components/ProjectMetaCard";
 
 type ReviewPageProps = {
   params: Promise<{ id: string }>;
@@ -18,12 +21,14 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("slug", id)
-    .eq("user_id", user.id)
-    .single();
+  const [{ data: project }, { data: profile }] = await Promise.all([
+    supabase.from("projects").select("*").eq("slug", id).eq("user_id", user.id).single(),
+    supabase.from("profiles").select("plan, stripe_subscription_status").eq("id", user.id).single(),
+  ]);
+
+  const activeStatuses = ["active", "trialing", "founder"];
+  const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
+  const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free";
 
   if (!project) {
     return (
@@ -38,11 +43,20 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     );
   }
 
-  const { data: clips } = await supabase
+  const { data: rawClips } = await supabase
     .from("clips")
     .select("*, metadata_results(*)")
     .eq("project_id", project.id)
     .order("created_at", { ascending: false });
+
+  // Flatten metadata_results from array to single object (match polling API format)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clips = (rawClips || []).map((c: any) => ({
+    ...c,
+    metadata_results: Array.isArray(c.metadata_results)
+      ? c.metadata_results.length > 0 ? c.metadata_results[0] : null
+      : c.metadata_results,
+  })) as typeof rawClips;
 
   // Generate signed read URLs for all clips with a storage path
   const clipUrls: Record<string, string> = {};
@@ -50,7 +64,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     for (const clip of clips) {
       if (clip.storage_path) {
         try {
-          clipUrls[clip.id] = await getR2ReadUrl(clip.storage_path, 3600);
+          clipUrls[clip.id] = await getR2ReadUrl(clip.storage_path, 86400); // 24h expiry
         } catch {
           // skip if URL generation fails (e.g. video already deleted)
         }
@@ -62,16 +76,41 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
   const withMetadata = clips?.filter((c) => c.metadata_results).length ?? 0;
   const pending = totalClips - withMetadata;
 
+  // Keyword analytics (computed server-side from existing data)
+  const clipsWithMeta = clips?.filter((c) => c.metadata_results) ?? [];
+  const keywordFreq = clipsWithMeta
+    .flatMap((c) => (c.metadata_results?.keywords as string[] | undefined) ?? [])
+    .reduce<Record<string, number>>((acc, kw) => {
+      acc[kw] = (acc[kw] ?? 0) + 1;
+      return acc;
+    }, {});
+  const topKeywords = Object.entries(keywordFreq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  const duplicateKeywordCount = Object.values(keywordFreq).filter((v) => v > 1).length;
+  const avgKeywordCount =
+    clipsWithMeta.length > 0
+      ? Math.round(
+          clipsWithMeta.reduce(
+            (sum, c) => sum + ((c.metadata_results?.keywords as string[] | undefined)?.length ?? 0),
+            0
+          ) / clipsWithMeta.length
+        )
+      : 0;
+  const lowKeywordClips = clipsWithMeta.filter(
+    (c) => ((c.metadata_results?.keywords as string[] | undefined)?.length ?? 0) < 15
+  ).length;
+
   const pendingClips = clips
     ? clips
         .filter((c) => !c.metadata_results && c.metadata_status !== "failed" && clipUrls[c.id])
-        .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id] }))
+        .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id], fileSize: c.file_size_bytes ?? 0 }))
     : [];
 
   const failedClips = clips
     ? clips
         .filter((c) => c.metadata_status === "failed" && clipUrls[c.id])
-        .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id] }))
+        .map((c) => ({ id: c.id, filename: c.original_filename, storageUrl: clipUrls[c.id], fileSize: c.file_size_bytes ?? 0 }))
     : [];
 
   const EXPORT_PLATFORMS = [
@@ -82,12 +121,17 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     { key: "generic", label: "Generic CSV", primary: false },
   ] as const;
 
+  // userPlan resolved above with activeStatuses check
+
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-10">
+
+        {/* Clip limit warning (shows only when at 80%+ of monthly limit) */}
+        <ClipLimitWarning />
 
         {/* Header */}
-        <div className="rounded-2xl border border-border bg-card p-6">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">
@@ -105,12 +149,22 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
               {(pendingClips.length > 0 || failedClips.length > 0) && (
                 <BulkGenerateButton clips={pendingClips} failedClips={failedClips} />
               )}
-              <ExportButton projectId={project.id} clipCount={withMetadata} />
+              <ExportButton
+                projectId={project.id}
+                clipCount={withMetadata}
+                plan={userPlan}
+                clips={clipsWithMeta.map((c) => ({
+                  filename: c.original_filename ?? '',
+                  title: (c.metadata_results?.title as string) ?? '',
+                  description: (c.metadata_results?.description as string) ?? '',
+                  keywords: (c.metadata_results?.keywords as string[]) ?? [],
+                }))}
+              />
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+        <div className="grid gap-6 grid-cols-1 xl:grid-cols-[1.4fr_0.9fr]">
 
           {/* Clip cards */}
           <section className="min-w-0 rounded-2xl border border-border bg-card p-6">
@@ -119,6 +173,18 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                 clips={clips ?? []}
                 clipUrls={clipUrls}
                 pendingClips={pendingClips}
+                projectId={project.id}
+                plan={userPlan}
+                projectLocation={project.location ?? null}
+                projectShootingDate={project.shooting_date ?? null}
+                pinnedKeywords={project.pinned_keywords ?? null}
+                pinnedKeywordsPosition={project.pinned_keywords_position ?? null}
+                projectIsEditorial={project.is_editorial ?? false}
+                projectEditorialText={project.editorial_text ?? null}
+                projectEditorialCity={project.editorial_city ?? null}
+                projectEditorialState={project.editorial_state ?? null}
+                projectEditorialCountry={project.editorial_country ?? null}
+                projectEditorialDate={project.editorial_date ?? null}
               />
             ) : (
               <div className="rounded-xl border border-dashed border-border p-8 text-center">
@@ -159,27 +225,20 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
             <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="text-lg font-semibold text-foreground">Export</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Platform-optimized CSV — each format matches the exact column requirements.
+                Platform-optimized CSV — click any format to preview before downloading.
               </p>
-              <div className="mt-4 space-y-2">
-                {EXPORT_PLATFORMS.map(({ key, label, primary }) => (
-                  <a
-                    key={key}
-                    href={withMetadata > 0 ? `/api/export/csv?project_id=${project.id}&platform=${key}` : "#"}
-                    className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
-                      withMetadata > 0
-                        ? "border-border text-foreground hover:bg-muted"
-                        : "cursor-not-allowed border-border text-muted-foreground opacity-40"
-                    }`}
-                  >
-                    <span>{label}</span>
-                    {primary && withMetadata > 0 && (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                        primary
-                      </span>
-                    )}
-                  </a>
-                ))}
+              <div className="mt-4">
+                <ExportButton
+                  projectId={project.id}
+                  clipCount={withMetadata}
+                  plan={userPlan}
+                  clips={clipsWithMeta.map((c) => ({
+                    filename: c.original_filename ?? '',
+                    title: (c.metadata_results?.title as string) ?? '',
+                    description: (c.metadata_results?.description as string) ?? '',
+                    keywords: (c.metadata_results?.keywords as string[]) ?? [],
+                  }))}
+                />
               </div>
               {withMetadata === 0 && (
                 <p className="mt-3 text-xs text-muted-foreground">
@@ -187,6 +246,79 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                 </p>
               )}
             </div>
+
+            {/* Blackbox FTP Transfer */}
+            {withMetadata > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <h2 className="text-lg font-semibold text-foreground">Send to Blackbox</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  FTP your clips directly to your Blackbox account. Files will appear in your Blackbox Workspace within minutes.
+                </p>
+                <div className="mt-4">
+                  <BlackboxFtpButton projectId={project.id} clipCount={withMetadata} userPlan={userPlan} />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  After transfer, import the CSV in Blackbox to apply metadata.
+                </p>
+              </div>
+            )}
+
+            {/* Keyword Tools */}
+            {clipsWithMeta.length > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <h2 className="text-lg font-semibold text-foreground">Keyword Tools</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Quality analysis across all clips.</p>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-xl bg-muted px-3 py-3 text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Avg / clip</p>
+                    <p className="mt-1 text-2xl font-bold text-foreground">{avgKeywordCount}</p>
+                  </div>
+                  <div className="rounded-xl bg-muted px-3 py-3 text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Duplicates</p>
+                    <p className="mt-1 text-2xl font-bold text-foreground">{duplicateKeywordCount}</p>
+                  </div>
+                </div>
+
+                {lowKeywordClips > 0 && (
+                  <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-400">
+                    {lowKeywordClips} clip{lowKeywordClips > 1 ? "s" : ""} with fewer than 15 keywords
+                  </p>
+                )}
+
+                {topKeywords.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top keywords</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {topKeywords.map(([kw, count]) => (
+                        <span
+                          key={kw}
+                          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-foreground"
+                        >
+                          {kw}
+                          <span className="text-[10px] text-muted-foreground">×{count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Project Settings */}
+            <ProjectMetaCard
+              projectId={project.id}
+              initialPinnedKeywords={project.pinned_keywords ?? null}
+              initialPinnedKeywordsPosition={project.pinned_keywords_position ?? null}
+              initialLocation={project.location ?? null}
+              initialShootingDate={project.shooting_date ?? null}
+              initialIsEditorial={project.is_editorial ?? false}
+              initialEditorialText={project.editorial_text ?? null}
+              initialEditorialCity={project.editorial_city ?? null}
+              initialEditorialState={project.editorial_state ?? null}
+              initialEditorialCountry={project.editorial_country ?? null}
+              initialEditorialDate={project.editorial_date ?? null}
+            />
 
             {/* Actions */}
             <div className="rounded-2xl border border-border bg-card p-6">

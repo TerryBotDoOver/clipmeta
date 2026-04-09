@@ -4,6 +4,9 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Suspense } from "react";
+import { UTMCapture } from "@/components/UTMCapture";
+import MetaPixel from "@/components/MetaPixel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +19,65 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClipMeta",
-  description: "Stock footage metadata workflow platform",
+  title: {
+    default: "ClipMeta — AI Metadata for Stock Footage",
+    template: "%s | ClipMeta",
+  },
+  description:
+    "ClipMeta uses AI to generate titles, descriptions, and keywords for stock footage clips. Export platform-ready CSVs for Blackbox.global, Shutterstock, Adobe Stock, and Pond5 in minutes.",
+  keywords: [
+    "stock footage metadata",
+    "AI keywording",
+    "Blackbox.global CSV",
+    "stock video keywords",
+    "metadata generator",
+    "footage keywording tool",
+    "Shutterstock CSV export",
+    "Adobe Stock metadata",
+    "Pond5 metadata",
+    "stock footage keywords",
+  ],
+  metadataBase: new URL("https://clipmeta.app"),
+  alternates: { canonical: "https://clipmeta.app" },
+  openGraph: {
+    title: "ClipMeta — AI Metadata for Stock Footage",
+    description:
+      "Upload clips, get AI-generated titles, descriptions, and keywords. Export platform-ready CSVs for Blackbox, Shutterstock, Adobe Stock, and Pond5.",
+    url: "https://clipmeta.app",
+    siteName: "ClipMeta",
+    images: [
+      {
+        url: "/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "ClipMeta — AI Metadata for Stock Footage",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ClipMeta — AI Metadata for Stock Footage",
+    description:
+      "Stop spending hours on metadata. Upload clips, let AI generate platform-ready keywords and titles, export CSV.",
+    images: ["/logo-full.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  icons: {
+    icon: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -27,10 +87,55 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Google Ads conversion tracking */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18071437581" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'AW-18071437581');
+            `,
+          }}
+        />
+        {/* Meta Pixel - in head so it loads before any JS framework */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(f,b,e,v,n,t,s)
+              {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+              n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+              if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+              n.queue=[];t=b.createElement(e);t.async=!0;
+              t.src=v;s=b.getElementsByTagName(e)[0];
+              s.parentNode.insertBefore(t,s)}(window, document,'script',
+              'https://connect.facebook.net/en_US/fbevents.js');
+              fbq('init', '1447998937339743');
+              fbq('track', 'PageView');
+            `,
+          }}
+        />
+        {/* Reddit Pixel */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);
+              rdt('init','a2_it6x1qz99k3n');
+              rdt('track', 'PageVisit');
+            `,
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <MetaPixel />
         <ThemeProvider>
           {children}
         </ThemeProvider>
+        <Suspense fallback={null}>
+          <UTMCapture />
+        </Suspense>
         <Analytics />
         <SpeedInsights />
       </body>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UploadForm } from "@/components/UploadForm";
+import { PLAN_FILE_SIZE_LIMITS } from "@/lib/plans";
 
 type UploadPageProps = {
   params: Promise<{ id: string }>;
@@ -34,6 +35,17 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
     );
   }
 
+  // Get user's plan for file size limits — include trialing and founder statuses
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan, stripe_subscription_status")
+    .eq("id", user.id)
+    .single();
+  const activeStatuses = ["active", "trialing", "founder"];
+  const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
+  const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free" as string;
+  const maxFileSizeBytes = PLAN_FILE_SIZE_LIMITS[userPlan] ?? PLAN_FILE_SIZE_LIMITS.free;
+
   const { data: clips } = await supabase
     .from("clips")
     .select("*")
@@ -45,7 +57,7 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-6 py-10">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
 
         {/* Header — project info + clips count + nav all in one bar */}
         <div className="rounded-2xl border border-border bg-card p-6">
@@ -54,11 +66,11 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">Upload</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{project.name}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Files go directly to storage — no server size limits.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Files go directly to storage. Max file size: {userPlan === 'studio' ? '10GB' : userPlan === 'pro' ? '5GB' : userPlan === 'starter' ? '2GB' : '500MB'} on your current plan.</p>
             </div>
 
             {/* Right: clips count + navigation */}
-            <div className="flex shrink-0 items-start gap-3">
+            <div className="flex shrink-0 flex-wrap items-start gap-3">
               {/* Clips count chip */}
               <div className="rounded-xl border border-border bg-muted px-4 py-3 text-center min-w-[72px]">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Clips</p>
@@ -69,19 +81,20 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
               <div className="flex flex-col gap-2">
                 <Link
                   href={`/projects/${id}`}
-                  className="rounded-lg border border-border px-4 py-2 text-center text-sm font-medium text-foreground transition hover:bg-muted whitespace-nowrap"
+                  className="rounded-lg border border-primary/50 bg-primary/10 px-4 py-2 text-center text-sm font-semibold text-primary transition hover:bg-primary/20 whitespace-nowrap"
                 >
                   Project overview
                 </Link>
                 <Link
                   href={`/projects/${id}/review`}
-                  className={`rounded-lg border px-4 py-2 text-center text-sm font-semibold transition whitespace-nowrap ${
-                    clipCount > 0
-                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
-                      : "border-border text-muted-foreground"
-                  }`}
+                  className="relative rounded-lg border border-primary bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 whitespace-nowrap shadow-[0_0_12px_rgba(139,92,246,0.3)]"
                 >
-                  Review workspace
+                  {clipCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[9px] font-bold text-white">
+                      {clipCount}
+                    </span>
+                  )}
+                  Review workspace →
                 </Link>
               </div>
             </div>
@@ -94,7 +107,7 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
             Upload a clip
           </h2>
           <div className="mt-6">
-            <UploadForm projectId={project.id} projectSlug={project.slug} />
+            <UploadForm projectId={project.id} projectSlug={project.slug} maxFileSizeBytes={maxFileSizeBytes} userPlan={userPlan} />
           </div>
         </section>
 

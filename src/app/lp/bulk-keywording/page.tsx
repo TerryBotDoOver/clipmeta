@@ -15,7 +15,10 @@ export default function BulkKeywordingPage() {
       {/* Nav */}
       <nav className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-bold text-foreground">ClipMeta</Link>
+          <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <img src="/logo-icon.svg" className="h-7 w-7" alt="ClipMeta" />
+            ClipMeta
+          </Link>
           <Link
             href="/sign-up"
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
@@ -182,7 +185,10 @@ export default function BulkKeywordingPage() {
       {/* Footer */}
       <footer className="border-t border-slate-200 py-8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-6 px-6 text-sm text-muted-foreground">
-          <span>© 2026 ClipMeta</span>
+          <span className="flex items-center gap-1.5">
+            <img src="/logo-icon.svg" className="h-4 w-4" alt="" />
+            © 2026 ClipMeta
+          </span>
           <Link href="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link href="/legal/terms" className="hover:text-foreground">Terms</Link>
           <Link href="/legal/privacy" className="hover:text-foreground">Privacy</Link>

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Unauthorized." }, { status: 401 });
     }
 
-    const { project_id, original_filename, storage_path, file_size_bytes } =
+    const { project_id, original_filename, storage_path, file_size_bytes, needs_worker } =
       await req.json();
 
     if (!project_id || !original_filename || !storage_path) {
@@ -42,38 +42,74 @@ export async function POST(req: NextRequest) {
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("plan, clips_used_this_month, billing_period_start")
+      .select("plan, clips_used_this_month, billing_period_start, bonus_clips, referral_pro_forever, referral_pro_until, rollover_clips, credits")
       .eq("id", user.id)
       .maybeSingle();
 
-    const plan = (profile?.plan && profile.plan in PLANS
+    const basePlan = (profile?.plan && profile.plan in PLANS
       ? profile.plan
       : "free") as Plan;
 
-    const limit = PLANS[plan].clips;
-
-    const billingPeriodStart = profile?.billing_period_start
-      ? new Date(profile.billing_period_start)
-      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
-    // Count clips across all user projects this billing period
-    const { data: userProjects } = await supabase.from("projects").select("id").eq("user_id", user.id);
-    const projectIds = (userProjects ?? []).map((p: { id: string }) => p.id);
-
-    let used = 0;
-    if (projectIds.length > 0) {
-      const { count: usedCount } = await supabaseAdmin
-        .from("clips")
-        .select("id", { count: "exact", head: true })
-        .in("project_id", projectIds)
-        .gte("created_at", billingPeriodStart.toISOString());
-      used = usedCount ?? 0;
+    // Referral rewards can upgrade effective plan to Pro
+    let plan = basePlan;
+    if (profile?.referral_pro_forever) {
+      plan = "pro";
+    } else if (profile?.referral_pro_until && new Date(profile.referral_pro_until) > new Date()) {
+      plan = "pro";
     }
 
-    if (used >= limit) {
+    const planConfig = PLANS[plan];
+    const bonusClips: number = profile?.bonus_clips ?? 0;
+    const rolloverClips: number = profile?.rollover_clips ?? 0;
+    const limit = planConfig.clips + rolloverClips + bonusClips;
+
+    // Free plan: daily limit (count from clips table today).
+    // Paid plans: use clips_used_this_month from profile (tracks ALL generations including deleted clips).
+    let used = 0;
+    if (planConfig.period === 'daily') {
+      const now = new Date();
+      const periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const { data: userProjects } = await supabase.from("projects").select("id").eq("user_id", user.id);
+      const projectIds = (userProjects ?? []).map((p: { id: string }) => p.id);
+      if (projectIds.length > 0) {
+        const { count: usedCount } = await supabaseAdmin
+          .from("clips")
+          .select("id", { count: "exact", head: true })
+          .in("project_id", projectIds)
+          .gte("created_at", periodStart.toISOString());
+        used = usedCount ?? 0;
+      }
+    } else {
+      // Paid plans: count from clip_history (includes deleted clips, excludes regens)
+      const billingStart = profile?.billing_period_start
+        ? new Date(profile.billing_period_start).toISOString()
+        : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const { count: uploadCount } = await supabaseAdmin
+        .from('clip_history')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('action', 'created')
+        .gte('created_at', billingStart);
+      used = uploadCount ?? 0;
+    }
+
+    const userCredits: number = profile?.credits ?? 0;
+    const usingCredit = userCredits > 0;
+
+    if (!usingCredit && used >= limit) {
+      const bonusNote = bonusClips > 0 ? ` (includes ${bonusClips} bonus clips from referrals)` : "";
+      let resetMsg: string;
+      if (planConfig.period === 'daily') {
+        resetMsg = `Your daily free clips are used up${bonusNote}. Upgrade for unlimited access.`;
+      } else if (rolloverClips > 0) {
+        resetMsg = `You've used all your clips this month (including ${rolloverClips} rollover clip${rolloverClips !== 1 ? 's' : ''}${bonusNote}). Upgrade or wait for next month.`;
+      } else {
+        resetMsg = `Monthly clip limit reached${bonusNote}. Upgrade or wait for next month.`;
+      }
       return NextResponse.json(
         {
           error: "Clip limit reached",
+          message: resetMsg,
           limit,
           used,
           plan,
@@ -90,7 +126,8 @@ export async function POST(req: NextRequest) {
       file_size_bytes: file_size_bytes ?? null,
       duration_seconds: null,
       upload_status: "uploaded",
-      metadata_status: "not_started",
+      // ProRes/incompatible codec: mark for server-side worker processing
+      metadata_status: needs_worker ? "worker_pending" : "not_started",
     });
 
     if (insertError) {
@@ -109,10 +146,16 @@ export async function POST(req: NextRequest) {
       .eq("storage_path", storage_path)
       .single();
 
-    const nextUsed = (profile?.clips_used_this_month ?? 0) + 1;
-    await supabaseAdmin
-      .from("profiles")
-      .upsert({ id: user.id, clips_used_this_month: nextUsed, updated_at: new Date().toISOString() });
+    if (usingCredit) {
+      // Deduct one credit instead of counting against subscription allowance
+      await supabaseAdmin
+        .from("profiles")
+        .upsert({ id: user.id, credits: userCredits - 1, updated_at: new Date().toISOString() });
+    }
+    // clips_used_this_month is NOT incremented here — it is incremented
+    // only when metadata is actually generated (POST /api/metadata/generate
+    // and /api/metadata/generate-worker), which is when the OpenAI API call
+    // happens. This avoids double-counting uploads as regenerations.
 
     return NextResponse.json({ ok: true, clip_id: clip?.id ?? null });
   } catch (err) {

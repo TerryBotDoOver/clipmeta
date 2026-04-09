@@ -1,11 +1,23 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "ClipMeta Privacy Policy — how we collect, use, and protect your data when you use our AI stock footage metadata platform.",
+  alternates: { canonical: "https://clipmeta.app/legal/privacy" },
+  robots: { index: true, follow: false },
+};
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-background">
       <nav className="border-b border-border">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-bold text-foreground">ClipMeta</Link>
+          <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">
+            <img src="/logo-icon.svg" className="h-7 w-7" alt="ClipMeta" />
+            ClipMeta
+          </Link>
         </div>
       </nav>
 
@@ -37,14 +49,15 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">3. Your Uploaded Content</h2>
-            <p className="mt-3">Your video clips are stored securely in our cloud storage (Supabase). We do not share your clips with third parties except as required to provide the service (e.g., sending frames to OpenAI for metadata generation). OpenAI does not use your content to train models by default under their API terms.</p>
+            <p className="mt-3">Your video clips are stored securely in Cloudflare R2 cloud storage. We do not share your clips with third parties except as required to provide the service (e.g., sending frames to OpenAI for metadata generation). OpenAI does not use your content to train models by default under their API terms. Source video files are automatically deleted from storage after metadata generation is complete.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">4. Data Sharing</h2>
             <p className="mt-3">We do not sell your personal data. We share data only with:</p>
             <ul className="mt-2 list-disc pl-5 space-y-1">
-              <li><strong>Supabase</strong> — database and file storage</li>
+              <li><strong>Supabase</strong> — database and authentication</li>
+              <li><strong>Cloudflare R2</strong> — file storage</li>
               <li><strong>OpenAI</strong> — AI metadata generation from video frames</li>
               <li><strong>Vercel</strong> — application hosting</li>
             </ul>
@@ -62,12 +75,12 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">7. Your Rights</h2>
-            <p className="mt-3">You have the right to access, correct, or delete your personal data. Contact us at <a href="mailto:hello@clipmeta.com" className="text-slate-900 underline">hello@clipmeta.com</a> to exercise these rights.</p>
+            <p className="mt-3">You have the right to access, correct, or delete your personal data. Contact us at <a href="mailto:hello@clipmeta.app" className="text-slate-900 underline">hello@clipmeta.app</a> to exercise these rights.</p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground">8. Contact</h2>
-            <p className="mt-3">Questions about this policy? Email us at <a href="mailto:hello@clipmeta.com" className="text-slate-900 underline">hello@clipmeta.com</a>.</p>
+            <p className="mt-3">Questions about this policy? Email us at <a href="mailto:hello@clipmeta.app" className="text-slate-900 underline">hello@clipmeta.app</a>.</p>
           </section>
         </div>
       </article>

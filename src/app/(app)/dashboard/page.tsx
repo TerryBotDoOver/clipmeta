@@ -1,26 +1,48 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { ClipsUsageCard } from "@/components/ClipsUsageCard";
+import { Suspense } from "react";
+import { ConversionTracker } from "@/components/ConversionTracker";
+import { ReferralCard } from "@/components/ReferralCard";
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("id, name, slug, created_at, status")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(5);
-
-  const { count: totalClips } = await supabase
-    .from("clips")
-    .select("id", { count: "exact", head: true });
-
-  const { count: totalMeta } = await supabase
-    .from("metadata_results")
-    .select("id", { count: "exact", head: true });
+  // Run all queries in parallel to cut LCP in half
+  const [
+    { data: projects },
+    { count: activeClips },
+    { count: lifetimeUploads },
+    { count: totalExports },
+    { data: profile },
+  ] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, name, slug, created_at, status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("clips")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("clip_history")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("action", "created"),
+    supabase
+      .from("exports")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("profiles")
+      .select("onboarding_complete")
+      .eq("id", user.id)
+      .single(),
+  ]);
 
   const projectCount = projects?.length ?? 0;
   const displayName =
@@ -31,14 +53,15 @@ export default async function DashboardPage() {
 
   const stats = [
     { label: "Projects", value: projectCount, icon: "⊞", hint: "Active batches" },
-    { label: "Clips Uploaded", value: totalClips ?? 0, icon: "▶", hint: "Total footage" },
-    { label: "Metadata Generated", value: totalMeta ?? 0, icon: "✦", hint: "AI-tagged clips" },
+    { label: "Active Clips", value: activeClips ?? 0, icon: "▶", hint: "Currently in your account" },
+    { label: "Total Clips Uploaded", value: lifetimeUploads ?? 0, icon: "✦", hint: "Lifetime uploads (incl. deleted)" },
   ];
 
   return (
-    <main className="flex-1 p-8">
+    <main className="flex-1 p-4 sm:p-8">
+      <Suspense fallback={null}><ConversionTracker /></Suspense>
       {/* Page header */}
-      <div className="mb-8">
+      <div className="mb-6 sm:mb-8">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Dashboard</p>
         <h1 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">
           Welcome back, {displayName}
@@ -47,9 +70,9 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
+          <div key={s.label} className="rounded-xl border border-border bg-card p-4 sm:p-5">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</p>
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm">{s.icon}</span>
@@ -58,9 +81,20 @@ export default async function DashboardPage() {
             <p className="mt-1 text-xs text-muted-foreground">{s.hint}</p>
           </div>
         ))}
+        <ClipsUsageCard />
       </div>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
+      {/* Onboarding checklist */}
+      {!profile?.onboarding_complete && (
+        <OnboardingChecklist
+          hasProject={projectCount > 0}
+          hasClips={(activeClips ?? 0) > 0}
+          hasMeta={(activeClips ?? 0) > 0}
+          firstProjectSlug={projects?.[0]?.slug ?? null}
+        />
+      )}
+
+      <div className="mt-6 grid gap-5 grid-cols-1 lg:grid-cols-2">
         {/* Recent projects */}
         <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -104,7 +138,7 @@ export default async function DashboardPage() {
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-sm font-semibold text-foreground">Quick Actions</h2>
           </div>
-          <div className="p-4 space-y-2">
+          <div className="p-3 sm:p-4 space-y-2">
             <Link
               href="/projects/new"
               className="flex items-center gap-3 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
@@ -139,6 +173,11 @@ export default async function DashboardPage() {
             </ol>
           </div>
         </div>
+      </div>
+
+      {/* Referral widget */}
+      <div className="mt-6">
+        <ReferralCard />
       </div>
     </main>
   );

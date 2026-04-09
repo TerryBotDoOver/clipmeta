@@ -10,14 +10,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "clip_ids array is required." }, { status: 400 });
     }
 
-    // Fetch clips to get storage paths for R2 cleanup
+    // Fetch clips with project info for R2 cleanup and history logging
     const { data: clips, error: fetchError } = await supabaseAdmin
       .from("clips")
-      .select("id, storage_path")
+      .select("id, storage_path, original_filename, project_id, projects(user_id)")
       .in("id", clip_ids);
 
     if (fetchError) {
       return NextResponse.json({ message: "Failed to fetch clips." }, { status: 500 });
+    }
+
+    // Log deletions to clip_history before removing
+    for (const clip of clips ?? []) {
+      const userId = (clip as any).projects?.user_id;
+      if (userId) {
+        await supabaseAdmin.from("clip_history").insert({
+          clip_id: clip.id,
+          user_id: userId,
+          project_id: clip.project_id,
+          original_filename: clip.original_filename,
+          action: "deleted",
+        });
+      }
     }
 
     // Delete metadata results first (foreign key)
