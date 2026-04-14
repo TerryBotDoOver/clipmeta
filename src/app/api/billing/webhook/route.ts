@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getResend } from '@/lib/resend';
+import { receiptEmail } from '@/lib/emails';
 import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
@@ -150,6 +152,70 @@ export async function POST(req: NextRequest) {
             } : {}),
             updated_at: new Date().toISOString(),
           });
+        }
+        break;
+      }
+
+      // ── Send branded ClipMeta receipt on successful charge ──
+      case 'charge.succeeded': {
+        const charge = event.data.object as Stripe.Charge;
+        // Only send for non-zero charges (skip $0 trial invoices)
+        if (charge.amount > 0 && charge.receipt_email) {
+          try {
+            const resend = getResend();
+            const amount = charge.amount / 100;
+            const currency = charge.currency || 'usd';
+
+            // Figure out what they bought from the charge description or metadata
+            let description = charge.description || 'ClipMeta purchase';
+            // Clean up Stripe's default descriptions
+            if (description.includes('Subscription creation'))
+              description = `ClipMeta subscription`;
+            if (description.includes('Subscription update'))
+              description = `ClipMeta subscription update`;
+
+            // Check metadata for more specific info
+            const credits = charge.metadata?.credits;
+            const plan = charge.metadata?.plan;
+            if (credits) description = `${credits} Clip Credits`;
+            if (plan && !credits) description = `ClipMeta ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan`;
+
+            // Payment method info
+            let paymentMethod = '';
+            if (charge.payment_method_details?.card) {
+              const card = charge.payment_method_details.card;
+              paymentMethod = `${card.brand?.charAt(0).toUpperCase()}${card.brand?.slice(1) || ''} ending in ${card.last4}`;
+            }
+
+            // Use Stripe receipt_number if available, fall back to charge ID
+            const receiptNumber = (charge as any).receipt_number || charge.id.replace('ch_', '').slice(0, 12).toUpperCase();
+
+            const receipt = receiptEmail({
+              customerEmail: charge.receipt_email,
+              customerName: charge.billing_details?.name || undefined,
+              amount,
+              currency,
+              description,
+              date: new Date(charge.created * 1000).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric',
+              }),
+              paymentMethod,
+              receiptNumber,
+              isSubscription: !credits,
+              planName: plan || undefined,
+            });
+
+            await resend.emails.send({
+              from: process.env.RESEND_FROM || 'ClipMeta <hello@clipmeta.app>',
+              to: charge.receipt_email,
+              subject: receipt.subject,
+              html: receipt.html,
+            });
+            console.log(`[receipt] Sent to ${charge.receipt_email} — ${description} — $${amount}`);
+          } catch (receiptErr) {
+            // Don't fail the webhook if receipt email fails — just log
+            console.error('[receipt] Failed to send:', receiptErr);
+          }
         }
         break;
       }

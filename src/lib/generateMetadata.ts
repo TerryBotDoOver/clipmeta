@@ -42,6 +42,7 @@ export type ClipMetadata = {
   category: string;
   location: string | null;
   confidence: "high" | "medium" | "low";
+  editorial_caption: string;
 };
 
 type GenerateMetadataInput = {
@@ -274,7 +275,8 @@ Return this exact JSON:
   "keywords": ["string", ... exactly ${Math.ceil(effectiveSettings.keywordCount * 1.5)} keywords, strongest first],
   "category": "string (one of the allowed categories)",
   "location": "string or null",
-  "confidence": "high|medium|low"
+  "confidence": "high|medium|low",
+  "editorial_caption": "string — a factual, news-style caption for editorial licensing. Write ONE sentence describing exactly what is visible in THIS clip. Use present tense, no promotional language, no subjective adjectives. Focus on the factual who/what/where/when. Example: 'Aerial view of residential waterfront homes along the Caloosahatchee River with sailboats docked at private piers.' Do NOT include city/country/date in this field — those are added separately. Just describe what the viewer sees."
 }`;
 
   let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
@@ -425,6 +427,13 @@ Return this exact JSON:
     }
   }
 
+  // Editorial caption: factual news-style description of clip content.
+  // This is pre-generated for ALL clips but only visible when user enables editorial mode.
+  // The final exported caption will be assembled as: "{city}, {country} – {date}: {editorial_caption}"
+  const editorialCaption = String(parsed.editorial_caption ?? "").slice(0, 300) ||
+    // Fallback: derive from title if GPT didn't return an editorial_caption
+    String(parsed.title ?? "").replace(/\s*\|.*$/, "").slice(0, 200);
+
   return {
     title: String(parsed.title ?? "").slice(0, effectiveSettings.titleMaxChars),
     description: finalDescription,
@@ -434,5 +443,6 @@ Return this exact JSON:
     confidence: ["high", "medium", "low"].includes(parsed.confidence)
       ? (parsed.confidence as ClipMetadata["confidence"])
       : "medium",
+    editorial_caption: editorialCaption,
   };
 }

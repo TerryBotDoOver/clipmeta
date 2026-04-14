@@ -19,7 +19,7 @@ export const PLANS = {
   free:    { name: 'Free',    clips: 3,    regens: 1,   regensLabel: '1 regeneration/day',        priceId: null,  period: 'daily' as const,   rolloverCap: 0,    maxFileSizeBytes: PLAN_FILE_SIZE_LIMITS.free },
   starter: { name: 'Starter', clips: 140,  regens: 100, regensLabel: '100 regenerations/month',   priceId: cleanEnv(process.env.STRIPE_STARTER_PRICE_ID, 'price_1TDyllHwyttCVHwaGkkF3Hhu'), period: 'monthly' as const, rolloverCap: 280,  maxFileSizeBytes: PLAN_FILE_SIZE_LIMITS.starter },
   pro:     { name: 'Pro',     clips: 320,  regens: 300, regensLabel: '300 regenerations/month',   priceId: cleanEnv(process.env.STRIPE_PRO_PRICE_ID,     'price_1TBipgHwyttCVHwafvDzAemz'), period: 'monthly' as const, rolloverCap: 640,  maxFileSizeBytes: PLAN_FILE_SIZE_LIMITS.pro },
-  studio:  { name: 'Studio',  clips: 2000, regens: -1,  regensLabel: 'Unlimited regenerations',   priceId: cleanEnv(process.env.STRIPE_STUDIO_PRICE_ID,  'price_1TBiphHwyttCVHwaP8k288kT'),  period: 'monthly' as const, rolloverCap: 4000, maxFileSizeBytes: PLAN_FILE_SIZE_LIMITS.studio },
+  studio:  { name: 'Studio',  clips: 2000, regens: 500, regensLabel: '500 regenerations/month',     priceId: cleanEnv(process.env.STRIPE_STUDIO_PRICE_ID,  'price_1TBiphHwyttCVHwaP8k288kT'),  period: 'monthly' as const, rolloverCap: 4000, maxFileSizeBytes: PLAN_FILE_SIZE_LIMITS.studio },
 } as const;
 
 export type Plan = keyof typeof PLANS;
@@ -52,8 +52,8 @@ export const ANNUAL_PLANS = {
   studio_annual: {
     name: 'Studio Annual',
     clips: 2000,
-    regens: -1,
-    regensLabel: 'Unlimited regenerations',
+    regens: 500,
+    regensLabel: '500 regenerations/month',
     priceId: cleanEnv(process.env.STRIPE_STUDIO_ANNUAL_PRICE_ID, 'price_1TDyllHwyttCVHwaqKv9asHn'),
     period: 'yearly' as const,
     monthlyEquiv: 40.83,

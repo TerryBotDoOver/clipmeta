@@ -369,3 +369,63 @@ export function paidDay50Email(name: string, clipCount?: number): { subject: str
     html: emailWrapper(content),
   };
 }
+
+// ─── Receipt Email ──────────────────────────────────────────────────────────
+
+interface ReceiptDetails {
+  customerEmail: string;
+  customerName?: string;
+  amount: number;
+  currency?: string;
+  description: string;
+  date: string;
+  paymentMethod?: string;
+  receiptNumber?: string;   // Stripe receipt_number or charge ID
+  isSubscription?: boolean;
+  planName?: string;
+}
+
+export function receiptEmail(details: ReceiptDetails): { subject: string; html: string } {
+  const firstName = details.customerName?.split(' ')[0] || 'there';
+  const currencySymbol = (details.currency || 'usd') === 'usd' ? '$' : details.currency?.toUpperCase() + ' ';
+  const formattedAmount = `${currencySymbol}${details.amount.toFixed(2)}`;
+  const receiptNum = details.receiptNumber || '';
+
+  const receiptRow = (label: string, value: string, bold = false) =>
+    `<tr>
+      <td style="padding:12px 0;border-bottom:1px solid #27272a;color:#a1a1aa;font-size:14px;">${label}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #27272a;color:#fafafa;font-size:14px;text-align:right;${bold ? 'font-weight:700;font-size:16px;' : ''}">${value}</td>
+    </tr>`;
+
+  const content = `
+    ${h1(`Receipt for your purchase`)}
+    ${receiptNum ? `<p style="color:#71717a;font-size:13px;margin:0 0 20px 0;">Receipt #${receiptNum}</p>` : ''}
+    ${p(`Hi ${firstName}, thanks for your purchase! Here's your receipt.`)}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+      ${receiptRow('Item', details.description)}
+      ${receiptRow('Date', details.date)}
+      ${details.paymentMethod ? receiptRow('Payment', details.paymentMethod) : ''}
+      ${receiptNum ? receiptRow('Receipt #', receiptNum) : ''}
+      ${receiptRow('Amount paid', formattedAmount, true)}
+    </table>
+
+    ${p('If you have any questions about this charge, just reply to this email.')}
+
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #27272a;">
+      <p style="color:#52525b;font-size:12px;line-height:1.6;margin:0;">
+        ClipMeta · AI metadata for stock footage<br>
+        hello@clipmeta.app
+      </p>
+    </div>
+  `;
+
+  const subjectLine = details.isSubscription
+    ? `Your ClipMeta ${details.planName || ''} subscription receipt — ${formattedAmount}`
+    : `Your ClipMeta receipt — ${formattedAmount}`;
+
+  return {
+    subject: subjectLine,
+    html: emailWrapper(content),
+  };
+}
