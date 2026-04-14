@@ -8,8 +8,8 @@ export function ClipLimitWarning() {
 
   if (loading) return null;
 
-  // Studio/founder are unlimited
-  if (plan === 'studio' || plan === ('founder' as string)) return null;
+  // Founder is the only truly unlimited plan. Studio now has caps.
+  if (plan === ('founder' as string)) return null;
 
   // Free plan: show value-framed upgrade nudge if user has generated clips before
   if (plan === 'free') {

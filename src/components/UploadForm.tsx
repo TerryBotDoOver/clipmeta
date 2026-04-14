@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { extractFrames } from "@/lib/extractFrames";
+import { LimitReachedModal } from "@/components/LimitReachedModal";
 
 // Codecs the browser cannot decode — need server-side worker processing
 const WORKER_CODEC_EXTENSIONS = new Set(['.mov', '.mxf', '.mts', '.m2ts']);
@@ -41,14 +42,51 @@ async function needsServerWorker(file: File): Promise<boolean> {
  */
 function SmoothProgressBar({ rawProgress }: { rawProgress: number }) {
   return (
-    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className="h-full rounded-full bg-primary"
-        style={{
-          width: `${rawProgress}%`,
-          transition: rawProgress === 0 ? 'none' : 'width 0.3s ease-out',
-        }}
-      />
+    <div className="mt-2 space-y-1">
+      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{
+            width: `${rawProgress}%`,
+            background: "linear-gradient(90deg, #6d28d9 0%, #db2777 50%, #f59e0b 100%)",
+            boxShadow: "0 0 12px rgba(219, 39, 119, 0.6), 0 0 24px rgba(245, 158, 11, 0.4)",
+            transition: rawProgress === 0 ? "none" : "width 0.3s ease-out",
+          }}
+        />
+        {/* Animated shimmer overlay sliding across the filled portion */}
+        {rawProgress > 0 && rawProgress < 100 && (
+          <div
+            className="absolute inset-y-0 left-0 overflow-hidden rounded-full"
+            style={{
+              width: `${rawProgress}%`,
+              transition: "width 0.3s ease-out",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
+                animation: "upload-shimmer 1.4s linear infinite",
+              }}
+            />
+          </div>
+        )}
+      </div>
+      <p className="text-[10px] font-mono font-semibold text-muted-foreground">
+        {rawProgress}%
+      </p>
+      <style jsx>{`
+        @keyframes upload-shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -70,6 +108,7 @@ type QueuedFile = {
   error?: string;
   cancelled?: boolean;
   tooLarge?: boolean;
+  limitReached?: boolean;
 };
 
 export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan }: UploadFormProps) {
@@ -80,6 +119,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [limitModal, setLimitModal] = useState<{ message: string; upgradeMessage?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelledRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -176,7 +216,42 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       }
 
       try {
-        // 1. Detect ProRes / browser-incompatible codecs before extraction
+        // 1. Check limits + get signed URL FIRST (before any heavy work)
+        updateFile(item.id, { status: "uploading", progress: 0 });
+        const urlRes = await fetch("/api/clips/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_id: projectId,
+            filename: item.file.name,
+            content_type: item.file.type || "video/mp4",
+            file_size_bytes: item.file.size,
+          }),
+        });
+        if (urlRes.status === 429) {
+          const limitData = await urlRes.json();
+          updateFile(item.id, { status: "error", error: limitData.message, limitReached: true });
+          // Mark remaining queued files as blocked
+          setQueue((prev) =>
+            prev.map((f) =>
+              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Clip limit reached", limitReached: true } : f
+            )
+          );
+          setIsRunning(false);
+          // Show the centered modal
+          setLimitModal({
+            message: limitData.message,
+            upgradeMessage: limitData.upgrade_message,
+          });
+          return;
+        }
+        if (!urlRes.ok) {
+          const err = await urlRes.json();
+          throw new Error(err.message || "Failed to get upload URL.");
+        }
+        const { signedUrl, storagePath } = await urlRes.json();
+
+        // 2. Detect ProRes / browser-incompatible codecs before extraction
         // These need server-side processing — skip client extraction, upload anyway
         const isWorkerCodec = await needsServerWorker(item.file);
         let frames: { dataUrl: string }[] = [];
@@ -198,24 +273,8 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         }
         // ProRes/incompatible: skip frame extraction, worker handles it after upload
 
-        // 2. Get signed URL
-        updateFile(item.id, { status: "uploading", progress: 0 });
-        const urlRes = await fetch("/api/clips/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            project_id: projectId,
-            filename: item.file.name,
-            content_type: item.file.type || "video/mp4",
-          }),
-        });
-        if (!urlRes.ok) {
-          const err = await urlRes.json();
-          throw new Error(err.message || "Failed to get upload URL.");
-        }
-        const { signedUrl, storagePath } = await urlRes.json();
-
         // 3. Upload to storage with abort support
+        updateFile(item.id, { status: "uploading", progress: 0 });
         const ac = new AbortController();
         abortControllerRef.current = ac;
         await uploadWithProgress(signedUrl, item.file, storagePath, (pct) =>
@@ -264,11 +323,12 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
             if (genRes.status === 429) {
               const genData = await genRes.json();
               if (genData.limit_reached) {
-                updateFile(item.id, { status: "error", error: genData.message });
+                updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
                 setIsRunning(false);
-                if (confirm(genData.message + "\n\nUpgrade your plan?")) {
-                  window.location.href = genData.upgrade_url || "/pricing";
-                }
+                setLimitModal({
+                  message: genData.message,
+                  upgradeMessage: genData.upgrade_message,
+                });
                 return;
               }
             }
@@ -292,11 +352,12 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
                 if (genRes.status === 429) {
                   const genData = await genRes.json();
                   if (genData.limit_reached) {
-                    updateFile(item.id, { status: "error", error: genData.message });
+                    updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
                     setIsRunning(false);
-                    if (confirm(genData.message + "\n\nUpgrade your plan?")) {
-                      window.location.href = genData.upgrade_url || "/pricing";
-                    }
+                    setLimitModal({
+                      message: genData.message,
+                      upgradeMessage: genData.upgrade_message,
+                    });
                     return;
                   }
                 }
@@ -345,6 +406,13 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
 
   return (
     <div className="space-y-5">
+      <LimitReachedModal
+        open={!!limitModal}
+        title="Daily Clip Limit Reached"
+        message={limitModal?.message || ""}
+        upgradeMessage={limitModal?.upgradeMessage}
+        onClose={() => setLimitModal(null)}
+      />
 
       {/* Drop zone */}
       <div
@@ -417,15 +485,15 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
                 {item.status === "uploading" && (
                   <SmoothProgressBar rawProgress={item.progress} />
                 )}
-                {item.tooLarge ? (
+                {(item.tooLarge || item.limitReached) ? (
                   <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                    <span className="shrink-0 text-sm">🔒</span>
+                    <span className="shrink-0 text-sm">{item.limitReached ? '⚡' : '🔒'}</span>
                     <p className="flex-1 text-xs text-amber-400">{item.error}</p>
                     <a
                       href="/pricing"
-                      className="shrink-0 rounded-md bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-violet-700 whitespace-nowrap"
+                      className="shrink-0 rounded-md bg-violet-600 px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-violet-700 whitespace-nowrap animate-pulse hover:animate-none"
                     >
-                      Upgrade →
+                      Get More Clips →
                     </a>
                   </div>
                 ) : item.error && (

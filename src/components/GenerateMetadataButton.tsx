@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { extractFrames } from "@/lib/extractFrames";
+import { LimitReachedModal } from "@/components/LimitReachedModal";
 
 type Props = {
   clipId: string;
@@ -32,6 +33,7 @@ export function GenerateMetadataButton({
 }: Props) {
   const [status, setStatus] = useState<"idle" | "extracting" | "generating" | "done" | "error">("idle");
   const [error, setError] = useState("");
+  const [limitModal, setLimitModal] = useState<{ message: string; upgradeMessage?: string } | null>(null);
 
   async function handleGenerate() {
     setStatus("extracting");
@@ -91,11 +93,12 @@ export function GenerateMetadataButton({
       if (metaRes.status === 429) {
         const limitData = await metaRes.json();
         if (limitData.limit_reached) {
-          setStatus("error");
-          setError(limitData.message);
-          if (confirm(limitData.message + "\n\nUpgrade your plan?")) {
-            window.location.href = limitData.upgrade_url || "/pricing";
-          }
+          setStatus("idle");
+          setError("");
+          setLimitModal({
+            message: limitData.message,
+            upgradeMessage: limitData.upgrade_message,
+          });
           return;
         }
       }
@@ -130,23 +133,39 @@ export function GenerateMetadataButton({
     }
   }
 
+  const modal = (
+    <LimitReachedModal
+      open={!!limitModal}
+      title="Regeneration Limit Reached"
+      message={limitModal?.message || ""}
+      upgradeMessage={limitModal?.upgradeMessage}
+      onClose={() => setLimitModal(null)}
+    />
+  );
+
   if (status === "done") {
     return (
-      <span className="text-xs font-medium text-green-500">✓ Updated</span>
+      <>
+        <span className="text-xs font-medium text-green-500">✓ Updated</span>
+        {modal}
+      </>
     );
   }
 
   if (status === "error") {
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-red-500">{error}</span>
-        <button
-          onClick={() => setStatus("idle")}
-          className="text-xs text-muted-foreground underline hover:text-foreground transition"
-        >
-          Retry
-        </button>
-      </div>
+      <>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-red-500">{error}</span>
+          <button
+            onClick={() => setStatus("idle")}
+            className="text-xs text-muted-foreground underline hover:text-foreground transition"
+          >
+            Retry
+          </button>
+        </div>
+        {modal}
+      </>
     );
   }
 
@@ -155,19 +174,22 @@ export function GenerateMetadataButton({
     : "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40";
 
   return (
-    <button
-      onClick={handleGenerate}
-      disabled={status !== "idle"}
-      className={btnClass}
-    >
-      {status === "extracting" ? (
-        <><Spinner /> Extracting frames…</>
-      ) : status === "generating" ? (
-        <><Spinner /> Generating…</>
-      ) : (
-        label
-      )}
-    </button>
+    <>
+      <button
+        onClick={handleGenerate}
+        disabled={status !== "idle"}
+        className={btnClass}
+      >
+        {status === "extracting" ? (
+          <><Spinner /> Extracting frames…</>
+        ) : status === "generating" ? (
+          <><Spinner /> Generating…</>
+        ) : (
+          label
+        )}
+      </button>
+      {modal}
+    </>
   );
 }
 

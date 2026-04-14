@@ -18,7 +18,8 @@ export function ClipsUsageCard() {
     );
   }
 
-  const isUnlimited = plan === 'studio' || plan === ('founder' as string);
+  // Founder is the only truly unlimited plan. Studio now has caps (2000 clips, 500 regens).
+  const isUnlimited = plan === ('founder' as string);
   const isFree = plan === 'free';
 
   if (isUnlimited) {
@@ -27,7 +28,7 @@ export function ClipsUsageCard() {
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clips This Month</p>
           <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-400">
-            {plan === 'studio' ? 'Studio' : 'Founder'}
+            Founder
           </span>
         </div>
         <p className="mt-3 text-2xl font-bold text-foreground">Unlimited</p>

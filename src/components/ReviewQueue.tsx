@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { MetadataEditor } from "@/components/MetadataEditor";
 import { GenerateMetadataButton } from "@/components/GenerateMetadataButton";
+import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { extractFrames } from "@/lib/extractFrames";
 import { BULK_REGEN_PLANS } from "@/lib/plans";
 
@@ -71,11 +72,26 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
       if (detail.pinnedKeywords !== undefined) setPinnedKeywords(detail.pinnedKeywords);
       if (detail.pinnedKeywordsPosition !== undefined) setPinnedKeywordsPosition(detail.pinnedKeywordsPosition);
       if (detail.isEditorial !== undefined) setProjectIsEditorial(detail.isEditorial);
-      if (detail.editorialText !== undefined) setProjectEditorialText(detail.editorialText);
       if (detail.editorialCity !== undefined) setProjectEditorialCity(detail.editorialCity);
       if (detail.editorialState !== undefined) setProjectEditorialState(detail.editorialState);
       if (detail.editorialCountry !== undefined) setProjectEditorialCountry(detail.editorialCountry);
       if (detail.editorialDate !== undefined) setProjectEditorialDate(detail.editorialDate);
+
+      // Mirror the server-side propagation: update ALL local clips to match
+      // the new editorial settings so the UI reflects changes immediately
+      // without a page reload. Each clip keeps its own editorial_text (caption).
+      if (detail.isEditorial !== undefined) {
+        setLiveClips(prev => prev.map(clip => ({
+          ...clip,
+          is_editorial: detail.isEditorial,
+          editorial_city: detail.editorialCity ?? clip.editorial_city,
+          editorial_state: detail.editorialState ?? clip.editorial_state,
+          editorial_country: detail.editorialCountry ?? clip.editorial_country,
+          editorial_date: detail.editorialDate ?? clip.editorial_date,
+        })));
+        // Also clear per-clip editorial overrides so they re-read from the updated clips
+        setClipEditorial({});
+      }
     }
     window.addEventListener("clipmeta:settings-saved", handleSettingsSaved);
     return () => window.removeEventListener("clipmeta:settings-saved", handleSettingsSaved);
@@ -98,6 +114,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
   const [bulkRegenerating, setBulkRegenerating] = useState(false);
   const [regenProgress, setRegenProgress] = useState<{ current: number; total: number; filename: string } | null>(null);
   const [regenDone, setRegenDone] = useState<{ count: number; errors: number } | null>(null);
+  const [limitModal, setLimitModal] = useState<{ message: string; upgradeMessage?: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Per-clip editorial overrides (local state before saving)
   const [clipEditorial, setClipEditorial] = useState<Record<string, {
@@ -453,9 +470,10 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
           setBulkRegenerating(false);
           setRegenProgress(null);
           setRegenDone({ count: i, errors: errCount + (total - i) });
-          if (confirm(limitData.message + "\n\nUpgrade your plan?")) {
-            window.location.href = limitData.upgrade_url || "/pricing";
-          }
+          setLimitModal({
+            message: limitData.message,
+            upgradeMessage: limitData.upgrade_message,
+          });
           return;
         }
 
@@ -511,6 +529,13 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
 
   return (
     <div>
+      <LimitReachedModal
+        open={!!limitModal}
+        title="Regeneration Limit Reached"
+        message={limitModal?.message || ""}
+        upgradeMessage={limitModal?.upgradeMessage}
+        onClose={() => setLimitModal(null)}
+      />
       {(selectedIds.size > 0 || regenDone) && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5 mb-4">
           {bulkRegenerating && regenProgress ? (

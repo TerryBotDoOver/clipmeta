@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   const { data: project } = await supabaseAdmin
     .from("projects")
-    .select("name, slug, location, shooting_date, pinned_keywords, pinned_keywords_position, is_editorial, editorial_text, editorial_city, editorial_state, editorial_country, editorial_date")
+    .select("name, slug, location, shooting_date, pinned_keywords, pinned_keywords_position, is_editorial, editorial_text, editorial_city, editorial_state, editorial_country, editorial_date, generation_settings")
     .eq("id", projectId)
     .single();
 
@@ -93,6 +93,9 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  // Get the user's keyword limit from project settings (if set)
+  const userKeywordLimit = project?.generation_settings?.keywordCount ?? undefined;
+
   const csv = buildCSV(platform, rows, project?.name ?? "project", project?.location ?? undefined, project?.shooting_date ?? undefined, {
     isEditorial: project?.is_editorial ?? false,
     editorialText: project?.editorial_text ?? undefined,
@@ -100,7 +103,7 @@ export async function GET(req: NextRequest) {
     editorialState: project?.editorial_state ?? undefined,
     editorialCountry: project?.editorial_country ?? undefined,
     editorialDate: project?.editorial_date ?? undefined,
-  });
+  }, userKeywordLimit);
   const filename = getExportFilename(platform, project?.slug ?? "project");
 
   // Log the export
