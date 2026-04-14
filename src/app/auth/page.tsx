@@ -22,6 +22,17 @@ function AuthForm() {
   useEffect(() => {
     const m = searchParams.get("mode");
     if (fromPricing || m === "signup") setMode("signup");
+
+    // Capture referral code from ?ref= param (8 hex chars from referrer's user UUID)
+    // Save to localStorage so it survives email confirmation / OAuth redirect
+    const refParam = searchParams.get("ref");
+    if (refParam && /^[0-9a-f]{8}$/i.test(refParam)) {
+      try {
+        localStorage.setItem("pendingReferral", refParam.toLowerCase());
+      } catch {}
+      // Force signup mode so referred users land on the right form
+      setMode("signup");
+    }
   }, [searchParams, fromPricing]);
 
   async function handleSignIn(e: React.FormEvent) {
@@ -41,7 +52,7 @@ function AuthForm() {
     const supabase = createSupabaseBrowserClient();
     // If user came from pricing, send them back there after confirming email
     const next = fromPricing ? "/pricing" : "/dashboard";
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -50,6 +61,13 @@ function AuthForm() {
       },
     });
     if (error) { setError(error.message); setLoading(false); return; }
+    // Supabase returns an empty identities array when the email already exists
+    // (instead of an error, to prevent email enumeration)
+    if (data.user && data.user.identities?.length === 0) {
+      setError("An account with this email already exists. Sign in instead, or reset your password.");
+      setLoading(false);
+      return;
+    }
     fbEvent('CompleteRegistration', { content_name: 'ClipMeta Signup' });
     if (typeof window !== 'undefined' && (window as any).rdt) {
       (window as any).rdt('track', 'SignUp');
@@ -209,7 +227,23 @@ function AuthForm() {
 
       {error && (
         <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
+          <p>{error}</p>
+          {error.includes("already exists") && (
+            <div className="mt-2 flex gap-3 text-xs">
+              <button
+                onClick={() => { setMode("signin"); setError(""); }}
+                className="font-semibold text-foreground underline hover:text-primary transition"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => { setMode("reset"); setError(""); }}
+                className="font-semibold text-foreground underline hover:text-primary transition"
+              >
+                Reset password
+              </button>
+            </div>
+          )}
         </div>
       )}
 

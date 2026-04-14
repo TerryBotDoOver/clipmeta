@@ -20,17 +20,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Cannot use your own referral code' }, { status: 400 });
     }
 
-    // Store referred_by in the user's profile
+    // Only set referred_by if it's currently NULL (don't overwrite an existing referral)
+    const { data: existing } = await supabaseAdmin
+      .from('profiles')
+      .select('referred_by')
+      .eq('id', user.id)
+      .single();
+
+    if (existing?.referred_by) {
+      return NextResponse.json({ ok: true, already_referred: true });
+    }
+
     const { error } = await supabaseAdmin
       .from('profiles')
-      .upsert({
-        id: user.id,
+      .update({
         referred_by: referredBy,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'id', ignoreDuplicates: false });
+      })
+      .eq('id', user.id);
 
     if (error) {
-      // Column might not exist yet — log and return gracefully
       console.error('Referral track error:', error);
       return NextResponse.json({ ok: true, note: 'Referral column may not exist yet' });
     }

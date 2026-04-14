@@ -13,16 +13,35 @@ interface ReferralData {
   proUntil: string | null;
 }
 
+const LAST_SEEN_BONUS_KEY = 'referral_bonus_clips_last_seen';
+
 export function ReferralCard() {
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [celebration, setCelebration] = useState<{ amount: number } | null>(null);
 
   useEffect(() => {
     fetch('/api/referral')
       .then((r) => r.json())
       .then((d) => {
-        if (!d.error) setData(d);
+        if (!d.error) {
+          setData(d);
+          // Detect newly arrived bonus clips and celebrate
+          try {
+            const lastSeen = parseInt(localStorage.getItem(LAST_SEEN_BONUS_KEY) || '0', 10);
+            const current = d.clipsEarned || 0;
+            if (current > lastSeen && lastSeen >= 0) {
+              const delta = current - lastSeen;
+              if (delta > 0 && lastSeen > 0) {
+                // Only celebrate if user has seen the card before (avoids first-load spam)
+                setCelebration({ amount: delta });
+                setTimeout(() => setCelebration(null), 6000);
+              }
+            }
+            localStorage.setItem(LAST_SEEN_BONUS_KEY, String(current));
+          } catch {}
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -59,6 +78,69 @@ export function ReferralCard() {
 
   return (
     <div className="rounded-xl border border-border bg-card">
+      {celebration && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none"
+          aria-live="polite"
+        >
+          {/* Sparkles layer */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            {[...Array(40)].map((_, i) => (
+              <span
+                key={i}
+                className="absolute"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  fontSize: `${14 + Math.random() * 28}px`,
+                  animation: `bonus-sparkle ${1.5 + Math.random() * 2}s ease-out ${Math.random() * 1.5}s infinite`,
+                }}
+              >
+                {["✨", "🎉", "⭐", "💫", "🎊", "🎁"][Math.floor(Math.random() * 6)]}
+              </span>
+            ))}
+          </div>
+          {/* Pill modal */}
+          <div
+            className="relative z-10 mx-4 max-w-md animate-in zoom-in-95 fade-in duration-500 pointer-events-auto"
+            style={{
+              background: "linear-gradient(135deg, #6d28d9 0%, #db2777 50%, #f59e0b 100%)",
+              borderRadius: "9999px",
+              padding: "36px 48px",
+              boxShadow: "0 25px 60px -10px rgba(109, 40, 217, 0.5), 0 0 120px -20px rgba(245, 158, 11, 0.4)",
+              textAlign: "center",
+              color: "#ffffff",
+            }}
+          >
+            <div style={{ fontSize: "44px", marginBottom: "8px" }}>🎁</div>
+            <h2 style={{ fontSize: "22px", fontWeight: 800, marginBottom: "6px", lineHeight: 1.2 }}>
+              Referral Reward!
+            </h2>
+            <p style={{ fontSize: "30px", fontWeight: 900, lineHeight: 1, margin: "10px 0" }}>
+              +{celebration.amount} bonus clips
+            </p>
+            <p style={{ fontSize: "13px", opacity: 0.95, marginTop: "8px" }}>
+              Thanks for spreading the word.
+            </p>
+          </div>
+          <style jsx>{`
+            @keyframes bonus-sparkle {
+              0% {
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+              }
+              50% {
+                opacity: 1;
+                transform: scale(1.2) rotate(180deg);
+              }
+              100% {
+                opacity: 0;
+                transform: scale(0) rotate(360deg);
+              }
+            }
+          `}</style>
+        </div>
+      )}
       <div className="border-b border-border px-5 py-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Refer &amp; Earn</h2>

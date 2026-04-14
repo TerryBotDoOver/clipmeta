@@ -6,6 +6,7 @@ import { ClipsUsageCard } from "@/components/ClipsUsageCard";
 import { Suspense } from "react";
 import { ConversionTracker } from "@/components/ConversionTracker";
 import { ReferralCard } from "@/components/ReferralCard";
+import { ReferralTracker } from "@/components/ReferralTracker";
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
       .from("projects")
       .select("id, name, slug, created_at, status")
       .eq("user_id", user.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5),
     supabase
@@ -60,6 +62,7 @@ export default async function DashboardPage() {
   return (
     <main className="flex-1 p-4 sm:p-8">
       <Suspense fallback={null}><ConversionTracker /></Suspense>
+      <ReferralTracker />
       {/* Page header */}
       <div className="mb-6 sm:mb-8">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">Dashboard</p>

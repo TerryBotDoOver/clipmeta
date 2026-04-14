@@ -104,11 +104,13 @@ type TierName = "none" | "tier1" | "tier2" | "tier3" | "tier4" | "tier5";
  * Protected by a CRON_SECRET header to prevent public triggering.
  */
 export async function GET(req: NextRequest) {
-  // ── Auth: require CRON_SECRET unless running in dev without it set ──────
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers.get("authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
+  // ── Auth: accept CRON_SECRET or DRIP_SECRET (fallback for cron-runner) ──────
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const dripSecret = (process.env.DRIP_SECRET || 'clipmeta-drip-2026').trim();
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, '').trim() || '';
+  if (cronSecret || dripSecret) {
+    if (token !== cronSecret && token !== dripSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
@@ -125,9 +127,10 @@ export async function GET(req: NextRequest) {
 
   try {
     // Fetch all profiles that have a referral code but are NOT yet qualified
-    const { data: candidates, error: candidateError } = await supabaseAdmin
+    // (profiles table has no email/created_at — we fetch email separately via auth admin API)
+    const { data: rawCandidates, error: candidateError } = await supabaseAdmin
       .from("profiles")
-      .select("id, referred_by, created_at, email, referral_qualified, bonus_clips, plan, stripe_subscription_status")
+      .select("id, referred_by, referral_qualified, bonus_clips, plan, stripe_subscription_status")
       .not("referred_by", "is", null)
       .eq("referral_qualified", false);
 
@@ -136,9 +139,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: candidateError.message }, { status: 500 });
     }
 
-    if (!candidates || candidates.length === 0) {
+    if (!rawCandidates || rawCandidates.length === 0) {
       console.log("No unqualified referred users found.");
       return NextResponse.json({ ok: true, qualified: 0, skipped: 0 });
+    }
+
+    // Enrich with email from auth.users for the disposable-email anti-fraud check
+    const candidates: Array<typeof rawCandidates[number] & { email: string | null }> = [];
+    for (const c of rawCandidates) {
+      let email: string | null = null;
+      try {
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(c.id);
+        email = authUser?.user?.email ?? null;
+      } catch {
+        // Non-fatal — proceed without email (skip disposable check)
+      }
+      candidates.push({ ...c, email });
     }
 
     console.log(`Found ${candidates.length} unqualified referred user(s). Processing...`);
@@ -178,7 +194,6 @@ export async function GET(req: NextRequest) {
       const userId: string = candidate.id;
       const referredByCode: string = candidate.referred_by;
       const email: string | null = candidate.email ?? null;
-      const createdAt: string = candidate.created_at;
 
       // ── Anti-fraud: disposable email check ──────────────────────────────
       if (email) {
