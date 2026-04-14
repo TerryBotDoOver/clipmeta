@@ -12,11 +12,13 @@ import { PLANS, type Plan } from "@/lib/plans";
  * Protected by CRON_SECRET header.
  */
 export async function GET(req: NextRequest) {
-  // Auth: require CRON_SECRET
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const authHeader = req.headers.get("authorization");
-    if (authHeader !== `Bearer ${cronSecret}`) {
+  // Auth: accept CRON_SECRET or DRIP_SECRET (fallback for cron-runner compatibility)
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const dripSecret = (process.env.DRIP_SECRET || 'clipmeta-drip-2026').trim();
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, '').trim() || '';
+  if (cronSecret || dripSecret) {
+    if (token !== cronSecret && token !== dripSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }

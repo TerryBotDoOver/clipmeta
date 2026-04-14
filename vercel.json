@@ -9,7 +9,7 @@
     "src/app/api/clips/multipart/part-url/route.ts": { "maxDuration": 60 },
     "src/app/api/clips/multipart/complete/route.ts": { "maxDuration": 300 },
     "src/app/api/clips/generate/route.ts": { "maxDuration": 60 },
-    "src/app/api/ftp/blackbox/route.ts": { "maxDuration": 60 },
+    "src/app/api/ftp/blackbox/route.ts": { "maxDuration": 300 },
     "src/app/api/metadata/generate/route.ts": { "maxDuration": 60 },
     "src/app/api/metadata/generate-worker/route.ts": { "maxDuration": 60 }
   },
