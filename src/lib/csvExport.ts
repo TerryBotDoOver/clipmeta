@@ -451,25 +451,49 @@ function buildGenericCSV(clips: ClipRow[]): string {
   return [headers.join(","), ...rows].join("\r\n");
 }
 
+// Platform keyword caps (hard limits from each platform's submission guidelines)
+const PLATFORM_KEYWORD_MAX: Record<ExportPlatform, number> = {
+  blackbox: 49,
+  shutterstock: 50,
+  adobe: 49,
+  pond5: 50,
+  generic: 999,
+};
+
 export function buildCSV(
   platform: ExportPlatform,
   clips: ClipRow[],
   projectName: string,
   projectLocation?: string,
   projectShootingDate?: string,
-  editorial?: EditorialFields
+  editorial?: EditorialFields,
+  userKeywordLimit?: number
 ): string {
+  // Apply the user's keyword limit — respect their setting, capped by the platform max.
+  // If user set 22, they get 22 (even though the platform allows 49-50).
+  // If user set 60, they get 49 or 50 (platform cap).
+  const platformMax = PLATFORM_KEYWORD_MAX[platform] ?? 999;
+  const effectiveLimit = userKeywordLimit
+    ? Math.min(userKeywordLimit, platformMax)
+    : platformMax;
+
+  // Trim keywords on every clip before passing to platform-specific formatter
+  const trimmedClips = clips.map(c => ({
+    ...c,
+    keywords: c.keywords.slice(0, effectiveLimit),
+  }));
+
   switch (platform) {
     case "shutterstock":
-      return buildShutterstockCSV(clips, projectName, editorial);
+      return buildShutterstockCSV(trimmedClips, projectName, editorial);
     case "adobe":
-      return buildAdobeCSV(clips);
+      return buildAdobeCSV(trimmedClips);
     case "pond5":
-      return buildPond5CSV(clips, editorial);
+      return buildPond5CSV(trimmedClips, editorial);
     case "blackbox":
-      return buildBlackboxCSV(clips, projectName, projectLocation, projectShootingDate, editorial);
+      return buildBlackboxCSV(trimmedClips, projectName, projectLocation, projectShootingDate, editorial);
     default:
-      return buildGenericCSV(clips);
+      return buildGenericCSV(trimmedClips);
   }
 }
 

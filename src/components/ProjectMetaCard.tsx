@@ -37,7 +37,7 @@ export function ProjectMetaCard({ projectId, initialPinnedKeywords, initialPinne
     initialShootingDate ? initialShootingDate.slice(0, 10) : ""
   );
   const [isEditorial, setIsEditorial] = useState(initialIsEditorial);
-  const [editorialText, setEditorialText] = useState(initialEditorialText ?? "");
+  // editorialText removed — each clip now has its own AI-generated editorial caption
   const [editorialCity, setEditorialCity] = useState(initialEditorialCity ?? "");
   const [editorialState, setEditorialState] = useState(initialEditorialState ?? "");
   const [editorialCountry, setEditorialCountry] = useState(initialEditorialCountry ?? "");
@@ -62,7 +62,6 @@ export function ProjectMetaCard({ projectId, initialPinnedKeywords, initialPinne
           location: location || null,
           shootingDate: shootingDate || null,
           isEditorial,
-          editorialText: editorialText || null,
           editorialCity: editorialCity || null,
           editorialState: editorialState || null,
           editorialCountry: editorialCountry || null,
@@ -80,7 +79,6 @@ export function ProjectMetaCard({ projectId, initialPinnedKeywords, initialPinne
           pinnedKeywords: pinnedKeywords || null,
           pinnedKeywordsPosition: pinnedPosition,
           isEditorial,
-          editorialText: editorialText || null,
           editorialCity: editorialCity || null,
           editorialState: editorialState || null,
           editorialCountry: editorialCountry || null,
@@ -191,19 +189,9 @@ export function ProjectMetaCard({ projectId, initialPinnedKeywords, initialPinne
         {/* Editorial Detail Fields */}
         {isEditorial && (
           <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-3">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-                Editorial Text
-              </label>
-              <textarea
-                value={editorialText}
-                onChange={(e) => setEditorialText(e.target.value)}
-                placeholder="Describe the editorial event..."
-                rows={3}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary resize-none"
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">Fills column G in Blackbox CSV.</p>
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Each clip has its own AI-generated editorial caption. Set the location and date below — they apply to all clips in this project.
+            </p>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                 Editorial City
