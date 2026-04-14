@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     let customerId: string | undefined;
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('stripe_customer_id, utm_source, utm_medium, utm_campaign, utm_referrer')
+      .select('stripe_customer_id, utm_source, utm_medium, utm_campaign, utm_referrer, promo_unlocked_at')
       .eq('id', user.id)
       .single();
 
@@ -133,11 +133,30 @@ export async function POST(req: NextRequest) {
         .eq('id', user.id);
     }
 
+    // Apply tiered welcome reward coupon:
+    //   0-24h after unlock:  50% off first month
+    //   24-72h after unlock: 25% off first month
+    //   72h+: no discount (expired)
+    let welcomeDiscount: { coupon: string }[] | undefined;
+    if (profile?.promo_unlocked_at) {
+      const unlockedAt = new Date(profile.promo_unlocked_at).getTime();
+      const hoursElapsed = (Date.now() - unlockedAt) / (1000 * 60 * 60);
+      if (hoursElapsed < 24) {
+        welcomeDiscount = [{ coupon: 'welcome_reward_50' }];
+      } else if (hoursElapsed < 72) {
+        welcomeDiscount = [{ coupon: 'welcome_reward_25' }];
+      }
+    }
+
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      allow_promotion_codes: true,
+      // If welcome reward applies, use discounts instead of allow_promotion_codes
+      // (Stripe doesn't allow both at the same time)
+      ...(welcomeDiscount
+        ? { discounts: welcomeDiscount }
+        : { allow_promotion_codes: true }),
       success_url: `${appUrl}/dashboard?upgraded=true`,
       cancel_url: `${appUrl}/pricing`,
       metadata: { supabase_uid: user.id, plan, ...utmMeta },

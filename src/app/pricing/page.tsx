@@ -142,6 +142,7 @@ export default function PricingPage() {
   const [hasSubscription, setHasSubscription] = useState(false);
   const [confirmModal, setConfirmModal] = useState<ConfirmModal>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showOnboardingNudge, setShowOnboardingNudge] = useState(false);
   const router = useRouter();
 
   // Track pricing page view for Meta Pixel retargeting
@@ -165,10 +166,14 @@ export default function PricingPage() {
         setIsLoggedIn(true);
         const { data: profile } = await supabase
           .from('profiles')
-          .select('plan, stripe_subscription_id, stripe_subscription_status')
+          .select('plan, stripe_subscription_id, stripe_subscription_status, onboarding_complete, promo_unlocked_at')
           .eq('id', user.id)
           .single();
         setUserPlan(profile?.plan ?? 'free');
+        // Check if user hasn't completed onboarding yet — show nudge to unlock discount
+        if (!profile?.onboarding_complete && !profile?.promo_unlocked_at && profile?.plan === 'free') {
+          setShowOnboardingNudge(true);
+        }
         // User has an active paid subscription if they have a sub ID and it's active/trialing
         const hasSub = !!(profile?.stripe_subscription_id &&
           ['active', 'trialing', 'founder'].includes(profile?.stripe_subscription_status ?? ''));
@@ -355,6 +360,24 @@ export default function PricingPage() {
           </a>
         </div>
       </section>
+
+      {/* Onboarding discount nudge — shown to free users who haven't completed the setup steps */}
+      {showOnboardingNudge && (
+        <div className="mx-auto max-w-3xl px-6 mb-8">
+          <div className="relative rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-pink-500/10 to-amber-500/10 p-5 text-center">
+            <div className="text-lg font-bold text-white mb-1">🎁 Unlock up to 50% off your first month</div>
+            <p className="text-sm text-zinc-400 mb-3">
+              Complete the free setup steps on your dashboard — create a project, upload a clip, and generate metadata — to unlock your welcome discount before subscribing.
+            </p>
+            <Link
+              href="/dashboard"
+              className="inline-block rounded-lg bg-violet-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-violet-500"
+            >
+              Complete Setup Steps →
+            </Link>
+          </div>
+        </div>
+      )}
 
       <section className="mx-auto max-w-7xl px-6 pb-16">
         {/* Monthly / Annual Toggle */}
@@ -584,7 +607,7 @@ export default function PricingPage() {
             <div className="rounded-2xl border border-[#27272a] bg-[#09090b]/50 p-5">
               <ul className="space-y-3 text-sm text-zinc-300">
                <li className="flex items-center gap-3"><Check /> 2,000 clips/month</li>
-                <li className="flex items-center gap-3"><Check /> Unlimited regenerations</li>
+                <li className="flex items-center gap-3"><Check /> 500 regenerations/month</li>
                <li className="flex items-center gap-3"><Check /> Unused clips roll over (up to 2 months)</li>
                 <li className="flex items-center gap-3"><Check /> Unlimited projects</li>
                 <li className="flex items-center gap-3"><Check /> AI metadata generation</li>
@@ -649,7 +672,7 @@ export default function PricingPage() {
           {([
             {f: 'Projects',              v: ['1 project', '3 projects', 'Unlimited', 'Unlimited'] as (boolean|string)[]},
            {f: 'Clip volume',            v: ['3/day', '140/month', '320/month', '2,000/month'] as (boolean|string)[]},
-            {f: 'Regenerations',          v: ['1/day', '100/mo', '300/mo', 'Unlimited'] as (boolean|string)[]},
+            {f: 'Regenerations',          v: ['1/day', '100/mo', '300/mo', '500/mo'] as (boolean|string)[]},
            {f: 'Max file size',          v: ['500MB', '2GB', '5GB', '10GB'] as (boolean|string)[]},
             {f: 'Clip rollover',          v: [false, true, true, true] as (boolean|string)[]},
             {f: 'AI metadata generation', v: [true, true, true, true] as (boolean|string)[]},

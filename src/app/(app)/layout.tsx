@@ -8,6 +8,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PlanBadge } from "@/components/PlanBadge";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
+import { PromoReward } from "@/components/PromoReward";
 import { UTMSync } from "@/components/UTMSync";
 
 const NAV = [
@@ -101,7 +102,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       {/* ── Main content ── */}
       <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden md:ml-56">
-        {/* Upgrade Banner */}
+        {/* Promo reward (top banner + popup, gated by onboarding completion) */}
+        <PromoReward />
+        {/* Upgrade Banner (legacy, now disabled) */}
         <UpgradeBanner />
         {/* Mobile top bar */}
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center border-b border-sidebar-border bg-sidebar px-4 md:hidden">

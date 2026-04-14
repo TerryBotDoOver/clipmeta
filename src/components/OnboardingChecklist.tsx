@@ -27,8 +27,12 @@ export function OnboardingChecklist({ hasProject, hasClips, hasMeta, firstProjec
   useEffect(() => {
     if (allDone && !celebrating) {
       setCelebrating(true);
-      // Mark complete in DB
-      fetch("/api/onboarding/complete", { method: "POST" }).catch(() => {});
+      // Mark complete in DB, then notify PromoReward to re-check
+      fetch("/api/onboarding/complete", { method: "POST" })
+        .then(() => {
+          window.dispatchEvent(new CustomEvent("clipmeta:onboarding-complete"));
+        })
+        .catch(() => {});
       // Hide after 3 seconds
       const timer = setTimeout(() => setVisible(false), 3000);
       return () => clearTimeout(timer);
@@ -55,7 +59,7 @@ export function OnboardingChecklist({ hasProject, hasClips, hasMeta, firstProjec
         <div>
           <h2 className="text-base font-bold text-foreground">🚀 Get started with ClipMeta</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Complete these steps to generate your first metadata export.
+            Complete all 4 steps to unlock <span className="font-semibold text-foreground">up to 50% off your first month</span>.
           </p>
         </div>
         <div className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -63,12 +67,33 @@ export function OnboardingChecklist({ hasProject, hasClips, hasMeta, firstProjec
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="mt-4 h-2 w-full rounded-full bg-muted overflow-hidden">
+      {/* Progress bar with gift target */}
+      <div className="mt-5 flex items-center gap-3">
+        <div className="relative flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{
+              width: `${completedCount * 25}%`,
+              background: "linear-gradient(90deg, #6d28d9 0%, #db2777 50%, #f59e0b 100%)",
+            }}
+          />
+        </div>
         <div
-          className="h-full rounded-full bg-primary transition-all duration-500"
-          style={{ width: `${completedCount * 25}%` }}
-        />
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition-all duration-500 ${
+            allDone
+              ? "scale-125 shadow-lg shadow-amber-500/40 animate-bounce"
+              : "scale-100 opacity-70"
+          }`}
+          style={{
+            background: allDone
+              ? "linear-gradient(135deg, #6d28d9 0%, #db2777 50%, #f59e0b 100%)"
+              : "rgba(245, 158, 11, 0.15)",
+          }}
+          aria-label="Reward"
+          title={allDone ? "Reward unlocked!" : "Complete all steps to unlock your reward"}
+        >
+          🎁
+        </div>
       </div>
 
       <div className="mt-4 space-y-2.5">
