@@ -15,12 +15,13 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("slug", id)
-    .eq("user_id", user.id)
-    .single();
+  const [{ data: project }, { data: profile }] = await Promise.all([
+    supabase.from("projects").select("*").eq("slug", id).eq("user_id", user.id).single(),
+    supabase.from("profiles").select("plan, stripe_subscription_status").eq("id", user.id).single(),
+  ]);
+
+  const isActiveSub = profile?.stripe_subscription_status === "active" || profile?.stripe_subscription_status === "trialing";
+  const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free";
 
   if (!project) {
     return (
@@ -116,6 +117,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
             <ExportButton
               projectId={project.id}
               clipCount={withMeta}
+              plan={userPlan}
               clips={(clips ?? []).filter((c) => c.metadata_status === "complete" && metaByClipId[c.id]).map((c) => ({
                 filename: c.original_filename ?? '',
                 title: metaByClipId[c.id]?.title ?? '',
