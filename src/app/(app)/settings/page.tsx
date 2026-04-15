@@ -5,6 +5,7 @@ import Link from "next/link";
 import NameForm from "@/components/NameForm";
 import ReferralSection from "@/components/ReferralSection";
 import { ManageBillingButton } from "@/components/ManageBillingButton";
+import DeleteAccountDialog from "@/components/DeleteAccountDialog";
 
 const PLANS = {
   free:    { label: "Free",    color: "text-muted-foreground", badge: "bg-muted text-muted-foreground",    clips: 3,    period: "daily",   projects: 1,   rolloverCap: 0,    price: null },
@@ -281,13 +282,7 @@ export default async function SettingsPage() {
                 Permanently delete your account and all associated data. This cannot be undone.
               </p>
             </div>
-            <button
-              disabled
-              className="rounded-lg border border-red-500/40 px-4 py-2 text-xs font-medium text-red-400 opacity-50 cursor-not-allowed"
-              title="Contact support to delete your account"
-            >
-              Delete account
-            </button>
+            <DeleteAccountDialog />
           </div>
         </section>
 

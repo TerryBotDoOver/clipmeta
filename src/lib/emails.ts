@@ -1,4 +1,14 @@
-const emailWrapper = (content: string) => `
+type WrapperOptions = { transactional?: boolean };
+
+const emailWrapper = (content: string, opts: WrapperOptions = {}) => {
+  // Transactional emails (receipts, account notifications) do not include an
+  // unsubscribe link. Marketing/lifecycle emails get {{unsubscribe_url}} which
+  // the send path substitutes with a per-recipient signed URL.
+  const footer = opts.transactional
+    ? `<p style="color:#71717a;font-size:13px;margin:0;">ClipMeta - AI metadata for stock footage</p>`
+    : `<p style="color:#71717a;font-size:13px;margin:0 0 8px 0;">ClipMeta - AI metadata for stock footage</p>
+              <a href="{{unsubscribe_url}}" style="color:#52525b;font-size:12px;text-decoration:underline;">Unsubscribe</a>`;
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,8 +36,7 @@ const emailWrapper = (content: string) => `
           <!-- Footer -->
           <tr>
             <td style="padding-top:28px;text-align:center;">
-              <p style="color:#71717a;font-size:13px;margin:0 0 8px 0;">ClipMeta - AI metadata for stock footage</p>
-              <a href="{{unsubscribe_url}}" style="color:#52525b;font-size:12px;text-decoration:underline;">Unsubscribe</a>
+              ${footer}
             </td>
           </tr>
         </table>
@@ -37,6 +46,7 @@ const emailWrapper = (content: string) => `
 </body>
 </html>
 `;
+};
 
 const ctaButton = (text: string, url: string) =>
   `<div style="text-align:center;margin-top:28px;"><a href="${url}" style="display:inline-block;background-color:#8b5cf6;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 24px;border-radius:8px;">${text}</a></div>`;
@@ -426,6 +436,6 @@ export function receiptEmail(details: ReceiptDetails): { subject: string; html: 
 
   return {
     subject: subjectLine,
-    html: emailWrapper(content),
+    html: emailWrapper(content, { transactional: true }),
   };
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getResend } from '@/lib/resend';
+import { applyUnsubscribe, listUnsubscribeHeaders } from '@/lib/unsubscribe';
 import {
   paidDay0Email,
   paidDay2Email,
@@ -78,12 +79,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Load all paid-track profiles that are active/trialing/founder
+    // Load all paid-track profiles that are active/trialing/founder and not unsubscribed.
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from('profiles')
       .select('id, plan, stripe_subscription_status, drip_track_switched_at')
       .eq('drip_track', 'paid')
-      .in('stripe_subscription_status', ['trialing', 'active', 'founder']);
+      .in('stripe_subscription_status', ['trialing', 'active', 'founder'])
+      .is('unsubscribed_at', null);
 
     if (profilesError) {
       console.error('[drip-paid] Failed to fetch profiles:', profilesError);
@@ -153,12 +155,14 @@ export async function GET(req: NextRequest) {
         }
 
         const { subject, html } = await buildEmail(key, name, profile.plan, profile.id);
+        const htmlWithUnsub = applyUnsubscribe(html, profile.id);
 
         const { error: sendError } = await getResend().emails.send({
           from: FROM,
           to: email,
           subject,
-          html,
+          html: htmlWithUnsub,
+          headers: listUnsubscribeHeaders(profile.id),
         });
 
         if (sendError) {

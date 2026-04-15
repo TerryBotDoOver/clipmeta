@@ -44,9 +44,13 @@ export async function POST(req: NextRequest) {
       await supabaseAdmin.from("projects").delete().in("id", projectIds);
     }
 
-    // Delete other user data
+    // Delete other user data. These tables either have no FK to auth.users or
+    // a non-cascading FK, so we clear them manually before the auth delete.
     await supabaseAdmin.from("drip_log").delete().eq("user_id", uid);
     await supabaseAdmin.from("referrals").delete().eq("referrer_id", uid);
+    await supabaseAdmin.from("feedback").delete().eq("user_id", uid);
+    await supabaseAdmin.from("clip_history").delete().eq("user_id", uid);
+    await supabaseAdmin.from("account_deletion_requests").delete().eq("user_id", uid);
     await supabaseAdmin.from("profiles").delete().eq("id", uid);
 
     // 3. Delete auth user

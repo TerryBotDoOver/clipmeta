@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getResend } from '@/lib/resend';
 import { welcomeEmail } from '@/lib/emails';
 import { createClient } from '@supabase/supabase-js';
+import { applyUnsubscribe, listUnsubscribeHeaders } from '@/lib/unsubscribe';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,11 +16,22 @@ const WEBHOOK_SECRET = process.env.SUPABASE_WEBHOOK_SECRET || '';
 async function sendWelcomeAndLog(email: string, name: string, userId?: string) {
   const { subject, html } = welcomeEmail(name);
 
+  // If we don't have a userId we can't build a signed unsubscribe link, so the
+  // placeholder stays in the HTML. That is a bug on the caller's side, not a
+  // reason to skip the send. Log and continue.
+  if (!userId) {
+    console.warn('[welcome] sendWelcomeAndLog called without userId, unsubscribe link will be unsigned');
+  }
+
+  const htmlWithUnsub = userId ? applyUnsubscribe(html, userId) : html;
+  const headers = userId ? listUnsubscribeHeaders(userId) : undefined;
+
   const { data, error } = await getResend().emails.send({
     from: FROM,
     to: email,
     subject,
-    html,
+    html: htmlWithUnsub,
+    ...(headers ? { headers } : {}),
   });
 
   if (error) {

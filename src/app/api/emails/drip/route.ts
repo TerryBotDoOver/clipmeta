@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getResend } from '@/lib/resend';
+import { applyUnsubscribe, listUnsubscribeHeaders } from '@/lib/unsubscribe';
 import {
   quickWinUploadedEmail,
   quickWinNoUploadEmail,
@@ -146,8 +147,18 @@ export async function GET(req: NextRequest) {
     const users = usersData.users;
     const results: { userId: string; email: string; sent: DripKey[]; skipped: DripKey[] }[] = [];
 
+    // Batch-load all unsubscribed user IDs so we can skip them without a per-user query.
+    const { data: unsubRows } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .not('unsubscribed_at', 'is', null);
+    const unsubscribedIds = new Set((unsubRows || []).map((r: { id: string }) => r.id));
+
     for (const user of users) {
       if (!user.email || !user.created_at) continue;
+
+      // Skip users who have opted out of marketing email.
+      if (unsubscribedIds.has(user.id)) continue;
 
       // Skip paid users
       const paid = await isUserPaid(user.id);
@@ -178,12 +189,14 @@ export async function GET(req: NextRequest) {
         }
 
         const { subject, html } = await getEmailForKey(key, name, user.id);
+        const htmlWithUnsub = applyUnsubscribe(html, user.id);
 
         const { error: sendError } = await getResend().emails.send({
           from: FROM,
           to: user.email,
           subject,
-          html,
+          html: htmlWithUnsub,
+          headers: listUnsubscribeHeaders(user.id),
         });
 
         if (sendError) {
