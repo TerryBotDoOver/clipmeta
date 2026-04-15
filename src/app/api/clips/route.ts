@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("plan, clips_used_this_month, billing_period_start, bonus_clips, referral_pro_forever, referral_pro_until, rollover_clips, credits")
+      .select("plan, billing_period_start, bonus_clips, referral_pro_forever, referral_pro_until, rollover_clips, credits")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     const limit = planConfig.clips + rolloverClips + bonusClips;
 
     // Free plan: daily limit (count from clips table today).
-    // Paid plans: use clips_used_this_month from profile (tracks ALL generations including deleted clips).
+    // Paid plans: count from clip_history.created since billing_period_start (authoritative).
     let used = 0;
     if (planConfig.period === 'daily') {
       const now = new Date();
@@ -152,10 +152,6 @@ export async function POST(req: NextRequest) {
         .from("profiles")
         .upsert({ id: user.id, credits: userCredits - 1, updated_at: new Date().toISOString() });
     }
-    // clips_used_this_month is NOT incremented here — it is incremented
-    // only when metadata is actually generated (POST /api/metadata/generate
-    // and /api/metadata/generate-worker), which is when the OpenAI API call
-    // happens. This avoids double-counting uploads as regenerations.
 
     return NextResponse.json({ ok: true, clip_id: clip?.id ?? null });
   } catch (err) {

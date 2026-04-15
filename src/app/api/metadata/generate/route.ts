@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     // ─── Check plan limits ─────────────────────────────────────────────────────
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('plan, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, clips_used_this_month, regens_used_this_month, billing_period_start')
+      .select('plan, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, regens_used_this_month, billing_period_start')
       .eq('id', userId)
       .single();
 
@@ -130,26 +130,24 @@ export async function POST(req: NextRequest) {
       // ────────────────────────────────────────────────────────────────────────
     }
 
-    // Increment clips_used_this_month for every generation.
     // Increment regens_used_this_month only for regenerations.
-    try {
-      const { data: currentProfile } = await supabaseAdmin
-        .from('profiles')
-        .select('clips_used_this_month, regens_used_this_month')
-        .eq('id', userId)
-        .single();
-      const updates: Record<string, unknown> = {
-        clips_used_this_month: (currentProfile?.clips_used_this_month || 0) + 1,
-        updated_at: new Date().toISOString(),
-      };
-      if (isRegeneration) {
-        updates.regens_used_this_month = (currentProfile?.regens_used_this_month || 0) + 1;
-      }
-      await supabaseAdmin
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId);
-    } catch { /* non-fatal */ }
+    // Upload counts come from clip_history via the DB trigger, not from a profile field.
+    if (isRegeneration) {
+      try {
+        const { data: currentProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('regens_used_this_month')
+          .eq('id', userId)
+          .single();
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            regens_used_this_month: (currentProfile?.regens_used_this_month || 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId);
+      } catch { /* non-fatal */ }
+    }
     // ──────────────────────────────────────────────────────────────────────────
 
     // Fetch titles and descriptions already generated in this batch — used to enforce uniqueness

@@ -3,6 +3,7 @@ import { getStripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getResend } from '@/lib/resend';
 import { receiptEmail } from '@/lib/emails';
+import { PLANS, type Plan } from '@/lib/plans';
 import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
             stripe_subscription_status: sub?.status ?? 'active',
             had_trial: true,
             // Reset counter only on first paid charge, not trial plan changes
-            ...(!isTrialing ? { clips_used_this_month: 0, regens_used_this_month: 0, billing_period_start: new Date().toISOString() } : {}),
+            ...(!isTrialing ? { regens_used_this_month: 0, billing_period_start: new Date().toISOString() } : {}),
             // Move user to paid drip track; drip_track_switched_at anchors the paid email schedule.
             drip_track: 'paid',
             drip_track_switched_at: new Date().toISOString(),
@@ -217,6 +218,64 @@ export async function POST(req: NextRequest) {
             console.error('[receipt] Failed to send:', receiptErr);
           }
         }
+        break;
+      }
+
+      // Fires on every successful invoice: the first subscription charge AND every renewal.
+      // On renewal (billing_reason === 'subscription_cycle') we:
+      //   1. Roll unused clips from the period that just ended into rollover_clips, capped.
+      //   2. Reset regens_used_this_month and billing_period_start for the new period.
+      // On the first charge (subscription_create) we only reset the period — there's
+      // no prior period to roll over.
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        const subId = (invoice as unknown as { subscription?: string }).subscription;
+        if (!subId) break;
+
+        const sub = await getStripe().subscriptions.retrieve(subId);
+        const uid = getUid(sub.metadata);
+        if (!uid) break;
+
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('plan, rollover_clips, billing_period_start, referral_pro_forever, referral_pro_until')
+          .eq('id', uid)
+          .maybeSingle();
+        if (!profile) break;
+
+        let plan = (profile.plan && profile.plan in PLANS ? profile.plan : 'free') as Plan;
+        if (profile.referral_pro_forever) plan = 'pro';
+        if (profile.referral_pro_until && new Date(profile.referral_pro_until) > new Date()) plan = 'pro';
+        if (plan === 'free') break;
+        const planConfig = PLANS[plan];
+
+        const now = new Date();
+        const isRenewal = invoice.billing_reason === 'subscription_cycle';
+
+        const updates: Record<string, unknown> = {
+          regens_used_this_month: 0,
+          billing_period_start: now.toISOString(),
+          updated_at: now.toISOString(),
+        };
+
+        if (isRenewal && profile.billing_period_start) {
+          // Count clips actually uploaded in the period that just ended.
+          const { count: uploadCount } = await supabaseAdmin
+            .from('clip_history')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', uid)
+            .eq('action', 'created')
+            .gte('created_at', profile.billing_period_start)
+            .lt('created_at', now.toISOString());
+
+          const used = uploadCount || 0;
+          const unused = Math.max(0, planConfig.clips - used);
+          const currentRollover = profile.rollover_clips ?? 0;
+          updates.rollover_clips = Math.min(currentRollover + unused, planConfig.rolloverCap);
+        }
+
+        await supabaseAdmin.from('profiles').update(updates).eq('id', uid);
         break;
       }
 

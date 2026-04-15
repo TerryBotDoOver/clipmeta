@@ -22,7 +22,7 @@ export function useProfile() {
       // Get plan + billing info
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan, clips_used_this_month, regens_used_this_month, billing_period_start')
+        .select('plan, regens_used_this_month, billing_period_start')
         .eq('id', user.id)
         .single();
       const userPlan = (profile?.plan as Plan) || 'free';
