@@ -8,10 +8,11 @@ type Tier = {
 };
 
 const TIERS: Tier[] = [
-  { referrals: 1,  label: "1 friend",   youGet: "+25 bonus clips this month",  theyGet: "+25 bonus clips first month" },
-  { referrals: 3,  label: "3 friends",  youGet: "1 free month of Pro",          theyGet: "1 free month of Starter" },
-  { referrals: 5,  label: "5 friends",  youGet: "Pro free for 6 months",        theyGet: "1 free month of Pro" },
-  { referrals: 10, label: "10 friends", youGet: "Pro free forever 🎉",          theyGet: "1 free month of Pro" },
+  { referrals: 1,  label: "1 friend",    youGet: "+50 bonus clips",              theyGet: "+50 bonus clips" },
+  { referrals: 3,  label: "3 friends",   youGet: "1 month Pro + 50 clips",       theyGet: "+50 bonus clips" },
+  { referrals: 5,  label: "5 friends",   youGet: "3 months Pro + 100 clips",     theyGet: "+100 bonus clips" },
+  { referrals: 10, label: "10 friends",  youGet: "6 months Pro + 200 clips",     theyGet: "+100 bonus clips" },
+  { referrals: 20, label: "20 friends",  youGet: "1 year of Pro + 500 clips",    theyGet: "" },
 ];
 
 function CheckIcon() {
@@ -168,7 +169,7 @@ export default function ReferralTiers({
 
       {currentTierIdx === TIERS.length - 1 && (
         <div className="mt-2 rounded-xl bg-green-500/10 border border-green-500/30 px-4 py-3 text-center text-sm font-semibold text-green-400">
-          🎉 You&apos;ve reached the top tier — Pro free forever!
+          🎉 You&apos;ve reached the top tier — Pro free for a year!
         </div>
       )}
     </div>

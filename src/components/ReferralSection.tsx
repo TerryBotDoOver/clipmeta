@@ -50,7 +50,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
         )}
       </div>
       <p className="text-sm text-muted-foreground">
-        Share your link, earn free Pro access. Refer 10 friends and get Pro forever.
+        Share your link, earn free Pro access. Refer 20 friends and get a year of Pro free.
       </p>
 
       {/* Referral link */}

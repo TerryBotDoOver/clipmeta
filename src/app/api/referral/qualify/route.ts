@@ -52,8 +52,8 @@ const REWARD_TIERS = [
   {
     name: "tier5" as const,
     threshold: 20,
-    referrerProForever: true,
-    referrerProMonths: 0,
+    referrerProForever: false,
+    referrerProMonths: 12,
     referrerBonusClips: 500,
     referredBonusClips: 0,
   },
@@ -290,7 +290,7 @@ export async function GET(req: NextRequest) {
 
           if (reachedTier.referrerProForever) {
             updates.referral_pro_forever = true;
-            console.log(`  → Referrer ${referrerId} gets Pro FOREVER (tier5)`);
+            console.log(`  → Referrer ${referrerId} gets Pro for 12 months (tier5)`);
           } else if (reachedTier.referrerProMonths > 0) {
             // Extend pro_until from today (or existing expiry if future)
             const existingUntil = referrerProfile?.referral_pro_until

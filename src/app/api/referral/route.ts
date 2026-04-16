@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Tier definitions (must match qualify/route.ts)
 const TIERS = [
-  { name: 'tier5', threshold: 20, label: 'Legend', reward: 'Pro forever + 500 clips' },
+  { name: 'tier5', threshold: 20, label: 'Legend', reward: '12 months Pro + 500 clips' },
   { name: 'tier4', threshold: 10, label: 'Champion', reward: '6 months Pro + 200 clips' },
   { name: 'tier3', threshold: 5, label: 'Advocate', reward: '3 months Pro + 100 clips' },
   { name: 'tier2', threshold: 3, label: 'Supporter', reward: '1 month Pro + 50 clips' },

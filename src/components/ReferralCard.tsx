@@ -247,7 +247,7 @@ export function ReferralCard() {
               { n: 3, label: '3 referrals → 1mo Pro + 50 clips' },
               { n: 5, label: '5 referrals → 3mo Pro + 100 clips' },
               { n: 10, label: '10 referrals → 6mo Pro + 200 clips' },
-              { n: 20, label: '20 referrals → Pro forever + 500 clips' },
+              { n: 20, label: '20 referrals → 1yr Pro + 500 clips' },
             ].map((tier) => (
               <p
                 key={tier.n}
