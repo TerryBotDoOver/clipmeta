@@ -79,7 +79,7 @@ export default function ReferralSection({ userId }: { userId: string }) {
 
       {/* Fine print */}
       <p className="mt-5 text-xs text-muted-foreground rounded-lg bg-muted px-4 py-3">
-        ℹ️ A referral qualifies when your friend&apos;s account is 7+ days old, they&apos;ve uploaded at least 3 clips, and generated metadata on at least 1. Rewards are applied automatically — check back if yours is still pending.
+        ℹ️ A referral qualifies when your friend upgrades to a paid plan (trials don&apos;t count). Rewards are applied automatically — check back if yours is still pending.
       </p>
     </section>
   );
