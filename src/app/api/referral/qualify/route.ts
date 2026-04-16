@@ -55,7 +55,7 @@ const REWARD_TIERS = [
     referrerProForever: false,
     referrerProMonths: 12,
     referrerBonusClips: 500,
-    referredBonusClips: 0,
+    referredBonusClips: 200,
   },
   {
     name: "tier4" as const,

@@ -12,7 +12,7 @@ const TIERS: Tier[] = [
   { referrals: 3,  label: "3 friends",   youGet: "1 month Pro + 50 clips",       theyGet: "+50 bonus clips" },
   { referrals: 5,  label: "5 friends",   youGet: "3 months Pro + 100 clips",     theyGet: "+100 bonus clips" },
   { referrals: 10, label: "10 friends",  youGet: "6 months Pro + 200 clips",     theyGet: "+100 bonus clips" },
-  { referrals: 20, label: "20 friends",  youGet: "1 year of Pro + 500 clips",    theyGet: "" },
+  { referrals: 20, label: "20 friends",  youGet: "1 year of Pro + 500 clips",    theyGet: "+200 bonus clips" },
 ];
 
 function CheckIcon() {
