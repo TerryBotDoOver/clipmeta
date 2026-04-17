@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { fbEvent } from "@/components/MetaPixel";
+import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 
 function AuthForm() {
   const router = useRouter();
@@ -361,46 +362,55 @@ function AuthForm() {
 
 export default function AuthPage() {
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
-        <div className="grid w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm md:grid-cols-2">
+    <FlightDeckShell>
+      <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-6xl items-center justify-center px-4 py-12 sm:px-6">
+        <div className="glass-card grid w-full overflow-hidden p-0 md:grid-cols-2">
 
-          {/* Left panel */}
-          <section className="flex flex-col justify-between bg-slate-900 p-6 text-white sm:p-8 md:p-10">
-            <div>
-              <img src="/logo-icon.svg" className="h-12 w-12" alt="ClipMeta" />
-              <p className="mt-4 text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">ClipMeta</p>
-              <h1 className="mt-6 text-3xl font-bold tracking-tight md:text-4xl">
-                Stock footage metadata that needs less fixing
+          {/* Left panel — promo */}
+          <section className="relative flex flex-col justify-between overflow-hidden p-6 sm:p-8 md:p-10">
+            {/* Aurora glow inside the left panel */}
+            <div className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-violet-500/25 blur-3xl" />
+            <div className="pointer-events-none absolute -right-10 bottom-0 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl" />
+
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <div className="relative flex h-10 w-10 items-center justify-center">
+                  <div className="absolute inset-0 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 opacity-50 blur-md" />
+                  <img src="/logo-icon.svg" className="relative h-9 w-9" alt="ClipMeta" />
+                </div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">ClipMeta · Flight Deck</p>
+              </div>
+              <h1 className="mt-8 text-3xl font-bold tracking-tight text-white md:text-4xl">
+                Stock footage metadata, <span className="gradient-text">done in minutes.</span>
               </h1>
-              <p className="mt-4 text-sm leading-6 text-slate-300 md:text-base">
-                Upload clips, generate metadata, review results, and export clean CSV files for Blackbox, Pond5, Adobe Stock, and Shutterstock.
+              <p className="mt-4 text-sm leading-6 text-white/60 md:text-base">
+                Upload clips, let AI read the frames and write everything, export platform-ready CSVs. You stay in control of quality.
               </p>
             </div>
-            <div className="mt-10 space-y-3">
+            <div className="relative mt-10 space-y-3">
               {[
                 "AI reads your footage — not just the filename",
                 "CSV exports for every major platform",
                 "Free plan, no credit card required",
               ].map((point) => (
                 <div key={point} className="flex items-start gap-2.5">
-                  <span className="mt-0.5 text-violet-400 font-bold">✓</span>
-                  <span className="text-sm text-slate-300">{point}</span>
+                  <span className="mt-0.5 font-bold text-violet-300">✓</span>
+                  <span className="text-sm text-white/75">{point}</span>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* Right panel */}
-          <section className="p-6 sm:p-8 md:p-10 flex items-center">
+          {/* Right panel — form */}
+          <section className="flex items-center border-t border-white/5 bg-black/20 p-6 backdrop-blur-sm sm:p-8 md:border-l md:border-t-0 md:p-10">
             <div className="w-full">
-              <Suspense fallback={<div className="text-muted-foreground text-sm">Loading…</div>}>
+              <Suspense fallback={<div className="text-sm text-white/50">Loading…</div>}>
                 <AuthForm />
               </Suspense>
             </div>
           </section>
         </div>
       </div>
-    </main>
+    </FlightDeckShell>
   );
 }

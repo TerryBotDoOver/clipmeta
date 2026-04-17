@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { getBlogPosts } from '@/lib/blog';
-import { BlogNav } from '@/components/BlogNav';
+import { FlightDeckShell } from '@/components/landing/FlightDeckShell';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -18,47 +18,47 @@ export default function BlogPage() {
   const posts = getBlogPosts();
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Nav */}
-      <BlogNav />
-
+    <FlightDeckShell>
       {/* Header */}
-      <section className="mx-auto max-w-4xl px-6 py-16">
-        <h1 className="text-4xl font-bold tracking-tight text-foreground mb-4">ClipMeta Blog</h1>
-        <p className="text-lg text-muted-foreground">
-          Guides, tutorials, and tips for stock footage contributors.
+      <section className="mx-auto max-w-5xl px-6 py-16 text-center md:py-24">
+        <p className="hud-chip mx-auto mb-4 inline-flex">BLOG · FIELD NOTES</p>
+        <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
+          Guides for <span className="gradient-text">stock footage contributors.</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-2xl text-lg text-white/60">
+          Tips, tutorials, and deep dives on metadata, keywording, and shipping to Blackbox, Shutterstock, Adobe, and Pond5.
         </p>
       </section>
 
       {/* Posts */}
-      <section className="mx-auto max-w-4xl px-6 pb-24">
+      <section className="mx-auto max-w-5xl px-6 pb-24">
         {posts.length === 0 ? (
-          <p className="text-muted-foreground">No posts yet. Check back soon.</p>
+          <p className="text-white/60">No posts yet. Check back soon.</p>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-4">
             {posts.map((post) => (
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
-                className="group block rounded-xl border border-border bg-card p-6 hover:border-primary/50 transition"
+                className="glass-card group block p-6"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="text-sm text-muted-foreground">{formatDate(post.date)}</span>
-                  <span className="text-muted-foreground/40">·</span>
-                  <span className="text-sm text-muted-foreground">{post.readTime} min read</span>
+                <div className="mb-3 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+                  <span>{formatDate(post.date)}</span>
+                  <span className="text-white/20">·</span>
+                  <span>{post.readTime} min read</span>
                 </div>
-                <h2 className="text-xl font-semibold text-foreground group-hover:text-primary transition mb-2">
+                <h2 className="mb-2 text-xl font-semibold text-white transition group-hover:text-violet-200 sm:text-2xl">
                   {post.title}
                 </h2>
-                <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2">
+                <p className="line-clamp-2 text-sm leading-relaxed text-white/65">
                   {post.description || post.excerpt}
                 </p>
                 {post.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {post.tags.map((tag) => (
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {post.tags.slice(0, 4).map((tag) => (
                       <span
                         key={tag}
-                        className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground"
+                        className="rounded-full border border-white/8 bg-white/[0.02] px-2.5 py-0.5 font-mono text-[10px] text-white/50"
                       >
                         {tag}
                       </span>
@@ -70,6 +70,6 @@ export default function BlogPage() {
           </div>
         )}
       </section>
-    </main>
+    </FlightDeckShell>
   );
 }
