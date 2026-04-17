@@ -1,5 +1,11 @@
 import OpenAI from "openai";
 import { Platform, GenerationSettings, PLATFORM_LABELS } from "@/lib/platform-presets";
+import {
+  buildDiversityDirective,
+  buildRegenDirective,
+  findWorstClash,
+  type SimilarityClash,
+} from "@/lib/titleSimilarity";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -243,7 +249,13 @@ To achieve uniqueness:
 - Even if clips look similar, there are always micro-differences in composition, light, motion, or framing — find them and lead with those`
     : "";
 
-  const systemPrompt = BASE_SYSTEM_PROMPT + platformInstructions + uniquenessInstructions;
+  // Layer 1: batch-aware structural diversity directive (banned openings,
+  // differentiation axes, location-suffix warning). This is additive on top of
+  // the word-level uniquenessInstructions above and targets *template* clashes
+  // that word-level dedup can't see.
+  const diversityDirective = buildDiversityDirective(existingTitles);
+
+  const systemPrompt = BASE_SYSTEM_PROMPT + platformInstructions + uniquenessInstructions + diversityDirective;
 
   // Use up to 4 frames for cost efficiency
   const imageBlocks: OpenAI.Chat.ChatCompletionContentPart[] = frames
@@ -279,44 +291,101 @@ Return this exact JSON:
   "editorial_caption": "string — a factual, news-style caption for editorial licensing. Write ONE sentence describing exactly what is visible in THIS clip. Use present tense, no promotional language, no subjective adjectives. Focus on the factual who/what/where/when. Example: 'Aerial view of residential waterfront homes along the Caloosahatchee River with sailboats docked at private piers.' Do NOT include city/country/date in this field — those are added separately. Just describe what the viewer sees."
 }`;
 
-  let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
-  try {
-    response = await withRetry(() =>
-    openai.chat.completions.create({
-      model: MODEL,
-      max_tokens: 1500,
-      temperature: 0.55,
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [...imageBlocks, { type: "text", text: userMessage }],
-        },
-      ],
-    })
-  );
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const status = (err as { status?: number })?.status;
-    console.error(`[generateMetadata] OpenAI API error — model: ${MODEL}, status: ${status}, message: ${msg}`);
-    throw err;
+  // Layer 2: post-generation template-similarity check + forced regeneration.
+  // We call OpenAI, parse, then compare the returned title against existingTitles.
+  // If similarity to any existing title > 0.6, regenerate with a sharper directive.
+  // Capped at 2 retries per clip (so max 3 total calls) to prevent cost runaway.
+  const MAX_REGEN_ATTEMPTS = 2;
+  let parsed: ClipMetadata | null = null;
+  let lastClash: SimilarityClash | null = null;
+  let regenDirective = "";
+  // Nudge temperature up on retry to push the model off the same attractor.
+  const baseTemperature = 0.55;
+
+  for (let attempt = 0; attempt <= MAX_REGEN_ATTEMPTS; attempt++) {
+    const attemptSystemPrompt = systemPrompt + regenDirective;
+    const attemptTemperature = baseTemperature + attempt * 0.1; // 0.55, 0.65, 0.75
+
+    let response: Awaited<ReturnType<typeof openai.chat.completions.create>>;
+    try {
+      response = await withRetry(() =>
+        openai.chat.completions.create({
+          model: MODEL,
+          max_tokens: 1500,
+          temperature: attemptTemperature,
+          messages: [
+            { role: "system", content: attemptSystemPrompt },
+            {
+              role: "user",
+              content: [...imageBlocks, { type: "text", text: userMessage }],
+            },
+          ],
+        })
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const status = (err as { status?: number })?.status;
+      console.error(`[generateMetadata] OpenAI API error — model: ${MODEL}, status: ${status}, message: ${msg}`);
+      throw err;
+    }
+
+    const raw = response.choices[0]?.message?.content ?? "";
+
+    // Strip markdown code blocks if present
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    let candidate: ClipMetadata;
+    try {
+      candidate = JSON.parse(cleaned);
+    } catch {
+      throw new Error(`OpenAI returned invalid JSON: ${raw.slice(0, 200)}`);
+    }
+
+    // If there are no existing titles to clash with, accept immediately.
+    if (existingTitles.length === 0) {
+      parsed = candidate;
+      break;
+    }
+
+    const candidateTitle = String(candidate.title ?? "");
+    const clash = findWorstClash(candidateTitle, existingTitles, 0.6);
+
+    if (!clash || attempt === MAX_REGEN_ATTEMPTS) {
+      // Either clean, or we've exhausted retries — accept what we have.
+      if (clash && attempt === MAX_REGEN_ATTEMPTS) {
+        console.warn(
+          `[generateMetadata] Accepting clashing title after ${MAX_REGEN_ATTEMPTS} retries — filename="${filename}" score=${clash.score.toFixed(
+            2
+          )} candidate="${candidateTitle}" clashesWith="${clash.existingTitle}"`
+        );
+      }
+      parsed = candidate;
+      lastClash = clash;
+      break;
+    }
+
+    // Clash detected — log and prepare a regen directive for the next attempt.
+    console.warn(
+      `[generateMetadata] Title clash detected (attempt ${attempt + 1}/${MAX_REGEN_ATTEMPTS + 1}) — ` +
+        `filename="${filename}" score=${clash.score.toFixed(2)} ` +
+        `(opening=${clash.opening.toFixed(2)} bigram=${clash.bigram.toFixed(2)} ` +
+        `template=${clash.template.toFixed(2)} suffix=${clash.suffix.toFixed(2)}) ` +
+        `candidate="${candidateTitle}" clashesWith="${clash.existingTitle}"`
+    );
+    lastClash = clash;
+    regenDirective = buildRegenDirective(clash, attempt + 1);
   }
 
-  const raw = response.choices[0]?.message?.content ?? "";
-
-  // Strip markdown code blocks if present
-  const cleaned = raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-
-  let parsed: ClipMetadata;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error(`OpenAI returned invalid JSON: ${raw.slice(0, 200)}`);
+  if (!parsed) {
+    // Defensive — the loop always assigns parsed on its final iteration.
+    throw new Error("generateMetadata: no parsed result after retry loop");
   }
+  // Avoid unused-var warning; lastClash is retained only for the log above.
+  void lastClash;
 
   // Sanitize keywords: deduplicate, remove fillers, split overused phrases, lowercase
   const FILLER_KEYWORDS = new Set([

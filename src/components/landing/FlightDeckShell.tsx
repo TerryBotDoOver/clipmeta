@@ -69,6 +69,17 @@ export function FlightDeckShell({
           </Link>
           <div className="hidden items-center gap-1 sm:flex">
             <Link
+              href="/tools/metadata-grader"
+              className="group relative rounded-full px-4 py-1.5 text-sm font-medium text-white/70 transition hover:bg-white/5 hover:text-white"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                Free Grader
+                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
+                  New
+                </span>
+              </span>
+            </Link>
+            <Link
               href="/pricing"
               className="rounded-full px-4 py-1.5 text-sm font-medium text-white/60 transition hover:bg-white/5 hover:text-white"
             >
@@ -115,6 +126,7 @@ export function FlightDeckShell({
             </span>
           </div>
           <nav className="flex flex-wrap items-center gap-6 text-sm">
+            <Link href="/tools/metadata-grader" className="transition hover:text-white">Free Grader</Link>
             <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
             <Link href="/blog" className="transition hover:text-white">Blog</Link>
             <Link href="/legal/terms" className="transition hover:text-white">Terms</Link>

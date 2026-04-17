@@ -202,6 +202,80 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* FREE GRADER CTA                                                      */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <section className="relative border-t border-white/5 py-20">
+        <div className="mx-auto max-w-5xl px-6">
+          <RevealOnScroll>
+            <div className="glass-card relative overflow-hidden p-8 md:p-10">
+              <div className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
+              <div className="pointer-events-none absolute -left-24 -bottom-24 h-64 w-64 rounded-full bg-violet-500/15 blur-3xl" />
+              <div className="relative grid items-center gap-8 md:grid-cols-[1.3fr_1fr]">
+                <div>
+                  <div className="mb-4 flex flex-wrap items-center gap-2">
+                    <span className="hud-chip">FREE TOOL · NO SIGNUP</span>
+                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">
+                      New
+                    </span>
+                  </div>
+                  <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                    Not sure if your metadata is any good?{" "}
+                    <span className="gradient-text">Grade it free.</span>
+                  </h2>
+                  <p className="mt-4 text-white/65">
+                    Paste a title, description, and keyword list. Get an instant 0-100 score across 6 categories with specific issues flagged. No signup. No email. Runs in your browser.
+                  </p>
+                  <div className="mt-7 flex flex-wrap items-center gap-3">
+                    <Link
+                      href="/tools/metadata-grader"
+                      className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-7 py-3.5 text-sm font-semibold text-white shadow-xl shadow-emerald-500/25 transition hover:shadow-2xl hover:shadow-emerald-500/40"
+                    >
+                      <span className="relative z-10 flex items-center gap-2">
+                        Grade My Metadata
+                        <span className="inline-block transition-transform group-hover:translate-x-1">
+                          →
+                        </span>
+                      </span>
+                      <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                    </Link>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">
+                      · Client-side · Zero data sent
+                    </span>
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="rounded-2xl border border-white/10 bg-black/40 p-5 font-mono text-xs text-white/80">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">Sample Grade</span>
+                      <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">C · 73/100</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {[
+                        ["Title", "70"],
+                        ["Description", "52"],
+                        ["Keyword count", "65"],
+                        ["Uniqueness", "94"],
+                        ["Specificity", "70"],
+                        ["SEO / order", "92"],
+                      ].map(([label, score]) => (
+                        <div key={label} className="flex items-center justify-between gap-3">
+                          <span className="text-white/55">{label}</span>
+                          <span className="font-bold text-white">{score}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 border-t border-white/5 pt-3 text-[11px] text-amber-300">
+                      ⚠ 11 issues found · first fix: weak title
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </RevealOnScroll>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* PIPELINE — How it works                                              */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
       <section className="relative border-t border-white/5 py-24">
