@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PLANS, type Plan } from "@/lib/plans";
+import { headR2Object } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
   try {
@@ -119,11 +120,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ─── Verify the object actually landed in R2 ─────────────────────────────
+    // Clients sometimes call this endpoint after a PUT/multipart that silently
+    // failed (network abort, etc.). Without this check we create a zombie clip
+    // record that fails later with "R2 download failed: 404".
+    let r2Check: { size: number } | null;
+    try {
+      r2Check = await headR2Object(storage_path);
+    } catch (err) {
+      console.error("R2 verification failed with unexpected error:", err);
+      return NextResponse.json(
+        { message: "Unable to verify upload. Please try again." },
+        { status: 502 }
+      );
+    }
+    if (!r2Check) {
+      return NextResponse.json(
+        {
+          message: "Upload did not complete. The file was not found in storage. Please try uploading again.",
+          upload_missing: true,
+        },
+        { status: 400 }
+      );
+    }
+
     const { error: insertError } = await supabaseAdmin.from("clips").insert({
       project_id,
       original_filename,
       storage_path,
-      file_size_bytes: file_size_bytes ?? null,
+      // Prefer the authoritative size from R2 when available
+      file_size_bytes: r2Check.size || file_size_bytes || null,
       duration_seconds: null,
       upload_status: "uploaded",
       // ProRes/incompatible codec: mark for server-side worker processing

@@ -15,11 +15,35 @@ interface ReferralData {
 
 const LAST_SEEN_BONUS_KEY = 'referral_bonus_clips_last_seen';
 
+type Sparkle = {
+  left: number;
+  top: number;
+  fontSize: number;
+  duration: number;
+  delay: number;
+  emoji: string;
+};
+
+// Generate stable sparkle data once per celebration.
+// Called when the celebration starts, NOT during render, so positions stay put.
+function generateSparkles(count: number, emojis: string[]): Sparkle[] {
+  return Array.from({ length: count }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    fontSize: 14 + Math.random() * 28,
+    duration: 1.5 + Math.random() * 2,
+    delay: Math.random() * 1.5,
+    emoji: emojis[Math.floor(Math.random() * emojis.length)],
+  }));
+}
+
+const BONUS_EMOJIS = ["✨", "🎉", "⭐", "💫", "🎊", "🎁"];
+
 export function ReferralCard() {
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [celebration, setCelebration] = useState<{ amount: number } | null>(null);
+  const [celebration, setCelebration] = useState<{ amount: number; sparkles: Sparkle[] } | null>(null);
 
   useEffect(() => {
     fetch('/api/referral')
@@ -35,7 +59,10 @@ export function ReferralCard() {
               const delta = current - lastSeen;
               if (delta > 0 && lastSeen > 0) {
                 // Only celebrate if user has seen the card before (avoids first-load spam)
-                setCelebration({ amount: delta });
+                setCelebration({
+                  amount: delta,
+                  sparkles: generateSparkles(40, BONUS_EMOJIS),
+                });
                 setTimeout(() => setCelebration(null), 6000);
               }
             }
@@ -85,18 +112,18 @@ export function ReferralCard() {
         >
           {/* Sparkles layer */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {[...Array(40)].map((_, i) => (
+            {celebration.sparkles.map((s, i) => (
               <span
                 key={i}
                 className="absolute"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  fontSize: `${14 + Math.random() * 28}px`,
-                  animation: `bonus-sparkle ${1.5 + Math.random() * 2}s ease-out ${Math.random() * 1.5}s infinite`,
+                  left: `${s.left}%`,
+                  top: `${s.top}%`,
+                  fontSize: `${s.fontSize}px`,
+                  animation: `bonus-sparkle ${s.duration}s ease-out ${s.delay}s infinite`,
                 }}
               >
-                {["✨", "🎉", "⭐", "💫", "🎊", "🎁"][Math.floor(Math.random() * 6)]}
+                {s.emoji}
               </span>
             ))}
           </div>

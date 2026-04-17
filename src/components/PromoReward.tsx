@@ -49,9 +49,34 @@ function formatCountdown(msRemaining: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+type Sparkle = {
+  left: number;
+  top: number;
+  fontSize: number;
+  duration: number;
+  delay: number;
+  emoji: string;
+};
+
+const PROMO_EMOJIS = ["✨", "🎉", "⭐", "💫", "🎊"];
+
+// Generate stable sparkle data once when the popup opens.
+// Computed at the moment of state change (not during render) so positions stay put.
+function generateSparkles(count: number): Sparkle[] {
+  return Array.from({ length: count }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    fontSize: 12 + Math.random() * 24,
+    duration: 1.5 + Math.random() * 2,
+    delay: Math.random() * 1.5,
+    emoji: PROMO_EMOJIS[Math.floor(Math.random() * PROMO_EMOJIS.length)],
+  }));
+}
+
 export function PromoReward() {
   const [tier, setTier] = useState<PromoTier | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [sparkles, setSparkles] = useState<Sparkle[]>([]);
   const [countdown, setCountdown] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -81,6 +106,7 @@ export function PromoReward() {
         // Show popup only once per unlock (not on every page load)
         const popupKey = `${POPUP_SHOWN_KEY}_${ts.getTime()}`;
         if (!localStorage.getItem(popupKey)) {
+          setSparkles(generateSparkles(30));
           setShowPopup(true);
           localStorage.setItem(popupKey, "true");
         }
@@ -178,18 +204,18 @@ export function PromoReward() {
         >
           {/* Sparkles */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            {[...Array(30)].map((_, i) => (
+            {sparkles.map((s, i) => (
               <span
                 key={i}
                 className="absolute"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  fontSize: `${12 + Math.random() * 24}px`,
-                  animation: `sparkle ${1.5 + Math.random() * 2}s ease-out ${Math.random() * 1.5}s infinite`,
+                  left: `${s.left}%`,
+                  top: `${s.top}%`,
+                  fontSize: `${s.fontSize}px`,
+                  animation: `sparkle ${s.duration}s ease-out ${s.delay}s infinite`,
                 }}
               >
-                {["✨", "🎉", "⭐", "💫", "🎊"][Math.floor(Math.random() * 5)]}
+                {s.emoji}
               </span>
             ))}
           </div>
