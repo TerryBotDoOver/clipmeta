@@ -176,7 +176,7 @@ export default function HomePage() {
               This is what you get. <span className="gradient-text">Watch it happen.</span>
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-white/55">
-              Drop a clip, GPT-4o reads the frames, writes the full package. Title, description, 50 unique keywords, category, location. You review. You ship.
+              Drop a clip. The AI reads the frames and writes the full package. Title, description, 50 unique keywords, category, location. You review. You ship.
             </p>
           </RevealOnScroll>
           <RevealOnScroll>
@@ -240,7 +240,7 @@ export default function HomePage() {
                 num: "02",
                 label: "ANALYZE",
                 title: "AI Reads Frames",
-                desc: "GPT-4o watches the actual footage. Writes contextual titles, descriptions, keywords, locations — not filename guesses.",
+                desc: "The AI watches the actual footage. Writes contextual titles, descriptions, keywords, locations — not filename guesses.",
                 color: "cyan",
                 icon: (
                   <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" stroke="currentColor" strokeWidth="1.5">
@@ -375,7 +375,7 @@ export default function HomePage() {
               <div className="glass-card h-full p-6">
                 <div className="mb-4 text-2xl">🎬</div>
                 <h3 className="mb-2 text-base font-semibold text-white">Video-first AI</h3>
-                <p className="text-sm leading-relaxed text-white/55">GPT-4o analyzes real frames. Not filenames. Context-aware everything.</p>
+                <p className="text-sm leading-relaxed text-white/55">Vision AI analyzes real frames. Not filenames. Context-aware everything.</p>
               </div>
             </RevealOnScroll>
 
@@ -500,7 +500,7 @@ export default function HomePage() {
                   <tbody>
                     {[
                       {
-                        feature: "Reads actual video frames (GPT-4o vision)",
+                        feature: "Reads actual video frames (vision AI)",
                         clipmeta: "yes",
                         tagmyclip: "partial",
                         freemeta: "no",
@@ -672,9 +672,9 @@ export default function HomePage() {
           </RevealOnScroll>
           <div className="space-y-3">
             {[
-              { q: "What is ClipMeta?", a: "ClipMeta is an AI-powered metadata workflow tool for stock footage contributors. You upload video clips, our AI analyzes actual video frames using GPT-4o, and generates titles, descriptions, keywords, and categories. You review, edit inline, and export a platform-ready CSV." },
+              { q: "What is ClipMeta?", a: "ClipMeta is an AI-powered metadata workflow tool for stock footage contributors. You upload video clips, our vision AI analyzes actual video frames, and generates titles, descriptions, keywords, and categories. You review, edit inline, and export a platform-ready CSV." },
               { q: "Which stock footage platforms does ClipMeta support?", a: "ClipMeta supports Blackbox.global, Shutterstock, Adobe Stock, and Pond5 with platform-specific CSV export formats. Each export matches the exact column names, keyword counts, and formatting required by each platform." },
-              { q: "How accurate is the AI-generated metadata?", a: "ClipMeta uses GPT-4o to analyze actual video frames from your clips — not just the filename. This produces highly contextual metadata. You always review and edit before exporting, so you stay in control of quality." },
+              { q: "How accurate is the AI-generated metadata?", a: "ClipMeta uses advanced vision AI to analyze actual video frames from your clips — not just the filename. This produces highly contextual metadata. You always review and edit before exporting, so you stay in control of quality." },
               { q: "Is there a free plan?", a: "Yes. The free plan includes 3 clips per day with no credit card required. Paid plans start at $9/month for Starter (100 clips/month), $19/month for Pro (300 clips/month), and $49/month for Studio (1000 clips/month). All paid plans include a 7-day free trial." },
               { q: "Do unused clips roll over?", a: "Yes, on paid plans unused clips carry forward up to 2 months. If you have a slow week, you don't lose your budget." },
               { q: "Does ClipMeta support Blackbox.global?", a: "Yes — ClipMeta is the only metadata tool with native Blackbox.global CSV support. The export matches Blackbox's exact import template including the correct category taxonomy, column order, and formatting." },
@@ -703,9 +703,9 @@ export default function HomePage() {
               "@context": "https://schema.org",
               "@type": "FAQPage",
               mainEntity: [
-                { "@type": "Question", name: "What is ClipMeta?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta is an AI-powered metadata workflow tool for stock footage contributors. You upload video clips, our AI analyzes actual video frames using GPT-4o, and generates titles, descriptions, keywords, and categories. You review, edit inline, and export a platform-ready CSV." } },
+                { "@type": "Question", name: "What is ClipMeta?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta is an AI-powered metadata workflow tool for stock footage contributors. You upload video clips, our vision AI analyzes actual video frames, and generates titles, descriptions, keywords, and categories. You review, edit inline, and export a platform-ready CSV." } },
                 { "@type": "Question", name: "Which stock footage platforms does ClipMeta support?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta supports Blackbox.global, Shutterstock, Adobe Stock, and Pond5 with platform-specific CSV export formats. Each export matches the exact column names, keyword counts, and formatting required by each platform." } },
-                { "@type": "Question", name: "How accurate is the AI-generated metadata?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta uses GPT-4o to analyze actual video frames from your clips — not just the filename. This produces highly contextual metadata. You always review and edit before exporting, so you stay in control of quality." } },
+                { "@type": "Question", name: "How accurate is the AI-generated metadata?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta uses advanced vision AI to analyze actual video frames from your clips — not just the filename. This produces highly contextual metadata. You always review and edit before exporting, so you stay in control of quality." } },
                 { "@type": "Question", name: "Is there a free plan?", acceptedAnswer: { "@type": "Answer", text: "Yes. The free plan includes 3 clips per day with no credit card required. Paid plans start at $9/month for Starter (100 clips/month), $19/month for Pro (300 clips/month), and $49/month for Studio (1000 clips/month). All paid plans include a 7-day free trial." } },
                 { "@type": "Question", name: "Do unused clips roll over?", acceptedAnswer: { "@type": "Answer", text: "Yes, on paid plans unused clips carry forward up to 2 months. If you have a slow week, you don't lose your budget." } },
                 { "@type": "Question", name: "Does ClipMeta support Blackbox.global?", acceptedAnswer: { "@type": "Answer", text: "Yes — ClipMeta is the only metadata tool with native Blackbox.global CSV support. The export matches Blackbox's exact import template including the correct category taxonomy, column order, and formatting." } },

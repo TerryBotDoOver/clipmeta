@@ -80,7 +80,7 @@ Not all AI keywording tools are equal. Here are the features that actually matte
 
 ## ClipMeta's Approach
 
-ClipMeta uses GPT-4o Vision with 4 frames extracted per clip. The model reads the frames and generates titles, descriptions, and keywords based on what is actually visible in the video.
+ClipMeta uses frame-level vision AI, sampling multiple frames from each clip. The model reads those frames and generates titles, descriptions, and keywords based on what is actually visible in the video.
 
 After generation, you review the metadata in a clip-by-clip interface. You can edit any field, approve or skip clips, and then export in the platform format of your choice, including Blackbox, Shutterstock, Adobe Stock, and Pond5.
 
