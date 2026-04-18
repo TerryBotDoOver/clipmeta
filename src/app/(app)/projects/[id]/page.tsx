@@ -20,7 +20,8 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     supabase.from("profiles").select("plan, stripe_subscription_status").eq("id", user.id).single(),
   ]);
 
-  const isActiveSub = profile?.stripe_subscription_status === "active" || profile?.stripe_subscription_status === "trialing";
+  const activeStatuses = ["active", "trialing", "founder"];
+  const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
   const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free";
 
   if (!project) {
