@@ -2,7 +2,6 @@ import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
 import { ArcadeDemo } from "@/components/ArcadeDemo";
 import { RevealOnScroll } from "@/components/landing/RevealOnScroll";
-import { HeroVisual } from "@/components/landing/HeroVisual";
 import { MetadataPreview } from "@/components/landing/MetadataPreview";
 import { BeforeAfter } from "@/components/landing/BeforeAfter";
 import { SavingsCalculator } from "@/components/landing/SavingsCalculator";
@@ -64,7 +63,7 @@ export default function HomePage() {
         {/* Grid overlay */}
         <div className="grid-overlay" />
 
-        <div className="relative mx-auto max-w-6xl px-6 py-20 md:py-32">
+        <div className="relative mx-auto max-w-6xl px-6 pt-20 pb-14 md:pt-28 md:pb-20">
           {/* HUD strip */}
           <div className="mb-8 flex justify-center">
             <div className="hud-chip">
@@ -76,112 +75,98 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
-            {/* Left: headline + CTAs */}
-            <div>
-              <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Stop spending hours
-                <br />
-                <span className="inline-block">
-                  on metadata.
+          {/* Centered headline */}
+          <div className="mx-auto max-w-4xl text-center">
+            <h1 className="text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+              Upload a clip.
+              <br />
+              <span className="inline-block">Get titles, keywords,</span>
+              <br />
+              <span className="gradient-text inline-block">
+                and a Blackbox CSV in 30 seconds.
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-white/65">
+              AI reads your actual video frames — not filenames — and writes platform-ready metadata for Blackbox, Shutterstock, Adobe Stock, and Pond5. You review. You ship. 16× faster than doing it by hand.
+            </p>
+
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+              <Link
+                href="/auth?mode=signup"
+                className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-7 py-3.5 text-sm font-semibold text-white shadow-xl shadow-violet-500/30 transition hover:shadow-2xl hover:shadow-violet-500/50"
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  Start Free — No Credit Card
+                  <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
                 </span>
-                <br />
-                <span className="gradient-text inline-block">
-                  Start selling.
-                </span>
-              </h1>
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              </Link>
+              <Link
+                href="/pricing"
+                className="rounded-xl border border-white/15 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:border-white/30 hover:bg-white/10"
+              >
+                See Pricing
+              </Link>
+            </div>
 
-              <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/60">
-                Upload your clips. AI reads actual video frames — not filenames — and writes titles, descriptions, and keywords. You review, export the platform CSV, ship.
-              </p>
+            {/* Secondary: see it without signing up */}
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm">
+              <Link
+                href="/tools/metadata-grader"
+                className="group inline-flex items-center gap-1.5 text-emerald-300 transition hover:text-emerald-200"
+              >
+                <span>Try the free grader — no signup</span>
+                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+              <span className="hidden text-white/20 sm:inline">·</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">
+                7-day Pro trial included
+              </span>
+            </div>
 
-              <div className="mt-9 flex flex-wrap items-center gap-4">
-                <Link
-                  href="/auth?mode=signup"
-                  className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-7 py-3.5 text-sm font-semibold text-white shadow-xl shadow-violet-500/30 transition hover:shadow-2xl hover:shadow-violet-500/50"
+            {/* Platform chips */}
+            <div className="mt-10 flex flex-wrap justify-center gap-2">
+              {[
+                { name: "Blackbox.global", exclusive: true },
+                { name: "Shutterstock" },
+                { name: "Adobe Stock" },
+                { name: "Pond5" },
+              ].map((p) => (
+                <span
+                  key={p.name}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-md ${
+                    p.exclusive
+                      ? "border-violet-400/40 bg-violet-500/10 text-violet-200"
+                      : "border-white/10 bg-white/5 text-white/70"
+                  }`}
                 >
-                  <span className="relative z-10 flex items-center gap-2">
-                    Start Free — No Credit Card
-                    <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-                  </span>
-                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                </Link>
-                <Link
-                  href="/pricing"
-                  className="rounded-xl border border-white/15 bg-white/5 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-md transition hover:border-white/30 hover:bg-white/10"
-                >
-                  See Pricing
-                </Link>
-              </div>
-
-              {/* Platform chips */}
-              <div className="mt-10">
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">
-                  // Compatible Export Targets
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { name: "Blackbox.global", exclusive: true },
-                    { name: "Shutterstock" },
-                    { name: "Adobe Stock" },
-                    { name: "Pond5" },
-                  ].map((p) => (
-                    <span
-                      key={p.name}
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-md ${
-                        p.exclusive
-                          ? "border-violet-400/40 bg-violet-500/10 text-violet-200"
-                          : "border-white/10 bg-white/5 text-white/70"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          p.exclusive ? "bg-violet-400" : "bg-emerald-400"
-                        }`}
-                        style={{ boxShadow: `0 0 6px currentColor` }}
-                      />
-                      {p.name}
-                      {p.exclusive && (
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-violet-300">
-                          · Native
-                        </span>
-                      )}
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      p.exclusive ? "bg-violet-400" : "bg-emerald-400"
+                    }`}
+                    style={{ boxShadow: `0 0 6px currentColor` }}
+                  />
+                  {p.name}
+                  {p.exclusive && (
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-violet-300">
+                      · Native
                     </span>
-                  ))}
-                </div>
-              </div>
+                  )}
+                </span>
+              ))}
             </div>
+          </div>
 
-            {/* Right: hero visual */}
-            <div className="relative">
-              <HeroVisual />
-            </div>
+          {/* Live demo right in the hero */}
+          <div className="mt-14">
+            <MetadataPreview />
           </div>
 
           {/* Stats bar */}
-          <div className="mt-14">
+          <div className="mt-10">
             <StatsBar />
           </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* LIVE METADATA PREVIEW                                                */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <section className="relative border-t border-white/5 py-24">
-        <div className="mx-auto max-w-6xl px-6">
-          <RevealOnScroll className="mb-12 text-center">
-            <p className="hud-chip mx-auto mb-4 inline-flex">LIVE OUTPUT</p>
-            <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
-              This is what you get. <span className="gradient-text">Watch it happen.</span>
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-white/55">
-              Drop a clip. The AI reads the frames and writes the full package. Title, description, 50 unique keywords, category, location. You review. You ship.
-            </p>
-          </RevealOnScroll>
-          <RevealOnScroll>
-            <MetadataPreview />
-          </RevealOnScroll>
         </div>
       </section>
 
