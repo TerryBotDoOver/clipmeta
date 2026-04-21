@@ -16,7 +16,13 @@ type Props = {
 };
 
 type Stage = "idle" | "credentials" | "transferring" | "done" | "error";
-const BATCH_SIZE = 3; // Keep small to avoid Vercel function timeouts on large files
+// One clip per Vercel function invocation. Pro-plan clips routinely run 150-250MB,
+// and Blackbox FTP upload is modest -- bundling multiple clips into a single 300s
+// function call reliably times out. One-per-call stays well under the ceiling and
+// gives per-clip success/failure granularity. The small inter-batch delay avoids
+// hammering Blackbox's auth endpoint with back-to-back logins.
+const BATCH_SIZE = 1;
+const INTER_BATCH_DELAY_MS = 400;
 
 const FTP_PLANS = ['pro', 'studio', 'founder'];
 const PRORES_PLANS = ['pro', 'studio', 'founder'];
@@ -67,6 +73,10 @@ export function BlackboxFtpButton({ projectId, clipCount, userPlan = 'free' }: P
 
       for (let i = 0; i < batches.length; i++) {
         setBatchProgress({ current: i + 1, total: totalBatches });
+
+        // Small breather between batches so Blackbox's FTP auth doesn't
+        // see 24 back-to-back logins from the same IP.
+        if (i > 0) await new Promise((r) => setTimeout(r, INTER_BATCH_DELAY_MS));
 
         try {
           const res = await fetch("/api/ftp/blackbox", {
@@ -127,7 +137,11 @@ export function BlackboxFtpButton({ projectId, clipCount, userPlan = 'free' }: P
       setSummary({ total: totalClips, succeeded: totalSucceeded, failed: totalFailed });
 
       if (totalSucceeded === 0 && batchErrors > 0) {
-        setErrorMsg("All batches failed. The transfer server may be overloaded. Try again in a few minutes, or transfer fewer clips at a time.");
+        setErrorMsg(
+          "No clips made it through. Most often this means your Blackbox email or password is wrong, " +
+          "or your Blackbox account is not yet approved. If credentials are correct, try again in a few minutes -- " +
+          "Blackbox's FTP server may be briefly overloaded."
+        );
         setStage("error");
       } else {
         setStage("done");
@@ -272,10 +286,10 @@ export function BlackboxFtpButton({ projectId, clipCount, userPlan = 'free' }: P
                 <div>
                   <p className="text-sm font-semibold text-foreground">
                     {batchProgress.total > 1
-                      ? `Transferring batch ${batchProgress.current} of ${batchProgress.total}…`
+                      ? `Transferring clip ${batchProgress.current} of ${batchProgress.total}…`
                       : `Transferring ${clipCount} clip${clipCount !== 1 ? 's' : ''} to Blackbox…`}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">This may take several minutes for large files. Don't close this window.</p>
+                  <p className="text-xs text-muted-foreground mt-1">Large files can take 15-30 seconds each. Don't close this window.</p>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/30 px-4 py-3">
                   <p className="text-xs text-muted-foreground">
