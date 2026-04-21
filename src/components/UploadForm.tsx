@@ -753,6 +753,11 @@ async function multipartUpload(
   onProgress(100);
 }
 
+// 5 minutes is enough for a 50MB file at ~170 KB/s -- any connection slower than
+// that can't realistically finish anyway. Without this, XHR waits indefinitely
+// for TCP to give up, burning retry time on a single stuck attempt.
+const SINGLE_PUT_TIMEOUT_MS = 5 * 60 * 1000;
+
 function singleUploadAttempt(
   signedUrl: string,
   file: File,
@@ -761,6 +766,7 @@ function singleUploadAttempt(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    xhr.timeout = SINGLE_PUT_TIMEOUT_MS;
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     });
@@ -773,6 +779,7 @@ function singleUploadAttempt(
       }
     });
     xhr.addEventListener("error", () => reject(new Error("Network error during upload.")));
+    xhr.addEventListener("timeout", () => reject(new Error("Upload timed out (connection stuck).")));
     xhr.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
     if (signal) signal.addEventListener("abort", () => xhr.abort());
     xhr.open("PUT", signedUrl);
@@ -793,8 +800,11 @@ async function uploadWithProgress(
     return multipartUpload(file, storagePath, file.type || "video/mp4", onProgress, signal);
   }
 
-  // Small files: single PUT with retry
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  // Small files: single PUT with retry. 5 attempts with exponential backoff
+  // (2s, 4s, 8s, 16s = ~30s total across the gaps) gives flaky connections
+  // room to recover without making the user wait forever on a truly dead link.
+  const maxRetries = 5;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       onProgress(0);
       await singleUploadAttempt(signedUrl, file, onProgress, signal);
@@ -803,13 +813,13 @@ async function uploadWithProgress(
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
       if (msg.includes("status 4")) throw err;
-      if (attempt < 3) {
+      if (attempt < maxRetries) {
         const delay = 2000 * Math.pow(2, attempt - 1);
         console.warn(`Upload attempt ${attempt} failed (${msg}), retrying in ${delay}ms...`);
         await new Promise((r) => setTimeout(r, delay));
         continue;
       }
-      throw new Error(`Upload failed after 3 attempts: ${msg}`);
+      throw new Error(`Upload failed after ${maxRetries} attempts: ${msg}`);
     }
   }
 }
