@@ -123,6 +123,12 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelledRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Mirrors `queue` state so processQueue can read the freshest list even when
+  // called immediately after a setQueue (e.g. from a retry button).
+  const queueRef = useRef<QueuedFile[]>([]);
+  useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
 
   // Warn user if they try to navigate away during an active upload
   useEffect(() => {
@@ -198,9 +204,26 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     }
   }
 
+  function handleRetryOne(id: string) {
+    if (isRunning) return;
+    const item = queueRef.current.find((f) => f.id === id);
+    if (!item || item.tooLarge || item.limitReached) return;
+    // Reset to queued and sync the ref synchronously so processQueue sees it
+    // on the next line, before React's re-render flushes.
+    const updated = queueRef.current.map((f) =>
+      f.id === id
+        ? { ...f, status: "queued" as FileStatus, progress: 0, error: undefined }
+        : f
+    );
+    queueRef.current = updated;
+    setQueue(updated);
+    processQueue();
+  }
+
   async function processQueue() {
     cancelledRef.current = false;
-    const toProcess = queue.filter((f) => f.status === "queued");
+    // Use the ref so a retry that set state a tick ago is still seen.
+    const toProcess = queueRef.current.filter((f) => f.status === "queued");
     if (toProcess.length === 0) return;
     setIsRunning(true);
 
@@ -497,7 +520,18 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
                     </a>
                   </div>
                 ) : item.error && (
-                  <p className="mt-1 text-xs text-red-500">{item.error}</p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-xs text-red-500">{item.error}</p>
+                    {item.status === "error" && !isRunning && (
+                      <button
+                        onClick={() => handleRetryOne(item.id)}
+                        className="shrink-0 rounded-md border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-300 transition hover:bg-violet-500/20 hover:text-violet-200"
+                        title="Retry upload for this file"
+                      >
+                        ↻ Retry
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <StatusBadge status={item.status} progress={item.progress} />
@@ -565,8 +599,16 @@ function StatusBadge({ status, progress }: { status: FileStatus; progress: numbe
   );
 }
 
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB per chunk — smaller chunks survive flaky connections better
+// 5 MB chunks. Smaller than the S3/R2 recommended minimum for bulk performance,
+// but dramatically more resilient on flaky residential/VPN connections --
+// short PUTs mean fewer midway TCP resets from home routers and middleboxes.
+const CHUNK_SIZE = 5 * 1024 * 1024;
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
+
+// Hard timeout per chunk. 3 minutes is enough for a 5MB chunk on a 250 Kbps uplink
+// (which is below almost every real connection). Without this, a stuck chunk would
+// wait indefinitely for TCP to finally give up -- blocking the retry loop.
+const CHUNK_TIMEOUT_MS = 3 * 60 * 1000;
 
 function uploadChunkXHR(
   url: string,
@@ -576,6 +618,7 @@ function uploadChunkXHR(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    xhr.timeout = CHUNK_TIMEOUT_MS;
     if (onChunkProgress) {
       xhr.upload.addEventListener("progress", (e) => {
         if (e.lengthComputable) onChunkProgress(e.loaded, e.total);
@@ -590,6 +633,7 @@ function uploadChunkXHR(
       }
     });
     xhr.addEventListener("error", () => reject(new Error("Network error during chunk upload.")));
+    xhr.addEventListener("timeout", () => reject(new Error("Chunk upload timed out (connection stuck).")));
     xhr.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
     if (signal) signal.addEventListener("abort", () => xhr.abort());
     xhr.open("PUT", url);
