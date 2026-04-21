@@ -70,6 +70,23 @@ export async function POST(req: NextRequest) {
       }, { status: 401 });
     }
 
+    // Blackbox's ingest worker watches the `stock_footage` folder inside each
+    // user's FTP home directory. Files uploaded elsewhere land in limbo and
+    // never appear in the Workspace. ensureDir CDs into stock_footage, creating
+    // it first if the account doesn't have it yet (new accounts sometimes don't).
+    let uploadDir = "stock_footage";
+    try {
+      await client.ensureDir("stock_footage");
+      uploadDir = await client.pwd();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      client.close();
+      return NextResponse.json({
+        error: `Could not access the stock_footage folder on your Blackbox FTP: ${msg}. ` +
+               `If you're a new Blackbox contributor, your account may not be fully approved yet.`,
+      }, { status: 502 });
+    }
+
     // Transfer each clip
     const results: { filename: string; status: "ok" | "error"; error?: string }[] = [];
     let succeeded = 0;
@@ -103,7 +120,7 @@ export async function POST(req: NextRequest) {
       client.close();
     }
 
-    return NextResponse.json({ ok: true, results, succeeded, failed, total: clips.length });
+    return NextResponse.json({ ok: true, results, succeeded, failed, total: clips.length, upload_dir: uploadDir });
 
   } catch (err) {
     return NextResponse.json({
