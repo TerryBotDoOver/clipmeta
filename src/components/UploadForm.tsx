@@ -403,6 +403,28 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
           status: "error",
           error: msg,
         });
+
+        // Log terminal upload failures so we can tell systemic outages from
+        // one user's flaky connection. Only log genuine upload-retry exhaustions
+        // (the two error-message patterns emitted by the retry loops), not
+        // cancellations or other plumbing errors.
+        if (!cancelledRef.current && !/cancel|abort/i.test(msg)) {
+          const mpMatch = msg.match(/Part (\d+) failed after (\d+) attempts/);
+          const spMatch = msg.match(/^Upload failed after (\d+) attempts/);
+          if (mpMatch || spMatch) {
+            logUploadFailure({
+              project_id: projectId,
+              filename: item.file.name,
+              file_size_bytes: item.file.size,
+              file_type: item.file.type || null,
+              upload_method: mpMatch ? "multipart" : "single-put",
+              error_message: msg,
+              attempts_tried: mpMatch ? parseInt(mpMatch[2], 10) : parseInt(spMatch![1], 10),
+              failed_at_part: mpMatch ? parseInt(mpMatch[1], 10) : null,
+            });
+          }
+        }
+
         if (cancelledRef.current) {
           setQueue((prev) =>
             prev.map((f) =>
@@ -597,6 +619,23 @@ function StatusBadge({ status, progress }: { status: FileStatus; progress: numbe
       {label}
     </span>
   );
+}
+
+// Fire-and-forget telemetry: record terminal upload failures so we can tell
+// a real site-wide outage from one user's flaky WiFi. Any error here is
+// swallowed -- we never want the logger itself to surface to a user who's
+// already in an error state.
+function logUploadFailure(payload: Record<string, unknown>) {
+  try {
+    fetch("/api/clips/upload-failure", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // ignore
+  }
 }
 
 // 5 MB chunks. Smaller than the S3/R2 recommended minimum for bulk performance,
