@@ -67,11 +67,11 @@ export default function HomePage() {
           {/* HUD strip */}
           <div className="mb-8 flex justify-center">
             <div className="hud-chip">
-              <span>SYSTEM · ONLINE</span>
+              <span>1,200+ CLIPS TAGGED</span>
               <span className="text-white/30">|</span>
-              <span className="text-white/60">METADATA PIPELINE</span>
+              <span className="text-white/60">4 STOCK PLATFORMS</span>
               <span className="text-white/30">|</span>
-              <span className="text-emerald-400">READY</span>
+              <span className="text-emerald-400">FTP TO BLACKBOX BUILT IN</span>
             </div>
           </div>
 
