@@ -23,7 +23,7 @@ export default function PrivacyPage() {
 
       <article className="mx-auto max-w-4xl px-6 py-12">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Last updated: March 2026</p>
+        <p className="mt-2 text-sm text-muted-foreground">Last updated: April 2026</p>
 
         <div className="mt-8 space-y-8 text-sm leading-7 text-foreground">
           <section>
@@ -56,10 +56,14 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-semibold text-foreground">4. Data Sharing</h2>
             <p className="mt-3">We do not sell your personal data. We share data only with:</p>
             <ul className="mt-2 list-disc pl-5 space-y-1">
-              <li><strong>Supabase</strong> — database and authentication</li>
-              <li><strong>Cloudflare R2</strong> — file storage</li>
-              <li><strong>OpenAI</strong> — AI metadata generation from video frames</li>
-              <li><strong>Vercel</strong> — application hosting</li>
+              <li><strong>Supabase</strong> -- database and authentication</li>
+              <li><strong>Cloudflare R2</strong> -- file storage</li>
+              <li><strong>OpenAI</strong> -- AI metadata generation from video frames</li>
+              <li><strong>Vercel</strong> -- application hosting, analytics, and performance monitoring (Vercel Analytics and Speed Insights)</li>
+              <li><strong>Microsoft Clarity</strong> -- anonymous heatmaps and session replay to understand how people use the site. Passwords and form fields are masked. See <a href="https://clarity.microsoft.com/terms" className="underline" target="_blank" rel="noopener noreferrer">Clarity&apos;s terms</a> and <a href="https://privacy.microsoft.com/privacystatement" className="underline" target="_blank" rel="noopener noreferrer">Microsoft&apos;s privacy statement</a>.</li>
+              <li><strong>Meta (Facebook) Pixel</strong> -- conversion tracking for paid advertising. See <a href="https://www.facebook.com/privacy/policy" className="underline" target="_blank" rel="noopener noreferrer">Meta&apos;s privacy policy</a>.</li>
+              <li><strong>Reddit Pixel</strong> -- conversion tracking for paid advertising. See <a href="https://www.reddit.com/policies/privacy-policy" className="underline" target="_blank" rel="noopener noreferrer">Reddit&apos;s privacy policy</a>.</li>
+              <li><strong>Google Ads</strong> -- conversion tracking for paid advertising. See <a href="https://policies.google.com/privacy" className="underline" target="_blank" rel="noopener noreferrer">Google&apos;s privacy policy</a>.</li>
             </ul>
           </section>
 

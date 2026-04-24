@@ -7,6 +7,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Suspense } from "react";
 import { UTMCapture } from "@/components/UTMCapture";
 import MetaPixel from "@/components/MetaPixel";
+import ClarityAnalytics from "@/components/ClarityAnalytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -113,6 +114,7 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <MetaPixel />
+        <ClarityAnalytics />
         <ThemeProvider>
           {children}
         </ThemeProvider>
