@@ -67,7 +67,7 @@ export default function HomePage() {
           {/* HUD strip */}
           <div className="mb-8 flex justify-center">
             <div className="hud-chip">
-              <span>1,200+ CLIPS TAGGED</span>
+              <span>21,000+ CLIPS TAGGED</span>
               <span className="text-white/30">|</span>
               <span className="text-white/60">4 STOCK PLATFORMS</span>
               <span className="text-white/30">|</span>
