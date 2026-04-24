@@ -431,8 +431,8 @@ export function MetadataPreview() {
               )}
               <style jsx>{`
                 @keyframes kw-pop {
-                  0% { opacity: 0; transform: scale(0.8) translateY(4px); }
-                  100% { opacity: 1; transform: scale(1) translateY(0); }
+                  0% { opacity: 0; transform: scale(0.92); }
+                  100% { opacity: 1; transform: scale(1); }
                 }
               `}</style>
             </div>

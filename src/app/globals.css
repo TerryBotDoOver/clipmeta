@@ -330,6 +330,25 @@
   transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s, box-shadow 0.3s;
   will-change: transform;
 }
+
+/* Mobile: drop the heavy backdrop-filter. Mobile Chrome/Safari flash
+   black rectangles when a 20px blurred backdrop coexists with children
+   that animate transforms (the keyword pills popping in during the
+   metadata preview were the trigger). A solid-ish background + lighter
+   blur composites cleanly on phones. */
+@media (max-width: 768px) {
+  .glass-card {
+    background: rgba(15, 15, 22, 0.72);
+    backdrop-filter: blur(6px);
+  }
+  .hud-chip {
+    background: rgba(10, 10, 15, 0.75);
+    backdrop-filter: blur(4px);
+  }
+  .gradient-border {
+    backdrop-filter: blur(6px);
+  }
+}
 .glass-card:hover {
   transform: translateY(-4px) rotateX(1.5deg) rotateY(-1.5deg);
   border-color: rgba(139, 92, 246, 0.35);
