@@ -182,11 +182,11 @@ export function MetadataPreview() {
   const handleResetKeywords = () => setDeletedKeywords(new Set());
 
   return (
-    <div ref={containerRef} className="glass-card relative overflow-hidden p-6 md:p-8">
-      {/* Aurora glow corner */}
-      <div className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full bg-violet-500/25 blur-3xl" />
+    <div ref={containerRef} className="glass-card relative overflow-hidden p-4 sm:p-6 md:p-8">
+      {/* Aurora glow corner — lighter blur on mobile to keep scrolling smooth */}
+      <div className="pointer-events-none absolute -right-32 -top-32 h-72 w-72 rounded-full bg-violet-500/25 blur-2xl md:blur-3xl" />
 
-      <div className="relative grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+      <div className="relative grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-8">
         {/* LEFT: video frame */}
         <div>
           <div className="mb-3 flex items-center justify-between">
@@ -350,7 +350,7 @@ export function MetadataPreview() {
               <div className="mb-1 font-mono text-[9px] uppercase tracking-[0.2em] text-white/30">
                 Description
               </div>
-              <div className="min-h-[92px] rounded-lg border border-white/5 bg-black/30 p-3 text-xs leading-relaxed text-white/80">
+              <div className="min-h-[132px] rounded-lg border border-white/5 bg-black/30 p-3 text-xs leading-relaxed text-white/80 sm:min-h-[112px]">
                 {typedDesc || <span className="text-white/20">—</span>}
                 {step === 3 && <span className="inline-block h-3 w-1 -mb-0.5 bg-violet-400 animate-pulse" />}
               </div>
@@ -400,7 +400,7 @@ export function MetadataPreview() {
                   )}
                 </span>
               </div>
-              <div className="flex min-h-[80px] flex-wrap gap-1.5 rounded-lg border border-white/5 bg-black/30 p-3">
+              <div className="flex min-h-[120px] flex-wrap gap-1.5 rounded-lg border border-white/5 bg-black/30 p-3 sm:min-h-[80px]">
                 {SAMPLE.keywords.slice(0, revealedKeywords).map((kw, i) => {
                   if (deletedKeywords.has(i)) return null;
                   return (

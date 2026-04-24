@@ -65,12 +65,12 @@ export default function HomePage() {
 
         <div className="relative mx-auto max-w-6xl px-6 pt-20 pb-14 md:pt-28 md:pb-20">
           {/* HUD strip */}
-          <div className="mb-8 flex justify-center">
-            <div className="hud-chip">
+          <div className="mb-8 flex justify-center px-2">
+            <div className="hud-chip max-w-full flex-wrap justify-center gap-x-2 gap-y-1 text-center">
               <span>21,000+ CLIPS TAGGED</span>
               <span className="text-white/30">|</span>
               <span className="text-white/60">4 STOCK PLATFORMS</span>
-              <span className="text-white/30">|</span>
+              <span className="hidden text-white/30 sm:inline">|</span>
               <span className="text-emerald-400">FTP TO BLACKBOX BUILT IN</span>
             </div>
           </div>
@@ -396,33 +396,33 @@ export default function HomePage() {
             </p>
           </RevealOnScroll>
 
-          <div className="grid auto-rows-[200px] grid-cols-1 gap-4 md:grid-cols-3 md:auto-rows-[180px]">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:auto-rows-[180px]">
             {/* BIG card: FTP exclusive */}
             <RevealOnScroll className="md:col-span-2 md:row-span-2">
-              <div className="glass-card group relative flex h-full flex-col justify-between overflow-hidden p-8">
+              <div className="glass-card group relative flex h-full flex-col justify-between overflow-hidden p-6 sm:p-8">
                 <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-violet-500/20 blur-3xl transition-opacity group-hover:opacity-60" />
                 <div>
-                  <div className="mb-4 flex items-center gap-3">
+                  <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
                     <span className="hud-chip">EXCLUSIVE</span>
                     <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-violet-300">
                       · FTP · Blackbox
                     </span>
                   </div>
-                  <h3 className="text-3xl font-bold text-white sm:text-4xl">
+                  <h3 className="text-2xl font-bold text-white sm:text-4xl">
                     Upload once. <span className="gradient-text">Send everywhere.</span>
                   </h3>
                   <p className="mt-4 max-w-md text-sm leading-relaxed text-white/60">
                     ClipMeta is the only metadata tool that pushes clips directly to Blackbox.global via FTP. No FileZilla. No manual transfers. One button, done.
                   </p>
                 </div>
-                <div className="relative mt-6 flex items-center gap-6">
+                <div className="relative mt-6 flex flex-wrap items-center gap-x-3 gap-y-3 sm:gap-x-6">
                   {["Upload", "AI writes meta", "Send to Blackbox"].map((step, i) => (
-                    <div key={step} className="flex items-center gap-3">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-full font-mono text-[11px] ${i === 0 ? "bg-violet-500/20 text-violet-200 ring-1 ring-violet-400/40" : i === 1 ? "bg-cyan-500/20 text-cyan-200 ring-1 ring-cyan-400/40" : "bg-pink-500/20 text-pink-200 ring-1 ring-pink-400/40"}`}>
+                    <div key={step} className="flex items-center gap-2 sm:gap-3">
+                      <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-full font-mono text-[11px] ${i === 0 ? "bg-violet-500/20 text-violet-200 ring-1 ring-violet-400/40" : i === 1 ? "bg-cyan-500/20 text-cyan-200 ring-1 ring-cyan-400/40" : "bg-pink-500/20 text-pink-200 ring-1 ring-pink-400/40"}`}>
                         {i + 1}
                       </div>
                       <span className="text-xs font-medium text-white/70">{step}</span>
-                      {i < 2 && <span className="text-white/20">→</span>}
+                      {i < 2 && <span className="hidden text-white/20 sm:inline">→</span>}
                     </div>
                   ))}
                 </div>
