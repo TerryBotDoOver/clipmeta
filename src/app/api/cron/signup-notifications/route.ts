@@ -13,6 +13,7 @@ type AuthUser = {
 };
 
 const NOTIFICATION_KEY = "discord_signup_notified";
+const DEFAULT_START_AT = "2026-04-26T22:55:00.000Z";
 
 function authOk(req: NextRequest) {
   const expected = process.env.CRON_SECRET;
@@ -41,8 +42,11 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const startAt = Date.parse(process.env.SIGNUP_NOTIFICATIONS_START_AT || DEFAULT_START_AT);
+
   const users = ((data.users || []) as AuthUser[])
     .filter((user) => user.id && user.email)
+    .filter((user) => Date.parse(user.created_at || "") >= startAt)
     .sort((a, b) => Date.parse(a.created_at || "") - Date.parse(b.created_at || ""));
 
   const notified: string[] = [];
