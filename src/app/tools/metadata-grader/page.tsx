@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     description:
       "Score your stock-footage metadata in seconds. Free tool by ClipMeta — works for Blackbox, Shutterstock, Adobe Stock, and Pond5.",
     type: "website",
-    url: "https://clipmeta.com/tools/metadata-grader",
+    url: "https://clipmeta.app/tools/metadata-grader",
   },
   twitter: {
     card: "summary_large_image",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
       "Score your stock-footage metadata in seconds. Free tool by ClipMeta.",
   },
   alternates: {
-    canonical: "https://clipmeta.com/tools/metadata-grader",
+    canonical: "https://clipmeta.app/tools/metadata-grader",
   },
 };
 
@@ -47,11 +47,11 @@ const softwareAppSchema = {
     price: "0",
     priceCurrency: "USD",
   },
-  url: "https://clipmeta.com/tools/metadata-grader",
+  url: "https://clipmeta.app/tools/metadata-grader",
   publisher: {
     "@type": "Organization",
     name: "ClipMeta",
-    url: "https://clipmeta.com",
+    url: "https://clipmeta.app",
   },
 };
 
