@@ -439,3 +439,105 @@ export function receiptEmail(details: ReceiptDetails): { subject: string; html: 
     html: emailWrapper(content, { transactional: true }),
   };
 }
+
+// ─── Email: Archive Warning ────────────────────────────────────────────────
+// Transactional. Sent when one or more of the user's uploaded source clips
+// is 7 days from being auto-archived from R2 storage. Metadata is preserved
+// permanently; only the playable source disappears. We tell users so they
+// can finalize export or download originals before they're gone.
+
+export function archiveWarningEmail(
+  name: string,
+  details: {
+    clipCount: number;
+    daysLeft: number;
+    projects: { name: string; slug: string; clipsAtRisk: number }[];
+  }
+): { subject: string; html: string } {
+  const firstName = name || 'there';
+  const { clipCount, daysLeft, projects } = details;
+  const clipNoun = clipCount === 1 ? 'clip' : 'clips';
+  const projectNoun = projects.length === 1 ? 'project' : 'projects';
+
+  const projectList = projects
+    .map(
+      (proj) => `
+        <tr>
+          <td style="padding:10px 14px;border-bottom:1px solid #27272a;">
+            <a href="https://clipmeta.app/projects/${proj.slug}/review" style="color:#fafafa;text-decoration:none;font-weight:600;font-size:14px;">${escapeHtml(proj.name)}</a>
+          </td>
+          <td style="padding:10px 14px;border-bottom:1px solid #27272a;text-align:right;color:#a1a1aa;font-size:14px;">
+            ${proj.clipsAtRisk} ${proj.clipsAtRisk === 1 ? 'clip' : 'clips'}
+          </td>
+        </tr>`
+    )
+    .join('');
+
+  const content = `
+    ${h1(`${clipCount} ${clipNoun} archive in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`)}
+    ${p(`Hey ${firstName},`)}
+    ${p(`Heads up — ${clipCount} of your uploaded source ${clipNoun} across ${projects.length} ${projectNoun} will be auto-archived from storage in ~${daysLeft} day${daysLeft === 1 ? '' : 's'}.`)}
+    ${p(`<strong style="color:#fafafa;">Your metadata, thumbnails, and exports stay forever.</strong> Only the playable source video files are removed to keep storage costs low.`)}
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f12;border-radius:8px;margin:8px 0 24px 0;">
+      ${projectList}
+    </table>
+    ${p(`If you still need to regenerate metadata or download originals, do it before the archive window closes.`)}
+    ${ctaButton('Open ClipMeta', 'https://clipmeta.app/projects')}
+    <p style="color:#71717a;font-size:13px;line-height:1.6;margin:16px 0 0 0;">Sources are auto-archived 21 days after upload. This is a one-time notice for these clips.</p>
+  `;
+
+  return {
+    subject: `${clipCount} ${clipNoun} archive in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — ClipMeta`,
+    html: emailWrapper(content, { transactional: true }),
+  };
+}
+
+// ─── Email: Idle Project Reminder ──────────────────────────────────────────
+// Transactional. Sent once per project when it goes 30+ days without
+// activity AND still has clips (especially clips with metadata that hasn't
+// been exported). Nudges the user to wrap things up before sources archive.
+
+export function idleProjectEmail(
+  name: string,
+  details: {
+    projectName: string;
+    projectSlug: string;
+    daysIdle: number;
+    totalClips: number;
+    clipsWithMetadata: number;
+    clipsExpiringSoon: number;
+  }
+): { subject: string; html: string } {
+  const firstName = name || 'there';
+  const { projectName, projectSlug, daysIdle, totalClips, clipsWithMetadata, clipsExpiringSoon } = details;
+
+  const expiringLine =
+    clipsExpiringSoon > 0
+      ? `<p style="color:#fbbf24;font-size:14px;line-height:1.6;margin:0 0 16px 0;background-color:#422006;padding:12px 14px;border-radius:6px;border:1px solid #92400e;">⚠️ ${clipsExpiringSoon} ${clipsExpiringSoon === 1 ? 'source file is' : 'source files are'} within 7 days of being auto-archived from storage.</p>`
+      : '';
+
+  const content = `
+    ${h1(`Your project "${escapeHtml(projectName)}" has been quiet`)}
+    ${p(`Hey ${firstName},`)}
+    ${p(`Your project <strong style="color:#fafafa;">${escapeHtml(projectName)}</strong> hasn&apos;t had any activity for ${daysIdle} days. It still has ${totalClips} ${totalClips === 1 ? 'clip' : 'clips'} (${clipsWithMetadata} with metadata).`)}
+    ${expiringLine}
+    ${p(`If you&apos;re done with this project, finalize the export now. If you&apos;ve moved on, no action needed — your metadata stays saved.`)}
+    ${ctaButton('Open Project', `https://clipmeta.app/projects/${projectSlug}/review`)}
+    <p style="color:#71717a;font-size:13px;line-height:1.6;margin:16px 0 0 0;">This is a one-time reminder. We won&apos;t nag you about this project again.</p>
+  `;
+
+  return {
+    subject: `${projectName}: idle for ${daysIdle} days`,
+    html: emailWrapper(content, { transactional: true }),
+  };
+}
+
+// Minimal HTML escaper for project names that may contain user input.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
