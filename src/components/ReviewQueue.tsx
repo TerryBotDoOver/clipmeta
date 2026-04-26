@@ -118,6 +118,16 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
   const [renamedFiles, setRenamedFiles] = useState<Record<string, string>>({});
   // Local metadata overrides — updated in-place after regeneration (no page reload)
   const [metadataOverrides, setMetadataOverrides] = useState<Record<string, Partial<MetadataResults>>>({});
+  // Per-clip version counter: bumped on every metadata swap (regen + revert) so
+  // MetadataEditor's `key` changes and React remounts it. Without this, the
+  // editor's local title/description state (initialized once from props) doesn't
+  // pick up the new values on revert. Keywords have their own useEffect inside
+  // MetadataEditor, which is why earlier they reverted correctly but title and
+  // description appeared to stick.
+  const [metadataVersion, setMetadataVersion] = useState<Record<string, number>>({});
+  const bumpMetadataVersion = useCallback((clipId: string) => {
+    setMetadataVersion((prev) => ({ ...prev, [clipId]: (prev[clipId] ?? 0) + 1 }));
+  }, []);
   const [bulkRegenerating, setBulkRegenerating] = useState(false);
   const [regenProgress, setRegenProgress] = useState<{ current: number; total: number; filename: string } | null>(null);
   const [regenDone, setRegenDone] = useState<{ count: number; errors: number } | null>(null);
@@ -323,6 +333,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
             thumbnail_url: m.thumbnail_url,
           },
         }));
+        bumpMetadataVersion(clipId);
       }
       // History row still exists (the OLD current got snapshotted into it),
       // so keep clipId in the set -- toggle remains valid for re-revert.
@@ -529,6 +540,10 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
         if (!metaRes.ok) throw new Error("Generation failed");
         const { metadata } = await metaRes.json();
         setMetadataOverrides((prev) => ({ ...prev, [id]: metadata }));
+        bumpMetadataVersion(id);
+        // Bulk regen also creates a history row server-side, so the toggle
+        // becomes available for each clip in the bulk batch.
+        setClipsWithHistory((prev) => new Set(prev).add(id));
       } catch {
         errCount++;
       }
@@ -889,7 +904,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                     {hasMetadata ? (
                       <>
                         <MetadataEditor
-                          key={`${clip.id}-${metadataOverrides[clip.id] ? 'regen' : 'orig'}`}
+                          key={`${clip.id}-${metadataVersion[clip.id] ?? 0}`}
                           clipId={clip.id}
                           initial={{
                             title: effectiveMeta!.title ?? "",
@@ -1027,6 +1042,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                                 variant="subtle"
                                 onSuccess={(meta) => {
                                   setMetadataOverrides(prev => ({ ...prev, [clip.id]: meta }));
+                                  bumpMetadataVersion(clip.id);
                                   // Generate route snapshots prior metadata into history,
                                   // so this clip now has a previous version to revert to.
                                   setClipsWithHistory(prev => new Set(prev).add(clip.id));
