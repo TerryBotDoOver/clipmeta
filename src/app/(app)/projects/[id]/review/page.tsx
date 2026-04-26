@@ -175,8 +175,8 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         <ClipLimitWarning />
 
         {/* Archive countdown — appears when any clip's source is ≤7 days from
-            being archived from R2, or when some have already been archived.
-            Metadata is preserved permanently; only the playable source goes. */}
+            archive, or when some are already archived. Metadata is always
+            preserved; only the playable source goes. */}
         {showArchiveBanner && (
           <div
             className={
@@ -197,17 +197,14 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
                       {clipsExpiringIn7Days} clip{clipsExpiringIn7Days === 1 ? "" : "s"}{" "}
                       {soonestDaysLeft <= 0 ? "are being archived now" : `archive in ${soonestDaysLeft} day${soonestDaysLeft === 1 ? "" : "s"}`}.
                     </span>{" "}
-                    Generate metadata and export before then — your saved metadata stays forever, but the playable source files won&apos;t.
+                    Finish what you need before then. Your metadata is saved either way.
                   </p>
                 )}
                 {archivedCount > 0 && (
                   <p className="text-xs opacity-90">
-                    {archivedCount} clip{archivedCount === 1 ? " has" : "s have"} already been archived. Their metadata is intact; re-upload the source if you need to regenerate.
+                    {archivedCount} clip{archivedCount === 1 ? " has" : "s have"} already been archived. Metadata stays saved; re-upload the source to regenerate.
                   </p>
                 )}
-                <p className="text-xs opacity-75">
-                  Sources are auto-archived 21 days after upload to keep storage costs low.
-                </p>
               </div>
             </div>
           </div>

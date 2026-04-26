@@ -878,9 +878,9 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                       <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs">
                         <span aria-hidden className="mt-0.5 text-base leading-none">📦</span>
                         <div className="space-y-1">
-                          <p className="font-semibold text-amber-300">Source video archived</p>
+                          <p className="font-semibold text-amber-300">Source video no longer available</p>
                           <p className="text-muted-foreground leading-relaxed">
-                            We auto-archive uploaded videos after 21 days to keep storage costs low. The metadata and thumbnail are saved permanently — only the playable source is gone. Re-upload this clip if you need to regenerate from a different frame.
+                            Your metadata and thumbnail are saved. Re-upload the clip if you want to regenerate.
                           </p>
                         </div>
                       </div>

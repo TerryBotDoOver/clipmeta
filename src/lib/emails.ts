@@ -476,14 +476,14 @@ export function archiveWarningEmail(
   const content = `
     ${h1(`${clipCount} ${clipNoun} archive in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`)}
     ${p(`Hey ${firstName},`)}
-    ${p(`Heads up — ${clipCount} of your uploaded source ${clipNoun} across ${projects.length} ${projectNoun} will be auto-archived from storage in ~${daysLeft} day${daysLeft === 1 ? '' : 's'}.`)}
-    ${p(`<strong style="color:#fafafa;">Your metadata, thumbnails, and exports stay forever.</strong> Only the playable source video files are removed to keep storage costs low.`)}
+    ${p(`Heads up — ${clipCount} of your source ${clipNoun} across ${projects.length} ${projectNoun} will be archived in about ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`)}
+    ${p(`<strong style="color:#fafafa;">Your metadata, thumbnails, and exports stay saved.</strong> Only the playable source files are removed.`)}
     <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f12;border-radius:8px;margin:8px 0 24px 0;">
       ${projectList}
     </table>
-    ${p(`If you still need to regenerate metadata or download originals, do it before the archive window closes.`)}
+    ${p(`If you still need to regenerate metadata or download originals, do it before then.`)}
     ${ctaButton('Open ClipMeta', 'https://clipmeta.app/projects')}
-    <p style="color:#71717a;font-size:13px;line-height:1.6;margin:16px 0 0 0;">Sources are auto-archived 21 days after upload. This is a one-time notice for these clips.</p>
+    <p style="color:#71717a;font-size:13px;line-height:1.6;margin:16px 0 0 0;">This is a one-time notice for these clips.</p>
   `;
 
   return {
@@ -513,7 +513,7 @@ export function idleProjectEmail(
 
   const expiringLine =
     clipsExpiringSoon > 0
-      ? `<p style="color:#fbbf24;font-size:14px;line-height:1.6;margin:0 0 16px 0;background-color:#422006;padding:12px 14px;border-radius:6px;border:1px solid #92400e;">⚠️ ${clipsExpiringSoon} ${clipsExpiringSoon === 1 ? 'source file is' : 'source files are'} within 7 days of being auto-archived from storage.</p>`
+      ? `<p style="color:#fbbf24;font-size:14px;line-height:1.6;margin:0 0 16px 0;background-color:#422006;padding:12px 14px;border-radius:6px;border:1px solid #92400e;">⚠️ ${clipsExpiringSoon} ${clipsExpiringSoon === 1 ? 'source file is' : 'source files are'} within 7 days of being archived.</p>`
       : '';
 
   const content = `

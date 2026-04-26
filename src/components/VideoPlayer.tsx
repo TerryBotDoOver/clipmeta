@@ -17,7 +17,7 @@ export function VideoPlayer({ src }: { src: string }) {
         <div className="space-y-1">
           <p className="font-semibold text-amber-300">Video unavailable</p>
           <p className="text-muted-foreground leading-relaxed">
-            The source file couldn&apos;t be loaded. It may have been archived to save storage. Your saved metadata and thumbnail are not affected.
+            The source couldn&apos;t be loaded. Your metadata and thumbnail are saved.
           </p>
         </div>
       </div>
