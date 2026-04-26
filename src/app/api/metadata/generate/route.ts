@@ -227,6 +227,36 @@ export async function POST(req: NextRequest) {
     // Save the first frame as a thumbnail (base64 data URL)
     const thumbnailUrl = frames[0] ?? null;
 
+    // ─── Snapshot current metadata into history before overwriting ────────────
+    // Lets the user revert to the previous version (one step back).
+    // Only one history row per clip (replace any prior history on regen).
+    if (isRegeneration) {
+      const { data: prevRow } = await supabaseAdmin
+        .from("metadata_results")
+        .select("title, description, keywords, category, secondary_category, location, confidence, model_used, thumbnail_url, generated_at")
+        .eq("clip_id", clip_id)
+        .single();
+
+      if (prevRow) {
+        // Delete any prior history (keep at most one) then insert current as history.
+        await supabaseAdmin.from("metadata_history").delete().eq("clip_id", clip_id);
+        await supabaseAdmin.from("metadata_history").insert({
+          clip_id,
+          title: prevRow.title,
+          description: prevRow.description,
+          keywords: prevRow.keywords,
+          category: prevRow.category,
+          secondary_category: prevRow.secondary_category,
+          location: prevRow.location,
+          confidence: prevRow.confidence,
+          model_used: prevRow.model_used,
+          thumbnail_url: prevRow.thumbnail_url,
+          generated_at: prevRow.generated_at,
+        });
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     // Store results (onConflict: clip_id allows regeneration to overwrite existing metadata)
     const { error: insertError } = await supabaseAdmin
       .from("metadata_results")

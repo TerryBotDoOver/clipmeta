@@ -11,8 +11,15 @@
     "src/app/api/clips/generate/route.ts": { "maxDuration": 60 },
     "src/app/api/ftp/blackbox/route.ts": { "maxDuration": 300 },
     "src/app/api/metadata/generate/route.ts": { "maxDuration": 60 },
-    "src/app/api/metadata/generate-worker/route.ts": { "maxDuration": 60 }
+    "src/app/api/metadata/generate-worker/route.ts": { "maxDuration": 60 },
+    "src/app/api/cron/reconcile-storage/route.ts": { "maxDuration": 300 }
   },
+  "crons": [
+    {
+      "path": "/api/cron/reconcile-storage",
+      "schedule": "0 7 * * *"
+    }
+  ],
   "redirects": [
     {
       "source": "/:path*",

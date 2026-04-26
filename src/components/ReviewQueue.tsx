@@ -50,11 +50,18 @@ type Props = {
   projectEditorialState?: string | null;
   projectEditorialCountry?: string | null;
   projectEditorialDate?: string | null;
+  clipsWithHistory?: string[];
 };
 
 type Filter = "all" | "pending" | "ready" | "reviewed";
 
-export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = 'free', projectLocation, projectShootingDate, pinnedKeywords: initialPinnedKeywords, pinnedKeywordsPosition: initialPinnedPosition, projectIsEditorial: initialProjectIsEditorial = false, projectEditorialText: initialProjectEditorialText, projectEditorialCity: initialProjectEditorialCity, projectEditorialState: initialProjectEditorialState, projectEditorialCountry: initialProjectEditorialCountry, projectEditorialDate: initialProjectEditorialDate }: Props) {
+export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = 'free', projectLocation, projectShootingDate, pinnedKeywords: initialPinnedKeywords, pinnedKeywordsPosition: initialPinnedPosition, projectIsEditorial: initialProjectIsEditorial = false, projectEditorialText: initialProjectEditorialText, projectEditorialCity: initialProjectEditorialCity, projectEditorialState: initialProjectEditorialState, projectEditorialCountry: initialProjectEditorialCountry, projectEditorialDate: initialProjectEditorialDate, clipsWithHistory: initialClipsWithHistory = [] }: Props) {
+  // Track which clips currently have a previous version available to revert to.
+  // Server seeds this from the metadata_history table; client mutates as users
+  // regenerate (history appears) or revert (history is consumed by the swap,
+  // but the OLD current becomes the new history -- so the toggle stays valid).
+  const [clipsWithHistory, setClipsWithHistory] = useState<Set<string>>(() => new Set(initialClipsWithHistory));
+  const [revertingIds, setRevertingIds] = useState<Set<string>>(new Set());
   const [liveClips, setLiveClips] = useState<Clip[]>(initialClips);
   const [pinnedKeywords, setPinnedKeywords] = useState(initialPinnedKeywords);
   const [pinnedKeywordsPosition, setPinnedKeywordsPosition] = useState(initialPinnedPosition);
@@ -282,6 +289,48 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
       });
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  // Two-position toggle: swap current metadata with the one history row.
+  // After a successful revert the OLD current becomes the new history, so the
+  // button stays valid and the user can flip back. Does not consume regen quota.
+  async function handleRevert(clipId: string) {
+    if (revertingIds.has(clipId)) return;
+    setRevertingIds((prev) => new Set(prev).add(clipId));
+    try {
+      const res = await fetch("/api/metadata/revert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clip_id: clipId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.message || "Could not revert to previous version.");
+        return;
+      }
+      const m = data.metadata;
+      if (m) {
+        setMetadataOverrides((prev) => ({
+          ...prev,
+          [clipId]: {
+            title: m.title,
+            description: m.description,
+            keywords: m.keywords,
+            category: m.category,
+            location: m.location,
+            confidence: m.confidence,
+            thumbnail_url: m.thumbnail_url,
+          },
+        }));
+      }
+      // History row still exists (the OLD current got snapshotted into it),
+      // so keep clipId in the set -- toggle remains valid for re-revert.
+      setClipsWithHistory((prev) => new Set(prev).add(clipId));
+    } catch {
+      alert("Could not revert to previous version.");
+    } finally {
+      setRevertingIds((prev) => { const next = new Set(prev); next.delete(clipId); return next; });
     }
   }
 
@@ -823,7 +872,19 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
 
                 {expanded && (
                   <div className="mt-3 border-t border-border pt-3 space-y-3">
-                    {clipUrls[clip.id] && <VideoPlayer src={clipUrls[clip.id]} />}
+                    {clipUrls[clip.id] ? (
+                      <VideoPlayer src={clipUrls[clip.id]} />
+                    ) : clip.upload_status === "source_deleted" ? (
+                      <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-xs">
+                        <span aria-hidden className="mt-0.5 text-base leading-none">📦</span>
+                        <div className="space-y-1">
+                          <p className="font-semibold text-amber-300">Source video archived</p>
+                          <p className="text-muted-foreground leading-relaxed">
+                            We auto-archive uploaded videos after 21 days to keep storage costs low. The metadata and thumbnail are saved permanently — only the playable source is gone. Re-upload this clip if you need to regenerate from a different frame.
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
 
                     {hasMetadata ? (
                       <>
@@ -946,6 +1007,16 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                               : "Mark this clip as reviewed when you're done editing."}
                           </p>
                           <div className="flex items-center gap-2">
+                            {clipsWithHistory.has(clip.id) && (
+                              <button
+                                onClick={() => handleRevert(clip.id)}
+                                disabled={revertingIds.has(clip.id)}
+                                title="Swap back to the previous metadata version. Free -- doesn't use a regeneration."
+                                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary/50 hover:text-primary disabled:opacity-50"
+                              >
+                                {revertingIds.has(clip.id) ? "Reverting..." : "↺ Previous version"}
+                              </button>
+                            )}
                             {clipUrls[clip.id] ? (
                               <GenerateMetadataButton
                                 clipId={clip.id}
@@ -956,11 +1027,14 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                                 variant="subtle"
                                 onSuccess={(meta) => {
                                   setMetadataOverrides(prev => ({ ...prev, [clip.id]: meta }));
+                                  // Generate route snapshots prior metadata into history,
+                                  // so this clip now has a previous version to revert to.
+                                  setClipsWithHistory(prev => new Set(prev).add(clip.id));
                                 }}
                               />
                             ) : (
                               <span
-                                title="Source video was removed after generation to save storage. Re-upload the clip to regenerate."
+                                title="Source video was archived after generation. Re-upload the clip to regenerate."
                                 className="cursor-help rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground opacity-40"
                               >
                                 Regenerate

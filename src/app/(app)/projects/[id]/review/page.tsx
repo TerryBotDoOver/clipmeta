@@ -59,10 +59,12 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
   })) as typeof rawClips;
 
   // Generate signed read URLs for all clips with a storage path
+  // Skip clips whose source has been archived (upload_status = "source_deleted")
+  // so the UI knows to show the "archived" state instead of a broken video.
   const clipUrls: Record<string, string> = {};
   if (clips) {
     for (const clip of clips) {
-      if (clip.storage_path) {
+      if (clip.storage_path && clip.upload_status !== "source_deleted") {
         try {
           clipUrls[clip.id] = await getR2ReadUrl(clip.storage_path, 86400); // 24h expiry
         } catch {
@@ -72,9 +74,51 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
     }
   }
 
+  // Look up which clips have a previous-version snapshot available.
+  // Used by ReviewQueue to show the "Previous version" revert button.
+  const clipsWithHistory = new Set<string>();
+  if (clips && clips.length > 0) {
+    const { data: historyRows } = await supabase
+      .from("metadata_history")
+      .select("clip_id")
+      .in("clip_id", clips.map((c) => c.id));
+    for (const row of historyRows ?? []) clipsWithHistory.add(row.clip_id as string);
+  }
+
   const totalClips = clips?.length ?? 0;
   const withMetadata = clips?.filter((c) => c.metadata_results).length ?? 0;
   const pending = totalClips - withMetadata;
+
+  // ─── Archive countdown ────────────────────────────────────────────────────
+  // R2 auto-archives uploaded source files after 21 days. Compute, for each
+  // still-active clip, days remaining until its source disappears. Show a
+  // subtle pill at ≤7 days and a prominent warning at ≤3 days. Already-archived
+  // clips are counted separately so we can mention them if any exist.
+  const ARCHIVE_DAYS = 21;
+  const now = Date.now();
+  let soonestDaysLeft: number | null = null;
+  let clipsExpiringIn7Days = 0;
+  let archivedCount = 0;
+  for (const c of clips ?? []) {
+    if (c.upload_status === "source_deleted") {
+      archivedCount += 1;
+      continue;
+    }
+    if (!c.storage_path || !c.created_at) continue;
+    const ageMs = now - new Date(c.created_at).getTime();
+    const ageDays = ageMs / 86_400_000;
+    const daysLeft = Math.ceil(ARCHIVE_DAYS - ageDays);
+    if (daysLeft < 0) continue; // overdue but not yet flipped — skip in countdown
+    if (soonestDaysLeft === null || daysLeft < soonestDaysLeft) soonestDaysLeft = daysLeft;
+    if (daysLeft <= 7) clipsExpiringIn7Days += 1;
+  }
+  const showArchiveBanner =
+    archivedCount > 0 || (soonestDaysLeft !== null && soonestDaysLeft <= 7);
+  const archiveBannerSeverity: "info" | "warn" | "danger" =
+    soonestDaysLeft !== null && soonestDaysLeft <= 3 ? "danger"
+    : soonestDaysLeft !== null && soonestDaysLeft <= 7 ? "warn"
+    : "info";
+  // ──────────────────────────────────────────────────────────────────────────
 
   // Keyword analytics (computed server-side from existing data)
   const clipsWithMeta = clips?.filter((c) => c.metadata_results) ?? [];
@@ -130,6 +174,45 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
         {/* Clip limit warning (shows only when at 80%+ of monthly limit) */}
         <ClipLimitWarning />
 
+        {/* Archive countdown — appears when any clip's source is ≤7 days from
+            being archived from R2, or when some have already been archived.
+            Metadata is preserved permanently; only the playable source goes. */}
+        {showArchiveBanner && (
+          <div
+            className={
+              "rounded-2xl border px-4 py-3 text-sm sm:px-5 " +
+              (archiveBannerSeverity === "danger"
+                ? "border-red-500/40 bg-red-500/10 text-red-200"
+                : archiveBannerSeverity === "warn"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                : "border-border bg-card text-muted-foreground")
+            }
+          >
+            <div className="flex items-start gap-3">
+              <span aria-hidden className="mt-0.5 text-base leading-none">📦</span>
+              <div className="space-y-1 leading-relaxed">
+                {soonestDaysLeft !== null && soonestDaysLeft <= 7 && (
+                  <p>
+                    <span className="font-semibold">
+                      {clipsExpiringIn7Days} clip{clipsExpiringIn7Days === 1 ? "" : "s"}{" "}
+                      {soonestDaysLeft <= 0 ? "are being archived now" : `archive in ${soonestDaysLeft} day${soonestDaysLeft === 1 ? "" : "s"}`}.
+                    </span>{" "}
+                    Generate metadata and export before then — your saved metadata stays forever, but the playable source files won&apos;t.
+                  </p>
+                )}
+                {archivedCount > 0 && (
+                  <p className="text-xs opacity-90">
+                    {archivedCount} clip{archivedCount === 1 ? " has" : "s have"} already been archived. Their metadata is intact; re-upload the source if you need to regenerate.
+                  </p>
+                )}
+                <p className="text-xs opacity-75">
+                  Sources are auto-archived 21 days after upload to keep storage costs low.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -172,6 +255,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
               <ReviewQueue
                 clips={clips ?? []}
                 clipUrls={clipUrls}
+                clipsWithHistory={Array.from(clipsWithHistory)}
                 pendingClips={pendingClips}
                 projectId={project.id}
                 plan={userPlan}
