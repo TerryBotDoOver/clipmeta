@@ -23,6 +23,12 @@ export async function POST(req: NextRequest) {
   }
 
   const getUid = (obj: Stripe.Metadata | null) => obj?.supabase_uid;
+  const getSubscriptionPeriodStartIso = (sub: Stripe.Subscription) => {
+    const periodStart = (sub as unknown as { current_period_start?: number }).current_period_start;
+    return typeof periodStart === 'number'
+      ? new Date(periodStart * 1000).toISOString()
+      : null;
+  };
 
   try {
     switch (event.type) {
@@ -141,11 +147,13 @@ export async function POST(req: NextRequest) {
           // If we have a pending plan and we're past the effective date, apply it
           const shouldApplyPending = currentProfile?.pending_plan && effectiveDate && now >= effectiveDate;
           const finalPlan = shouldApplyPending ? currentProfile.pending_plan : plan;
+          const billingPeriodStart = isActive ? getSubscriptionPeriodStartIso(sub) : null;
 
           await supabaseAdmin.from('profiles').upsert({
             id: uid,
             plan: finalPlan,
             stripe_subscription_status: sub.status,
+            ...(billingPeriodStart ? { billing_period_start: billingPeriodStart } : {}),
             // Clear pending plan fields when applied
             ...(shouldApplyPending ? {
               pending_plan: null,
@@ -189,7 +197,9 @@ export async function POST(req: NextRequest) {
             }
 
             // Use Stripe receipt_number if available, fall back to charge ID
-            const receiptNumber = (charge as any).receipt_number || charge.id.replace('ch_', '').slice(0, 12).toUpperCase();
+            const receiptNumber =
+              (charge as Stripe.Charge & { receipt_number?: string }).receipt_number ||
+              charge.id.replace('ch_', '').slice(0, 12).toUpperCase();
 
             const receipt = receiptEmail({
               customerEmail: charge.receipt_email,
