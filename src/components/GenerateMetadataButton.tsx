@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { extractFrames } from "@/lib/extractFrames";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
+import { trackClarityEvent } from "@/lib/clarity-events";
 
 type Props = {
   clipId: string;
@@ -109,6 +110,7 @@ export function GenerateMetadataButton({
       }
 
       const data = await metaRes.json();
+      trackClarityEvent("MetadataGenerated");
       setStatus("done");
 
       if (onSuccess && data.metadata) {

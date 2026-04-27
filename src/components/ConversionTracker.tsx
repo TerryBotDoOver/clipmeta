@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fbEvent } from '@/components/MetaPixel';
+import { trackClarityEvent } from '@/lib/clarity-events';
 
 declare global {
   interface Window {
@@ -16,6 +17,10 @@ export function ConversionTracker() {
 
   useEffect(() => {
     if (searchParams.get('upgraded') === 'true') {
+      trackClarityEvent('TrialStart');
+      trackClarityEvent('Purchase');
+      trackClarityEvent('Subscribe');
+
       // Google Ads conversion
       if (window.gtag) {
         window.gtag('event', 'conversion', {
@@ -41,6 +46,10 @@ export function ConversionTracker() {
       if (window.rdt) {
         window.rdt('track', 'Purchase', { value: 9.00, currency: 'USD' });
       }
+    }
+
+    if (searchParams.get('credits') === 'added') {
+      trackClarityEvent('Purchase');
     }
   }, [searchParams]);
 

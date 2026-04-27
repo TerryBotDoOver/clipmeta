@@ -109,13 +109,13 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
         });
         if (retryErr) redirect(`/projects/new?error=${encodeURIComponent(retryErr.message)}`);
         revalidatePath("/projects");
-        redirect(`/projects/${retrySlug}`);
+        redirect(`/projects/${retrySlug}?created=true`);
       }
       redirect(`/projects/new?error=${encodeURIComponent(error.message)}`);
     }
 
     revalidatePath("/projects");
-    redirect(`/projects/${slug}`);
+    redirect(`/projects/${slug}?created=true`);
   }
 
   return (

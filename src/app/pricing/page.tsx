@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { fbEvent } from "@/components/MetaPixel";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
+import { trackClarityEvent } from "@/lib/clarity-events";
 
 function getPlanButtonLabel(targetPlan: string, currentPlan: string, isLoggedIn: boolean | null): string {
   if (!isLoggedIn) return targetPlan === 'free' ? 'Get started free' : 'Start free trial';
@@ -62,6 +63,7 @@ async function handleCheckout(
 
     const { url, error } = await res.json();
     if (url && url.startsWith('http')) {
+      trackClarityEvent('BeginCheckout');
       window.location.assign(url);
       return;
     }
@@ -93,6 +95,7 @@ async function handleBuyCredits(
 
     const { url, error } = await res.json();
     if (url && url.startsWith('http')) {
+      trackClarityEvent('BeginCheckout');
       window.location.assign(url);
       return;
     }

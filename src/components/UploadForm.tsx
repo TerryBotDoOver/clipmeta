@@ -3,6 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { extractFrames } from "@/lib/extractFrames";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
+import { trackClarityEvent } from "@/lib/clarity-events";
 
 // Codecs the browser cannot decode — need server-side worker processing
 const WORKER_CODEC_EXTENSIONS = new Set(['.mov', '.mxf', '.mts', '.m2ts']);
@@ -332,6 +333,9 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
           throw new Error(err.message || "Failed to save clip record.");
         }
         const { clip_id } = await clipRes.json();
+        if (clip_id) {
+          trackClarityEvent("ClipUploaded");
+        }
 
         // 5. Auto-generate metadata
         if (clip_id) {
@@ -354,6 +358,9 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
                 });
                 return;
               }
+            }
+            if (genRes.ok) {
+              trackClarityEvent("MetadataGenerated");
             }
           } else {
             // Worker codec (ProRes, etc.) — extract frames server-side, then generate
@@ -383,6 +390,9 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
                     });
                     return;
                   }
+                }
+                if (genRes.ok) {
+                  trackClarityEvent("MetadataGenerated");
                 }
               }
             } else {

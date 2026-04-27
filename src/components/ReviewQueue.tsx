@@ -5,6 +5,7 @@ import { VideoPlayer } from "@/components/VideoPlayer";
 import { MetadataEditor } from "@/components/MetadataEditor";
 import { GenerateMetadataButton } from "@/components/GenerateMetadataButton";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
+import { trackClarityEvent } from "@/lib/clarity-events";
 import { extractFrames } from "@/lib/extractFrames";
 import { BULK_REGEN_PLANS } from "@/lib/plans";
 
@@ -539,6 +540,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
 
         if (!metaRes.ok) throw new Error("Generation failed");
         const { metadata } = await metaRes.json();
+        trackClarityEvent("MetadataGenerated");
         setMetadataOverrides((prev) => ({ ...prev, [id]: metadata }));
         bumpMetadataVersion(id);
         // Bulk regen also creates a history row server-side, so the toggle

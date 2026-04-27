@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { extractFrames } from "@/lib/extractFrames";
+import { trackClarityEvent } from "@/lib/clarity-events";
 
 type PendingClip = {
   id: string;
@@ -98,6 +99,7 @@ async function runGenerate(
       }
 
       onClipUpdate(clip.id, "done");
+      trackClarityEvent("MetadataGenerated");
       // Notify ReviewQueue that a clip just finished
       window.dispatchEvent(new CustomEvent("clipmeta:generation-progress", { detail: { clipId: clip.id } }));
     } catch (err) {

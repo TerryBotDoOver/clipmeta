@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ExportButton } from "@/components/ExportButton";
+import { ProjectCreatedTracker } from "@/components/ProjectCreatedTracker";
 import { Platform, PLATFORM_LABELS } from "@/lib/platform-presets";
 
 type ProjectDetailPageProps = {
@@ -56,6 +58,9 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
 
   return (
     <main className="min-h-screen bg-background">
+      <Suspense fallback={null}>
+        <ProjectCreatedTracker />
+      </Suspense>
       <div className="mx-auto max-w-7xl px-6 py-10">
 
         {/* Header */}
