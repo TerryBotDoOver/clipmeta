@@ -273,11 +273,14 @@ export function day14Email(name: string) { return urgencyEmail(name); }
 // ─── Track 2: Paid/Trialing Drip ────────────────────────────────────────────
 
 // paid_day0 — immediate on track switch
+// 2026-04-27: subject differentiated from the free welcome (which uses the
+// generic "You're in -- here's your first win in 5 minutes"). Now plan-aware
+// so a free->paid converter sees an obviously-different message.
 export function paidDay0Email(name: string, plan: string): { subject: string; html: string } {
   const firstName = name || 'there';
   const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : 'paid';
   const content = `
-    ${h1(`You're in, ${firstName}.`)}
+    ${h1(`Welcome to ${planLabel}, ${firstName}.`)}
     ${p(`You're on the ${planLabel} plan. Here's how to get your first win in under 5 minutes:`)}
     <ol style="color:#a1a1aa;font-size:15px;line-height:2;margin:0 0 16px 0;padding-left:20px;">
       <li>Create a project</li>
@@ -288,7 +291,7 @@ export function paidDay0Email(name: string, plan: string): { subject: string; ht
     ${ctaButton('Get Started', 'https://clipmeta.app/projects/new')}
   `;
   return {
-    subject: "You're in — here's your first win in 5 minutes",
+    subject: `Welcome to ${planLabel} — your first win in 5 minutes`,
     html: emailWrapper(content),
   };
 }

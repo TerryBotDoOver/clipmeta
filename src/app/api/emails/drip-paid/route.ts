@@ -24,12 +24,15 @@ type PaidDripKey =
   | 'paid_day21'
   | 'paid_day50';
 
+// Pruned 2026-04-27 per Levi: dropped `paid_day5` ("Quick check-in") and
+// `paid_day8` ("Quick question -- which platforms"). Both were content-light
+// feedback pings that overlapped with `paid_day21` ("How's it going"). Three
+// feedback asks in three weeks was creating fatigue; one mid-cycle ask is
+// enough. Functions still live in emails.ts in case we want them back.
 const PAID_SCHEDULE: { key: PaidDripKey; days: number; trialOnly?: boolean }[] = [
   { key: 'paid_day0',       days: 0  },
   { key: 'paid_day2',       days: 2  },
-  { key: 'paid_day5',       days: 5  },
   { key: 'paid_day6_trial', days: 6,  trialOnly: true },
-  { key: 'paid_day8',       days: 8  },
   { key: 'paid_day21',      days: 21 },
   { key: 'paid_day50',      days: 50 },
 ];
