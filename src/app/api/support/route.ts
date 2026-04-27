@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { draftCustomerEmail } from "@/lib/customerEmailDraft";
 import { DISCORD_CHANNELS, sendDiscordMessage } from "@/lib/discord";
-import { emailApprovalUrl } from "@/lib/emailApproval";
+import { emailApprovalUrl, emailReviseUrl } from "@/lib/emailApproval";
+import { PLANS, Plan } from "@/lib/plans";
 import { getResend } from "@/lib/resend";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
@@ -32,13 +33,51 @@ export async function POST(req: NextRequest) {
 
     let userId = "unknown";
     let userPlan = "free";
+    let accountContext = "";
     try {
       const supabase = await createSupabaseServerClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         userId = user.id;
-        const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single();
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("plan, regens_used_this_month, billing_period_start")
+          .eq("id", user.id)
+          .single();
+
         userPlan = profile?.plan ?? "free";
+        const planInfo = PLANS[userPlan as Plan] ?? PLANS.free;
+        const billingStart = profile?.billing_period_start
+          ? new Date(profile.billing_period_start as string).toISOString()
+          : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+
+        const [{ count: clipsUsed }, { count: lifetimeClips }] = await Promise.all([
+          supabaseAdmin
+            .from("clip_history")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("action", "created")
+            .gte("created_at", billingStart),
+          supabaseAdmin
+            .from("clip_history")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id)
+            .eq("action", "created"),
+        ]);
+
+        const used = clipsUsed ?? 0;
+        const remaining = Math.max(0, planInfo.clips - used);
+        accountContext = [
+          `Authenticated user id: ${user.id}`,
+          `Plan: ${planInfo.name}`,
+          `Current billing period start: ${billingStart}`,
+          `Clip uploads used this billing period: ${used}`,
+          `Clip upload limit this billing period: ${planInfo.clips}`,
+          `Clip uploads remaining this billing period: ${remaining}`,
+          `Lifetime clip uploads: ${lifetimeClips ?? 0}`,
+          `Regenerations used this billing period: ${(profile as Record<string, unknown>)?.regens_used_this_month as number || 0}`,
+          `Regeneration limit: ${planInfo.regensLabel}`,
+        ].join("\n");
       }
     } catch {
       // Support submission should still work if profile lookup fails.
@@ -76,6 +115,7 @@ export async function POST(req: NextRequest) {
           from: displayFrom,
           subject: ticketSubject,
           body: ticketBody,
+          accountContext,
         });
 
         const { data: insertedEmail, error: insertError } = await supabaseAdmin
@@ -132,6 +172,7 @@ export async function POST(req: NextRequest) {
           "",
           `Approve and send: ${emailApprovalUrl(baseUrl, emailDbId, "send")}`,
           `Discard draft: ${emailApprovalUrl(baseUrl, emailDbId, "discard")}`,
+          `Revise draft: ${emailReviseUrl(baseUrl, emailDbId)}`,
         ].join("\n"),
       });
     } else {

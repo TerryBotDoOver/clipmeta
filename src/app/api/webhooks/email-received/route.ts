@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { draftCustomerEmail } from '@/lib/customerEmailDraft';
 import { DISCORD_CHANNELS, sendDiscordMessage } from '@/lib/discord';
-import { emailApprovalUrl } from '@/lib/emailApproval';
+import { emailApprovalUrl, emailReviseUrl } from '@/lib/emailApproval';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 function normalizeEmailAddress(value: unknown) {
@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
               '',
               `Approve and send: ${emailApprovalUrl(baseUrl, emailDbId, 'send')}`,
               `Discard draft: ${emailApprovalUrl(baseUrl, emailDbId, 'discard')}`,
+              `Revise draft: ${emailReviseUrl(baseUrl, emailDbId)}`,
             ].join('\n'),
           });
           if (!approvalDiscord.ok) {

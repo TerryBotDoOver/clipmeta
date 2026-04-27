@@ -4,6 +4,9 @@ type DraftInput = {
   from: string;
   subject: string;
   body: string;
+  accountContext?: string;
+  currentDraft?: string;
+  revisionInstructions?: string;
 };
 
 const fallbackDraft = ({ subject }: DraftInput) => `Hi,
@@ -31,17 +34,20 @@ export async function draftCustomerEmail(input: DraftInput) {
       {
         role: "system",
         content:
-          "You draft concise, helpful customer support replies for ClipMeta, a SaaS for stock footage metadata. Do not promise work is done unless the email proves it. Ask one clear question if needed. Sign exactly as Terry.",
+          "You draft concise, helpful customer support replies for ClipMeta, a SaaS for stock footage metadata. Use account context when provided. If the customer asks a direct account question and the context answers it, answer directly instead of asking a clarifying question. Do not promise work is done unless the email proves it. Ask one clear question only if needed. Sign exactly as Terry.",
       },
       {
         role: "user",
         content: [
           `From: ${input.from}`,
           `Subject: ${input.subject || "(no subject)"}`,
+          input.accountContext ? ["", "Account context:", input.accountContext].join("\n") : "",
+          input.currentDraft ? ["", "Current draft:", input.currentDraft].join("\n") : "",
+          input.revisionInstructions ? ["", "Revision instructions:", input.revisionInstructions].join("\n") : "",
           "",
           "Customer email:",
           body.slice(0, 6000),
-        ].join("\n"),
+        ].filter(Boolean).join("\n"),
       },
     ],
   });
