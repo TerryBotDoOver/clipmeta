@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { MouseGlow } from "./MouseGlow";
+import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 /**
  * Reusable marketing-page shell. Provides the Flight Deck aesthetic
@@ -18,6 +22,26 @@ export function FlightDeckShell({
   children: React.ReactNode;
   hideNavChip?: boolean;
 }) {
+  const [authState, setAuthState] = useState<"loading" | "signed-in" | "signed-out">("loading");
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (mounted) setAuthState(session ? "signed-in" : "signed-out");
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthState(session ? "signed-in" : "signed-out");
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#050507] text-white">
       {/* Page-global atmosphere — fixed so it's always behind the nav, no matter where you scroll */}
@@ -93,19 +117,33 @@ export function FlightDeckShell({
             </Link>
           </div>
           <div className="flex items-center gap-1.5">
-            <Link
-              href="/auth?mode=signup"
-              className="hidden rounded-full px-4 py-1.5 text-sm font-medium text-white/70 transition hover:text-white sm:inline-block"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/auth?mode=signup"
-              className="group relative overflow-hidden rounded-full bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-1.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:shadow-xl hover:shadow-violet-500/40"
-            >
-              <span className="relative z-10">Get Started</span>
-              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-            </Link>
+            {authState === "loading" ? (
+              <div className="h-8 w-28 rounded-full border border-white/10 bg-white/[0.03]" aria-hidden />
+            ) : authState === "signed-in" ? (
+              <Link
+                href="/dashboard"
+                className="group relative overflow-hidden rounded-full bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-1.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:shadow-xl hover:shadow-violet-500/40"
+              >
+                <span className="relative z-10">Dashboard</span>
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/auth?mode=signin"
+                  className="hidden rounded-full px-4 py-1.5 text-sm font-medium text-white/70 transition hover:text-white sm:inline-block"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/auth?mode=signup"
+                  className="group relative overflow-hidden rounded-full bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-1.5 text-sm font-semibold text-white shadow-lg shadow-violet-500/30 transition hover:shadow-xl hover:shadow-violet-500/40"
+                >
+                  <span className="relative z-10">Get Started</span>
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </div>
