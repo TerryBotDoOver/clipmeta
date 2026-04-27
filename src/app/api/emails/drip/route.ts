@@ -35,12 +35,15 @@ type DripKey =
   | 'winBack'
   | 'breakup';
 
+// Pruned 2026-04-27 per Levi: dropped `limitNudge` ("0 free clips this week",
+// 75 sends with no return signal) and `founderNote` ("Quick question from the
+// ClipMeta team", 65 sends, treated as survey step that wasn't earning its
+// quota slot). Functions still live in emails.ts in case we want to revive
+// them, just unwired from the cadence.
 const DRIP_SCHEDULE: { key: DripKey; days: number }[] = [
   { key: 'quickWin',      days: 1  },
   { key: 'platformExport', days: 3 },
   { key: 'socialProof',   days: 5  },
-  { key: 'limitNudge',    days: 7  },
-  { key: 'founderNote',   days: 10 },
   { key: 'urgency',       days: 14 },
   { key: 'lastChance',    days: 16 },
   { key: 'winBack',       days: 21 },

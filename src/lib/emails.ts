@@ -58,18 +58,26 @@ const p = (text: string) =>
   `<p style="color:#a1a1aa;font-size:15px;line-height:1.7;margin:0 0 16px 0;">${text}</p>`;
 
 // ─── Email 1: Welcome ───────────────────────────────────────────────────────
+// Replaced 2026-04-27: was "Your first 3 clips are on us" (welcome v1, 124+
+// sends in trailing window). Levi cut welcome v1 in favor of an actionable
+// "first win in 5 minutes" template. Same subject as the paid track day-0
+// email so the brand voice stays consistent across signup paths.
 
 export function welcomeEmail(name: string): { subject: string; html: string } {
   const firstName = name || 'there';
   const content = `
-    ${h1(`Welcome to ClipMeta, ${firstName}!`)}
-    ${p('You get 3 free clips every day, no credit card needed.')}
-    ${p('Upload your first clip and watch AI generate your metadata in seconds.')}
-    ${ctaButton('Upload Your First Clip', 'https://clipmeta.app/projects/new')}
-    ${p('If you have any questions, concerns, or feature requests, use the Feedback tab in the app or reply to this email. We read everything.')}
+    ${h1(`You're in, ${firstName}.`)}
+    ${p("Here's how to get your first win in under 5 minutes:")}
+    <ol style="color:#a1a1aa;font-size:15px;line-height:2;margin:0 0 16px 0;padding-left:20px;">
+      <li>Create a project</li>
+      <li>Upload your first clip (you get 3 free, daily)</li>
+      <li>Hit Generate</li>
+    </ol>
+    ${p("You'll have platform-ready metadata in under 2 minutes. Any questions? Just reply to this email.")}
+    ${ctaButton('Get Started', 'https://clipmeta.app/projects/new')}
   `;
   return {
-    subject: 'Your first 3 clips are on us',
+    subject: "You're in — here's your first win in 5 minutes",
     html: emailWrapper(content),
   };
 }
