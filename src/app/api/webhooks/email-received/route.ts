@@ -4,12 +4,57 @@ import { DISCORD_CHANNELS, sendDiscordMessage } from '@/lib/discord';
 import { emailApprovalUrl } from '@/lib/emailApproval';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
+function normalizeEmailAddress(value: unknown) {
+  if (typeof value !== 'string') return '';
+  const match = value.match(/<([^>]+)>/);
+  return (match?.[1] || value).trim().toLowerCase();
+}
+
+function isClipMetaGeneratedEmail(from: unknown, subject: unknown) {
+  const fromAddress = normalizeEmailAddress(from);
+  const resendFrom = normalizeEmailAddress(process.env.RESEND_FROM || 'ClipMeta <hello@clipmeta.app>');
+  const subjectText = typeof subject === 'string' ? subject : '';
+
+  return (
+    fromAddress === 'hello@clipmeta.app' ||
+    fromAddress === resendFrom ||
+    /^we received your support request/i.test(subjectText)
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const event = await req.json();
 
     if (event.type === 'email.received') {
-      const { email_id, from, to, subject, created_at, attachments } = event.data;
+      const svixId = req.headers.get('svix-id') || '';
+      const { email_id, message_id, from, to, subject, created_at, attachments } = event.data || {};
+      const dedupeId = email_id || svixId || message_id || '';
+
+      if (!dedupeId) {
+        console.warn('[webhook] email.received missing id; acknowledged without side effects');
+        return NextResponse.json({ received: true, skipped: 'missing_id' });
+      }
+
+      if (isClipMetaGeneratedEmail(from, subject)) {
+        console.log('[webhook] Ignored ClipMeta-generated inbound email:', dedupeId);
+        return NextResponse.json({ received: true, skipped: 'clipmeta_generated' });
+      }
+
+      const { data: existingEmail, error: existingError } = await supabaseAdmin
+        .from('inbound_emails')
+        .select('id')
+        .eq('resend_email_id', dedupeId)
+        .maybeSingle();
+
+      if (existingError) {
+        console.error('[webhook] Supabase duplicate check error:', existingError);
+      }
+
+      if (existingEmail) {
+        console.log('[webhook] Duplicate email.received ignored:', dedupeId);
+        return NextResponse.json({ received: true, duplicate: true });
+      }
 
       let body = '';
       let htmlBody = '';
@@ -44,27 +89,10 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (email_id) {
-        const { data: existingEmail, error: existingError } = await supabaseAdmin
-          .from('inbound_emails')
-          .select('id')
-          .eq('resend_email_id', email_id)
-          .maybeSingle();
-
-        if (existingError) {
-          console.error('[webhook] Supabase duplicate check error:', existingError);
-        }
-
-        if (existingEmail) {
-          console.log('[webhook] Duplicate email.received ignored:', email_id);
-          return NextResponse.json({ received: true, duplicate: true });
-        }
-      }
-
       const { data: insertedEmail, error: insertError } = await supabaseAdmin
         .from('inbound_emails')
         .insert({
-          resend_email_id: email_id,
+          resend_email_id: dedupeId,
           from_address: from,
           to_address: Array.isArray(to) ? to.join(', ') : to,
           subject: subject || '(no subject)',
@@ -84,7 +112,7 @@ export async function POST(req: NextRequest) {
 
       const preview = body?.slice(0, 500).trim() || '(no text preview available)';
 
-      await sendDiscordMessage({
+      const inboxDiscord = await sendDiscordMessage({
         channelId: DISCORD_CHANNELS.inbox,
         content: [
           '**New ClipMeta customer email**',
@@ -95,6 +123,9 @@ export async function POST(req: NextRequest) {
           `Preview: ${preview}`,
         ].join('\n'),
       });
+      if (!inboxDiscord.ok) {
+        console.error('[webhook] Inbox Discord notification failed:', inboxDiscord);
+      }
 
       const emailDbId = insertedEmail?.id;
       if (emailDbId) {
@@ -114,7 +145,7 @@ export async function POST(req: NextRequest) {
             .eq('id', emailDbId);
 
           const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://clipmeta.app';
-          await sendDiscordMessage({
+          const approvalDiscord = await sendDiscordMessage({
             channelId: DISCORD_CHANNELS.emailApprovals,
             content: [
               '**Draft reply waiting for approval**',
@@ -127,9 +158,12 @@ export async function POST(req: NextRequest) {
               `Discard draft: ${emailApprovalUrl(baseUrl, emailDbId, 'discard')}`,
             ].join('\n'),
           });
+          if (!approvalDiscord.ok) {
+            console.error('[webhook] Approval Discord notification failed:', approvalDiscord);
+          }
         } catch (e) {
           console.error('[webhook] Draft/approval notification failed:', e);
-          await sendDiscordMessage({
+          const manualDiscord = await sendDiscordMessage({
             channelId: DISCORD_CHANNELS.emailApprovals,
             content: [
               '**New email needs manual reply**',
@@ -140,6 +174,9 @@ export async function POST(req: NextRequest) {
               'Draft generation failed. Check the inbox before replying.',
             ].join('\n'),
           });
+          if (!manualDiscord.ok) {
+            console.error('[webhook] Manual reply Discord notification failed:', manualDiscord);
+          }
         }
       }
 

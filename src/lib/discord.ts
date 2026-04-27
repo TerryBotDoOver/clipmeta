@@ -22,14 +22,20 @@ export async function sendDiscordMessage({ channelId, content }: DiscordMessageO
     return { ok: false, skipped: true };
   }
 
-  const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bot ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content: truncateForDiscord(content) }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content: truncateForDiscord(content) }),
+    });
+  } catch (error) {
+    console.error("[discord] Send failed", error);
+    return { ok: false, error };
+  }
 
   if (!response.ok) {
     const body = await response.text();
