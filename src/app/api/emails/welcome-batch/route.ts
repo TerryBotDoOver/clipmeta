@@ -15,11 +15,16 @@ import { applyUnsubscribe, listUnsubscribeHeaders } from '@/lib/unsubscribe';
 
 const FROM = process.env.RESEND_FROM || 'ClipMeta <hello@clipmeta.app>';
 const DRIP_SECRET = (process.env.DRIP_SECRET || 'clipmeta-drip-2026').trim();
+const CRON_SECRET = process.env.CRON_SECRET?.trim();
 
-export async function POST(req: NextRequest) {
+function isAuthorized(req: NextRequest) {
   const auth = req.headers.get('authorization') || '';
   const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (token !== DRIP_SECRET) {
+  return token === DRIP_SECRET || (!!CRON_SECRET && token === CRON_SECRET);
+}
+
+async function handleWelcomeBatch(req: NextRequest) {
+  if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -112,4 +117,12 @@ export async function POST(req: NextRequest) {
     console.error('[welcome-batch] Unexpected error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+  return handleWelcomeBatch(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleWelcomeBatch(req);
 }

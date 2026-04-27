@@ -6,6 +6,7 @@ type DiscordMessageOptions = {
 export const DISCORD_CHANNELS = {
   inbox: "1485454655524962495",
   emailApprovals: "1485669162171760741",
+  feedback: "1484279405646844004",
   signups: "1484408994356531371",
   ops: "1482069898409541715",
 } as const;

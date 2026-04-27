@@ -22,6 +22,7 @@ const supabaseAdmin = createClient(
 );
 
 const DRIP_SECRET = (process.env.DRIP_SECRET || 'clipmeta-drip-2026').trim();
+const CRON_SECRET = process.env.CRON_SECRET?.trim();
 const FROM = process.env.RESEND_FROM || 'ClipMeta <hello@clipmeta.app>';
 
 type DripKey =
@@ -135,8 +136,8 @@ async function getEmailForKey(
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  const token = authHeader?.replace('Bearer ', '');
-  if (token !== DRIP_SECRET) {
+  const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
+  if (token !== DRIP_SECRET && (!CRON_SECRET || token !== CRON_SECRET)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

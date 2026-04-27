@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { DISCORD_CHANNELS, sendDiscordMessage, truncateForDiscord } from "@/lib/discord";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +33,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Failed to save feedback." }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, id: data.id });
+    const feedbackType = (type || "suggestion").toString();
+    const discordResult = await sendDiscordMessage({
+      channelId: DISCORD_CHANNELS.feedback,
+      content: truncateForDiscord([
+        "**New ClipMeta feedback**",
+        `From: ${user.email ?? user.id}`,
+        `Type: ${feedbackType}`,
+        `Title: ${title.trim()}`,
+        "",
+        description.trim(),
+      ].join("\n")),
+    });
+
+    if (!discordResult.ok) {
+      console.error("Feedback Discord notification failed:", discordResult);
+    }
+
+    return NextResponse.json({ ok: true, id: data.id, discordNotified: discordResult.ok });
   } catch (err) {
     console.error("Feedback error:", err);
     return NextResponse.json({ message: "Unexpected error." }, { status: 500 });

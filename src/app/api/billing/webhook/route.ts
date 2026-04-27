@@ -147,13 +147,10 @@ export async function POST(req: NextRequest) {
           // If we have a pending plan and we're past the effective date, apply it
           const shouldApplyPending = currentProfile?.pending_plan && effectiveDate && now >= effectiveDate;
           const finalPlan = shouldApplyPending ? currentProfile.pending_plan : plan;
-          const billingPeriodStart = isActive ? getSubscriptionPeriodStartIso(sub) : null;
-
           await supabaseAdmin.from('profiles').upsert({
             id: uid,
             plan: finalPlan,
             stripe_subscription_status: sub.status,
-            ...(billingPeriodStart ? { billing_period_start: billingPeriodStart } : {}),
             // Clear pending plan fields when applied
             ...(shouldApplyPending ? {
               pending_plan: null,
@@ -262,10 +259,23 @@ export async function POST(req: NextRequest) {
 
         const now = new Date();
         const isRenewal = invoice.billing_reason === 'subscription_cycle';
+        const subscriptionPeriodStart = getSubscriptionPeriodStartIso(sub);
+        const newPeriodStartIso = subscriptionPeriodStart ?? now.toISOString();
+
+        // Stripe can deliver both invoice.paid and invoice.payment_succeeded for
+        // the same invoice. Once billing_period_start has advanced to the
+        // subscription's current period start, this invoice is already applied.
+        if (
+          profile.billing_period_start &&
+          subscriptionPeriodStart &&
+          new Date(profile.billing_period_start).getTime() >= new Date(subscriptionPeriodStart).getTime()
+        ) {
+          break;
+        }
 
         const updates: Record<string, unknown> = {
           regens_used_this_month: 0,
-          billing_period_start: now.toISOString(),
+          billing_period_start: newPeriodStartIso,
           updated_at: now.toISOString(),
         };
 
@@ -277,7 +287,7 @@ export async function POST(req: NextRequest) {
             .eq('user_id', uid)
             .eq('action', 'created')
             .gte('created_at', profile.billing_period_start)
-            .lt('created_at', now.toISOString());
+            .lt('created_at', newPeriodStartIso);
 
           const used = uploadCount || 0;
           const unused = Math.max(0, planConfig.clips - used);

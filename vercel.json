@@ -12,6 +12,11 @@
     "src/app/api/ftp/blackbox/route.ts": { "maxDuration": 300 },
     "src/app/api/metadata/generate/route.ts": { "maxDuration": 60 },
     "src/app/api/metadata/generate-worker/route.ts": { "maxDuration": 60 },
+    "src/app/api/emails/welcome-batch/route.ts": { "maxDuration": 300 },
+    "src/app/api/emails/drip/route.ts": { "maxDuration": 300 },
+    "src/app/api/emails/drip-paid/route.ts": { "maxDuration": 300 },
+    "src/app/api/referral/qualify/route.ts": { "maxDuration": 300 },
+    "src/app/api/admin/stripe-reconcile/route.ts": { "maxDuration": 300 },
     "src/app/api/cron/reconcile-storage/route.ts": { "maxDuration": 300 },
     "src/app/api/cron/signup-notifications/route.ts": { "maxDuration": 60 },
     "src/app/api/cron/archive-warnings/route.ts": { "maxDuration": 300 },
@@ -21,7 +26,12 @@
     { "path": "/api/cron/signup-notifications", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/reconcile-storage", "schedule": "0 7 * * *" },
     { "path": "/api/cron/archive-warnings",  "schedule": "0 14 * * *" },
-    { "path": "/api/cron/idle-projects",     "schedule": "0 15 * * 1" }
+    { "path": "/api/cron/idle-projects",     "schedule": "0 15 * * 1" },
+    { "path": "/api/emails/welcome-batch",   "schedule": "0 14,22 * * *" },
+    { "path": "/api/emails/drip",            "schedule": "5 15 * * *" },
+    { "path": "/api/emails/drip-paid",       "schedule": "20 15 * * *" },
+    { "path": "/api/referral/qualify",       "schedule": "0 11 * * *" },
+    { "path": "/api/admin/stripe-reconcile", "schedule": "0 13 * * *" }
   ],
   "redirects": [
     {

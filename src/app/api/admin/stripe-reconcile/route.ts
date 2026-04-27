@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getStripe } from "@/lib/stripe";
 
 const ADMIN_TOKEN = process.env.ADMIN_API_SECRET || "vyzpFC5PVM7HRI4EkZsmTOd8DgJe2cAX";
+const CRON_SECRET = process.env.CRON_SECRET?.trim();
 
 /**
  * Stripe ↔ Supabase Reconciliation
@@ -15,7 +16,8 @@ const ADMIN_TOKEN = process.env.ADMIN_API_SECRET || "vyzpFC5PVM7HRI4EkZsmTOd8DgJ
  */
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${ADMIN_TOKEN}`) {
+  const token = auth?.replace(/^Bearer\s+/i, "").trim();
+  if (token !== ADMIN_TOKEN && (!CRON_SECRET || token !== CRON_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
