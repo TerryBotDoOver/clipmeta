@@ -48,6 +48,30 @@ function Cell({ value, highlight = false }: { value: string; highlight?: boolean
   );
 }
 
+const SUPPORTED_PLATFORMS = [
+  {
+    name: "Blackbox.global",
+    href: "/blackbox",
+    note: "Native CSV + FTP",
+    exclusive: true,
+  },
+  {
+    name: "Shutterstock",
+    href: "/blog/stock-footage-metadata-guide",
+    note: "Platform CSV",
+  },
+  {
+    name: "Adobe Stock",
+    href: "/blog/stock-footage-metadata-guide",
+    note: "Platform CSV",
+  },
+  {
+    name: "Pond5",
+    href: "/blog/pond5-csv-upload-guide",
+    note: "Platform CSV",
+  },
+];
+
 export default function HomePage() {
   return (
     <FlightDeckShell>
@@ -127,19 +151,16 @@ export default function HomePage() {
 
             {/* Platform chips */}
             <div className="mt-10 flex flex-wrap justify-center gap-2">
-              {[
-                { name: "Blackbox.global", exclusive: true },
-                { name: "Shutterstock" },
-                { name: "Adobe Stock" },
-                { name: "Pond5" },
-              ].map((p) => (
-                <span
+              {SUPPORTED_PLATFORMS.map((p) => (
+                <Link
                   key={p.name}
+                  href={p.href}
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-md ${
                     p.exclusive
-                      ? "border-violet-400/40 bg-violet-500/10 text-violet-200"
-                      : "border-white/10 bg-white/5 text-white/70"
+                      ? "border-violet-400/40 bg-violet-500/10 text-violet-200 hover:border-violet-300/70 hover:bg-violet-500/15"
+                      : "border-white/10 bg-white/5 text-white/70 hover:border-white/25 hover:bg-white/10 hover:text-white"
                   }`}
+                  aria-label={`Learn more about ClipMeta support for ${p.name}`}
                 >
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
@@ -153,7 +174,7 @@ export default function HomePage() {
                       · Native
                     </span>
                   )}
-                </span>
+                </Link>
               ))}
             </div>
           </div>
@@ -489,26 +510,23 @@ export default function HomePage() {
 
           <RevealOnScroll>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { name: "Blackbox.global", note: "Native CSV + FTP", primary: true },
-                { name: "Shutterstock", note: "Platform CSV" },
-                { name: "Adobe Stock", note: "Platform CSV" },
-                { name: "Pond5", note: "Platform CSV" },
-              ].map((p) => (
-                <div
+              {SUPPORTED_PLATFORMS.map((p) => (
+                <Link
                   key={p.name}
-                  className={`glass-card flex flex-col gap-1 p-5 ${
-                    p.primary ? "ring-1 ring-violet-400/40" : ""
+                  href={p.href}
+                  className={`glass-card flex flex-col gap-1 p-5 transition hover:border-white/20 hover:bg-white/[0.06] ${
+                    p.exclusive ? "ring-1 ring-violet-400/40" : ""
                   }`}
+                  aria-label={`Learn more about ClipMeta support for ${p.name}`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-white">{p.name}</span>
                     <span className="flex h-2 w-2 items-center justify-center">
-                      <span className={`h-full w-full rounded-full ${p.primary ? "bg-violet-400" : "bg-emerald-400"} animate-pulse`} style={{ boxShadow: "0 0 8px currentColor" }} />
+                      <span className={`h-full w-full rounded-full ${p.exclusive ? "bg-violet-400" : "bg-emerald-400"} animate-pulse`} style={{ boxShadow: "0 0 8px currentColor" }} />
                     </span>
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-wider text-white/50">{p.note}</span>
-                </div>
+                </Link>
               ))}
             </div>
           </RevealOnScroll>
