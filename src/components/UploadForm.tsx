@@ -101,6 +101,9 @@ type UploadFormProps = {
 };
 
 type FileStatus = "queued" | "extracting" | "uploading" | "generating" | "done" | "error";
+const ACTIVE_STATUSES = new Set<FileStatus>(["queued", "extracting", "uploading", "generating"]);
+const UPLOAD_NAV_WARNING =
+  "Your upload is still running. Please wait for the queue to finish, or press Cancel All before leaving this page.";
 
 type QueuedFile = {
   id: string;
@@ -137,15 +140,44 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isRunning) {
         e.preventDefault();
-        e.returnValue = "Upload in progress — leaving now will cancel it. Are you sure?";
+        e.returnValue = UPLOAD_NAV_WARNING;
+        return;
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isRunning]);
 
+  // Next.js client-side links do not always trigger beforeunload, so block any
+  // in-app link click while the upload/generation queue is still active.
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      if (!isRunning || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+
+      const target = e.target instanceof Element ? e.target : null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor || anchor.target || anchor.hasAttribute("download")) return;
+
+      const href = anchor.getAttribute("href") ?? "";
+      if (href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      window.alert(UPLOAD_NAV_WARNING);
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => document.removeEventListener("click", handleDocumentClick, true);
+  }, [isRunning]);
+
   function updateFile(id: string, patch: Partial<QueuedFile>) {
-    setQueue((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+    setQueue((prev) => {
+      const next = prev.map((f) => (f.id === id ? { ...f, ...patch } : f));
+      queueRef.current = next;
+      return next;
+    });
   }
 
   function addFiles(files: FileList | File[]) {
@@ -360,6 +392,10 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
                 return;
               }
             }
+            if (!genRes.ok) {
+              const genData = await genRes.json().catch(() => ({}));
+              throw new Error(genData.message || "Metadata generation failed.");
+            }
             if (genRes.ok) {
               trackClarityEvent("MetadataGenerated");
             }
@@ -371,33 +407,38 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ clip_id }),
             });
+            let serverFrames: string[] = [];
             if (frameRes.ok) {
-              const { frames: serverFrames } = await frameRes.json();
-              if (serverFrames && serverFrames.length > 0) {
-                updateFile(item.id, { status: "generating" });
-                const genRes = await fetch("/api/metadata/generate", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ clip_id, frames: serverFrames }),
-                });
-                if (genRes.status === 429) {
-                  const genData = await genRes.json();
-                  if (genData.limit_reached) {
-                    updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
-                    setIsRunning(false);
-                    setLimitModal({
-                      message: genData.message,
-                      upgradeMessage: genData.upgrade_message,
-                    });
-                    return;
-                  }
-                }
-                if (genRes.ok) {
-                  trackClarityEvent("MetadataGenerated");
-                }
-              }
+              const frameData = await frameRes.json();
+              serverFrames = Array.isArray(frameData.frames) ? frameData.frames : [];
             } else {
               console.warn("Server-side frame extraction failed for", item.file.name);
+            }
+
+            updateFile(item.id, { status: "generating" });
+            const genRes = await fetch("/api/metadata/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ clip_id, frames: serverFrames }),
+            });
+            if (genRes.status === 429) {
+              const genData = await genRes.json();
+              if (genData.limit_reached) {
+                updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
+                setIsRunning(false);
+                setLimitModal({
+                  message: genData.message,
+                  upgradeMessage: genData.upgrade_message,
+                });
+                return;
+              }
+            }
+            if (!genRes.ok) {
+              const genData = await genRes.json().catch(() => ({}));
+              throw new Error(genData.message || "Metadata generation failed.");
+            }
+            if (genRes.ok) {
+              trackClarityEvent("MetadataGenerated");
             }
           }
         }
@@ -450,8 +491,8 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     setIsRunning(false);
     abortControllerRef.current = null;
     // If all done, reload after a beat
-    const final = queue.filter((f) => f.status === "queued");
-    if (final.length === 0) {
+    const finalQueue = queueRef.current;
+    if (finalQueue.length > 0 && finalQueue.every((f) => f.status === "done")) {
       setTimeout(() => window.location.reload(), 1500);
     }
   }
@@ -459,6 +500,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
   const queuedCount = queue.filter((f) => f.status === "queued").length;
   const doneCount = queue.filter((f) => f.status === "done").length;
   const hasQueue = queue.length > 0;
+  const activeWorkCount = queue.filter((f) => ACTIVE_STATUSES.has(f.status) && !f.tooLarge && !f.limitReached).length;
   const hasPotentialPreviewIssue = queue.some((item) => {
     const ext = item.file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
     return !!ext && PREVIEW_WARNING_EXTENSIONS.has(ext);
@@ -519,6 +561,16 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
           but Chrome may not play their in-browser preview. If previewing in ClipMeta matters, upload an H.264/MP4 version.
         </p>
       </div>
+
+      {isRunning && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <p className="font-semibold text-amber-50">Keep this page open while ClipMeta finishes.</p>
+          <p className="mt-1 text-xs leading-relaxed text-amber-100/80">
+            {activeWorkCount} item{activeWorkCount === 1 ? "" : "s"} still need upload or metadata work.
+            Review and other navigation will unlock when the queue finishes.
+          </p>
+        </div>
+      )}
 
       {/* Queue with top upload button */}
       {hasQueue && (
