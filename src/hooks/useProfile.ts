@@ -8,6 +8,8 @@ export function useProfile() {
   const [clipsUsed, setClipsUsed] = useState(0);
   const [regensUsed, setRegensUsed] = useState(0);
   const [lifetimeClips, setLifetimeClips] = useState(0);
+  const [bonusClips, setBonusClips] = useState(0);
+  const [rolloverClips, setRolloverClips] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,11 +24,17 @@ export function useProfile() {
       // Get plan + billing info
       const { data: profile } = await supabase
         .from('profiles')
-        .select('plan, regens_used_this_month, billing_period_start')
+        .select('plan, regens_used_this_month, billing_period_start, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until')
         .eq('id', user.id)
         .single();
-      const userPlan = (profile?.plan as Plan) || 'free';
+      const basePlan = (profile?.plan as Plan) || 'free';
+      const userPlan = profile?.referral_pro_forever ||
+        (profile?.referral_pro_until && new Date(profile.referral_pro_until as string) > new Date())
+        ? 'pro'
+        : basePlan;
       setPlan(userPlan);
+      setBonusClips((profile as Record<string, unknown>)?.bonus_clips as number || 0);
+      setRolloverClips((profile as Record<string, unknown>)?.rollover_clips as number || 0);
 
       // Regen count comes directly from the dedicated counter — no derivation.
       setRegensUsed((profile as Record<string, unknown>)?.regens_used_this_month as number || 0);
@@ -57,10 +65,14 @@ export function useProfile() {
   }, []);
 
   const planInfo = PLANS[plan] ?? PLANS.free;
+  const extraClips = planInfo.period === 'monthly' ? bonusClips + rolloverClips : 0;
   return {
     plan,
     clipsUsed,
-    clipsLimit: planInfo.clips,
+    clipsLimit: planInfo.clips + extraClips,
+    baseClipsLimit: planInfo.clips,
+    bonusClips,
+    rolloverClips,
     regensUsed,
     regensLimit: planInfo.regens,
     lifetimeClips,

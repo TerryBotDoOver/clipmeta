@@ -18,7 +18,7 @@ export function ClipLimitWarning() {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex-wrap">
         <p className="text-sm text-amber-400">
-          You've generated <span className="font-semibold">{lifetimeClips} clips</span> with ClipMeta.
+          You&apos;ve generated <span className="font-semibold">{lifetimeClips} clips</span> with ClipMeta.
           {' '}Unlock 140 clips/month for $9.
         </p>
         <Link
@@ -32,16 +32,21 @@ export function ClipLimitWarning() {
   }
 
   // Paid plans: show warning at 80%+ monthly usage
-  const pct = clipsLimit > 0 ? Math.round((clipsUsed / clipsLimit) * 100) : 0;
+  const pct = clipsLimit > 0 ? (clipsUsed / clipsLimit) * 100 : 0;
   if (pct < 80) return null;
 
-  const isFull = pct >= 100;
+  const isFull = clipsUsed >= clipsLimit;
+  const nextPlan =
+    plan === 'starter' ? 'Pro' :
+    plan === 'pro' ? 'Studio' :
+    plan === 'studio' ? 'a higher plan' :
+    'a paid plan';
 
   if (isFull) {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex-wrap">
         <p className="text-sm text-red-400">
-          <span className="font-semibold">Monthly limit reached</span> — you've used {clipsUsed} of {clipsLimit} clips this month.
+          <span className="font-semibold">Monthly limit reached</span> — you&apos;ve used {clipsUsed} of {clipsLimit} clips this month.
         </p>
         <Link
           href="/pricing"
@@ -56,8 +61,8 @@ export function ClipLimitWarning() {
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 flex-wrap">
       <p className="text-sm text-amber-400">
-        You've used <span className="font-semibold">{clipsUsed} of {clipsLimit}</span> clips this month.{' '}
-        Upgrade to Pro for 320 clips/month.
+        You&apos;ve used <span className="font-semibold">{clipsUsed} of {clipsLimit}</span> clips this month.{' '}
+        Upgrade to {nextPlan} for more room.
       </p>
       <Link
         href="/pricing"

@@ -65,9 +65,10 @@ export function ClipsUsageCard() {
     );
   }
 
-  const pct = clipsLimit > 0 ? Math.round((clipsUsed / clipsLimit) * 100) : 0;
-  const isWarning = pct >= 80 && pct < 100;
-  const isFull = pct >= 100;
+  const rawPct = clipsLimit > 0 ? (clipsUsed / clipsLimit) * 100 : 0;
+  const pct = Math.round(rawPct);
+  const isFull = clipsUsed >= clipsLimit;
+  const isWarning = rawPct >= 80 && !isFull;
 
   const barColor = isFull ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-violet-500';
   const valueColor = isFull ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-foreground';

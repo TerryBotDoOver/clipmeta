@@ -3,6 +3,7 @@ import { draftCustomerEmail } from "@/lib/customerEmailDraft";
 import { DISCORD_CHANNELS, sendDiscordMessage } from "@/lib/discord";
 import { emailApprovalUrl, emailReviseUrl, verifyEmailApprovalToken } from "@/lib/emailApproval";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { buildSupportResearchContext } from "@/lib/supportResearchContext";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -80,10 +81,18 @@ export async function POST(req: NextRequest) {
   if (!email) return htmlPage("Email not found", "<p>This inbound email was not found.</p>");
   if (email.status === "replied") return htmlPage("Already sent", "<p>This email has already been replied to.</p>");
 
+  const accountContext = await buildSupportResearchContext({
+    from: email.from_address || "(unknown)",
+    subject: email.subject || "(no subject)",
+    body: email.body_text || "",
+    currentEmailId: emailId,
+  });
+
   const draft = await draftCustomerEmail({
     from: email.from_address || "(unknown)",
     subject: email.subject || "(no subject)",
     body: email.body_text || "",
+    accountContext,
     currentDraft: email.reply_text || "",
     revisionInstructions: instructions,
   });

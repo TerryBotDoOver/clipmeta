@@ -3,6 +3,7 @@ import { draftCustomerEmail } from '@/lib/customerEmailDraft';
 import { DISCORD_CHANNELS, sendDiscordMessage } from '@/lib/discord';
 import { emailApprovalUrl, emailReviseUrl } from '@/lib/emailApproval';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { buildSupportResearchContext } from '@/lib/supportResearchContext';
 
 function normalizeEmailAddress(value: unknown) {
   if (typeof value !== 'string') return '';
@@ -130,10 +131,17 @@ export async function POST(req: NextRequest) {
       const emailDbId = insertedEmail?.id;
       if (emailDbId) {
         try {
+          const accountContext = await buildSupportResearchContext({
+            from,
+            subject: subject || '(no subject)',
+            body: body || htmlBody || '',
+            currentEmailId: emailDbId,
+          });
           const draft = await draftCustomerEmail({
             from,
             subject: subject || '(no subject)',
             body: body || htmlBody || '',
+            accountContext,
           });
 
           await supabaseAdmin

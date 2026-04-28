@@ -7,6 +7,7 @@ import { PLANS, Plan } from "@/lib/plans";
 import { getResend } from "@/lib/resend";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { buildSupportResearchContext } from "@/lib/supportResearchContext";
 
 const FROM = process.env.RESEND_FROM || "ClipMeta <hello@clipmeta.app>";
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     let userId = "unknown";
+    let authenticatedUserId: string | null = null;
     let userPlan = "free";
     let accountContext = "";
     try {
@@ -39,6 +41,7 @@ export async function POST(req: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         userId = user.id;
+        authenticatedUserId = user.id;
         const { data: profile } = await supabase
           .from("profiles")
           .select("plan, regens_used_this_month, billing_period_start")
@@ -111,11 +114,20 @@ export async function POST(req: NextRequest) {
 
     if (cleanEmail) {
       try {
+        const researchedContext = await buildSupportResearchContext({
+          email: cleanEmail,
+          from: displayFrom,
+          subject: ticketSubject,
+          body: ticketBody,
+          authenticatedUserId,
+          baseAccountContext: accountContext,
+        });
+
         draft = await draftCustomerEmail({
           from: displayFrom,
           subject: ticketSubject,
           body: ticketBody,
-          accountContext,
+          accountContext: researchedContext,
         });
 
         const { data: insertedEmail, error: insertError } = await supabaseAdmin
