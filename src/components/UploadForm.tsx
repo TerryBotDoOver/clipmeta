@@ -7,6 +7,7 @@ import { trackClarityEvent } from "@/lib/clarity-events";
 
 // Codecs the browser cannot decode — need server-side worker processing
 const WORKER_CODEC_EXTENSIONS = new Set(['.mov', '.mxf', '.mts', '.m2ts']);
+const PREVIEW_WARNING_EXTENSIONS = new Set(['.mov', '.mxf', '.mts', '.m2ts']);
 
 async function needsServerWorker(file: File): Promise<boolean> {
   const ext = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
@@ -458,6 +459,10 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
   const queuedCount = queue.filter((f) => f.status === "queued").length;
   const doneCount = queue.filter((f) => f.status === "done").length;
   const hasQueue = queue.length > 0;
+  const hasPotentialPreviewIssue = queue.some((item) => {
+    const ext = item.file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+    return !!ext && PREVIEW_WARNING_EXTENSIONS.has(ext);
+  });
 
   return (
     <div className="space-y-5">
@@ -499,6 +504,20 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
           className="hidden"
           onChange={(e) => e.target.files && addFiles(e.target.files)}
         />
+      </div>
+
+      <div
+        className={`rounded-xl border px-4 py-3 text-xs ${
+          hasPotentialPreviewIssue
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+            : "border-border bg-muted/20 text-muted-foreground"
+        }`}
+      >
+        <p className="font-semibold text-foreground">ProRes preview note</p>
+        <p className="mt-1 leading-relaxed">
+          Apple ProRes 422 / 422 HQ files can upload, generate metadata, export CSVs, and transfer by FTP,
+          but Chrome may not play their in-browser preview. If previewing in ClipMeta matters, upload an H.264/MP4 version.
+        </p>
       </div>
 
       {/* Queue with top upload button */}
