@@ -3,51 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
+import {
+  WELCOME_TIER_1_HOURS,
+  WELCOME_TIER_2_HOURS,
+  formatWelcomeCountdown,
+  getWelcomeRewardTier,
+  type WelcomeRewardTier,
+} from "@/lib/welcome-reward";
 
 const POPUP_SHOWN_KEY = "promo_reward_popup_shown";
-
-// Tiered discount windows (hours after promo_unlocked_at):
-//   0-24h:  50% off (Tier 1)
-//   24-72h: 25% off (Tier 2)
-//   72h+:   expired
-const TIER_1_HOURS = 24;
-const TIER_2_HOURS = 72;
-
-type PromoTier = { percent: number; label: string; expiresAt: number; nextTierAt: number | null; nextPercent: number | null };
-
-function getTier(unlockedAt: Date): PromoTier | null {
-  const unlockMs = unlockedAt.getTime();
-  const now = Date.now();
-  const hoursElapsed = (now - unlockMs) / (1000 * 60 * 60);
-
-  if (hoursElapsed < TIER_1_HOURS) {
-    return {
-      percent: 50,
-      label: "50% off",
-      expiresAt: unlockMs + TIER_1_HOURS * 60 * 60 * 1000,
-      nextTierAt: unlockMs + TIER_1_HOURS * 60 * 60 * 1000,
-      nextPercent: 25,
-    };
-  } else if (hoursElapsed < TIER_2_HOURS) {
-    return {
-      percent: 25,
-      label: "25% off",
-      expiresAt: unlockMs + TIER_2_HOURS * 60 * 60 * 1000,
-      nextTierAt: null,
-      nextPercent: null,
-    };
-  }
-  return null; // Expired
-}
-
-function formatCountdown(msRemaining: number): string {
-  if (msRemaining <= 0) return "00:00:00";
-  const totalSeconds = Math.floor(msRemaining / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
 
 type Sparkle = {
   left: number;
@@ -74,7 +38,7 @@ function generateSparkles(count: number): Sparkle[] {
 }
 
 export function PromoReward() {
-  const [tier, setTier] = useState<PromoTier | null>(null);
+  const [tier, setTier] = useState<WelcomeRewardTier | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [sparkles, setSparkles] = useState<Sparkle[]>([]);
   const [countdown, setCountdown] = useState("");
@@ -100,7 +64,7 @@ export function PromoReward() {
 
     if (profile?.promo_unlocked_at) {
       const ts = new Date(profile.promo_unlocked_at);
-      const currentTier = getTier(ts);
+      const currentTier = getWelcomeRewardTier(ts);
       if (currentTier) {
         setTier(currentTier);
         // Show popup only once per unlock (not on every page load)
@@ -132,7 +96,7 @@ export function PromoReward() {
         checkPromoState();
         return;
       }
-      setCountdown(formatCountdown(remaining));
+      setCountdown(formatWelcomeCountdown(remaining));
     };
     update();
     const interval = setInterval(update, 1000);
@@ -141,7 +105,7 @@ export function PromoReward() {
 
   if (loading || !tier) return null;
 
-  const gradientBg = tier.percent === 50
+  const gradientBg = tier.key === "tier1"
     ? "linear-gradient(90deg, #6d28d9 0%, #db2777 50%, #f59e0b 100%)"
     : "linear-gradient(90deg, #6d28d9 0%, #4f46e5 50%, #3b82f6 100%)";
 
@@ -163,7 +127,7 @@ export function PromoReward() {
             flexWrap: "wrap",
           }}
         >
-          <span>🎉 {tier.label} your first month —</span>
+          <span>🎉 {tier.monthlyLabel} or {tier.annualLabel}</span>
           <span
             style={{
               fontFamily: "monospace",
@@ -176,9 +140,9 @@ export function PromoReward() {
           >
             {countdown}
           </span>
-          {tier.nextPercent && (
+          {tier.nextMonthlyLabel && tier.nextAnnualLabel && (
             <span style={{ fontSize: "12px", opacity: 0.85 }}>
-              then {tier.nextPercent}% off for {TIER_2_HOURS - TIER_1_HOURS}h
+              then {tier.nextMonthlyLabel} or {tier.nextAnnualLabel} for {WELCOME_TIER_2_HOURS - WELCOME_TIER_1_HOURS}h
             </span>
           )}
           <Link
@@ -259,11 +223,14 @@ export function PromoReward() {
 
             <div style={{ fontSize: "44px", marginBottom: "8px" }}>🎉</div>
             <h2 style={{ fontSize: "22px", fontWeight: 800, marginBottom: "8px", lineHeight: 1.2 }}>
-              You&apos;ve unlocked
+              Welcome reward unlocked
             </h2>
             <h2 style={{ fontSize: "32px", fontWeight: 900, marginBottom: "12px", lineHeight: 1 }}>
-              {tier.label} your first month!
+              {tier.monthlyLabel}
             </h2>
+            <p style={{ fontSize: "14px", opacity: 0.92, marginBottom: "14px" }}>
+              or {tier.annualLabel} if you choose annual billing.
+            </p>
 
             {/* Tier countdown */}
             <div
@@ -283,14 +250,14 @@ export function PromoReward() {
             </div>
 
             {/* Show the tier step-down info */}
-            {tier.nextPercent && (
+            {tier.nextMonthlyLabel && tier.nextAnnualLabel && (
               <p style={{ fontSize: "13px", opacity: 0.9, marginBottom: "20px" }}>
-                After this countdown, your reward drops to <strong>{tier.nextPercent}% off</strong> for {TIER_2_HOURS - TIER_1_HOURS} more hours — then it&apos;s gone.
+                After this countdown, your reward drops to <strong>{tier.nextMonthlyLabel}</strong> or <strong>{tier.nextAnnualLabel}</strong> for {WELCOME_TIER_2_HOURS - WELCOME_TIER_1_HOURS} more hours, then it&apos;s gone.
               </p>
             )}
-            {!tier.nextPercent && (
+            {!tier.nextMonthlyLabel && (
               <p style={{ fontSize: "13px", opacity: 0.9, marginBottom: "20px" }}>
-                This is your last chance — when this timer hits zero, the discount is gone.
+                This is your last chance. When this timer hits zero, the reward is gone.
               </p>
             )}
 

@@ -6,6 +6,11 @@ import { fbEvent } from "@/components/MetaPixel";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 import { trackClarityEvent } from "@/lib/clarity-events";
 import { normalizePlan } from "@/lib/plans";
+import {
+  formatWelcomeCountdown,
+  getWelcomeRewardTier,
+  type WelcomeRewardTier,
+} from "@/lib/welcome-reward";
 
 function getPlanButtonLabel(targetPlan: string, currentPlan: string, isLoggedIn: boolean | null): string {
   if (!isLoggedIn) return targetPlan === 'free' ? 'Get started free' : 'Start free trial';
@@ -148,6 +153,9 @@ export default function PricingPage() {
   const [confirmModal, setConfirmModal] = useState<ConfirmModal>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showOnboardingNudge, setShowOnboardingNudge] = useState(false);
+  const [promoUnlockedAt, setPromoUnlockedAt] = useState<string | null>(null);
+  const [welcomeTier, setWelcomeTier] = useState<WelcomeRewardTier | null>(null);
+  const [welcomeCountdown, setWelcomeCountdown] = useState('');
   const router = useRouter();
 
   // Track pricing page view for Meta Pixel retargeting
@@ -174,11 +182,11 @@ export default function PricingPage() {
           .select('plan, stripe_subscription_id, stripe_subscription_status, onboarding_complete, promo_unlocked_at')
           .eq('id', user.id)
           .single();
-        setUserPlan(profile?.plan ?? 'free');
+        const plan = profile?.plan ?? 'free';
+        setUserPlan(plan);
+        setPromoUnlockedAt(plan === 'free' && profile?.promo_unlocked_at ? profile.promo_unlocked_at : null);
         // Check if user hasn't completed onboarding yet — show nudge to unlock discount
-        if (!profile?.onboarding_complete && !profile?.promo_unlocked_at && profile?.plan === 'free') {
-          setShowOnboardingNudge(true);
-        }
+        setShowOnboardingNudge(!profile?.onboarding_complete && !profile?.promo_unlocked_at && plan === 'free');
         // User has an active paid subscription if they have a sub ID and it's active/trialing
         const hasSub = !!(profile?.stripe_subscription_id &&
           ['active', 'trialing', 'founder'].includes(profile?.stripe_subscription_status ?? ''));
@@ -188,6 +196,25 @@ export default function PricingPage() {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!promoUnlockedAt) {
+      setWelcomeTier(null);
+      setWelcomeCountdown('');
+      return;
+    }
+
+    const updateWelcomeReward = () => {
+      const currentTier = getWelcomeRewardTier(promoUnlockedAt);
+      setWelcomeTier(currentTier);
+      setWelcomeCountdown(currentTier ? formatWelcomeCountdown(currentTier.expiresAt - Date.now()) : '');
+    };
+
+    updateWelcomeReward();
+    const interval = setInterval(updateWelcomeReward, 1000);
+    return () => clearInterval(interval);
+  }, [promoUnlockedAt]);
+
   const Check = () => <span className="text-emerald-400">&#10003;</span>;
   const Dash = () => <span className="text-zinc-600">&#8212;</span>;
 
@@ -325,13 +352,33 @@ export default function PricingPage() {
         )}
       </section>
 
+      {/* Active welcome reward — shown after the onboarding reward is unlocked */}
+      {welcomeTier && (
+        <div className="mx-auto max-w-3xl px-6 mb-8">
+          <div className="relative rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center">
+            <div className="text-lg font-bold text-white mb-1">Welcome reward active</div>
+            <p className="text-sm text-zinc-300 mb-3">
+              {annual ? welcomeTier.annualLabel : welcomeTier.monthlyLabel} will apply automatically at checkout.
+            </p>
+            <div className="inline-flex items-center gap-2 rounded-full bg-black/30 px-3 py-1 font-mono text-sm font-bold text-emerald-200">
+              <span>{welcomeCountdown}</span>
+            </div>
+            {welcomeTier.nextMonthlyLabel && welcomeTier.nextAnnualLabel && (
+              <p className="mt-3 text-xs text-zinc-400">
+                Then it drops to {annual ? welcomeTier.nextAnnualLabel : welcomeTier.nextMonthlyLabel} before expiring.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Onboarding discount nudge — shown to free users who haven't completed the setup steps */}
       {showOnboardingNudge && (
         <div className="mx-auto max-w-3xl px-6 mb-8">
           <div className="relative rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-500/10 via-pink-500/10 to-amber-500/10 p-5 text-center">
-            <div className="text-lg font-bold text-white mb-1">🎁 Unlock up to 50% off your first month</div>
+            <div className="text-lg font-bold text-white mb-1">🎁 Unlock your welcome reward</div>
             <p className="text-sm text-zinc-400 mb-3">
-              Complete the free setup steps on your dashboard — create a project, upload a clip, and generate metadata — to unlock your welcome discount before subscribing.
+              Complete the free setup steps on your dashboard to unlock 50% off monthly plans or extra free time on annual plans.
             </p>
             <Link
               href="/dashboard"

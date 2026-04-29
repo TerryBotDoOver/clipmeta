@@ -59,7 +59,7 @@ export function OnboardingChecklist({ hasProject, hasClips, hasMeta, firstProjec
         <div>
           <h2 className="text-base font-bold text-foreground">🚀 Get started with ClipMeta</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Complete all 4 steps to unlock <span className="font-semibold text-foreground">up to 50% off your first month</span>.
+            Complete all 4 steps to unlock <span className="font-semibold text-foreground">a welcome reward for monthly or annual plans</span>.
           </p>
         </div>
         <div className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">

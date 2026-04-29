@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getStripe, PLANS } from '@/lib/stripe';
 import { ANNUAL_PLANS, normalizePlan } from '@/lib/plans';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { getWelcomeRewardCouponForPlan } from '@/lib/welcome-reward';
 
 const VALID_MONTHLY_PLANS = ['starter', 'pro', 'studio'] as const;
 const VALID_ANNUAL_PLANS = ['starter_annual', 'pro_annual', 'studio_annual'] as const;
@@ -134,20 +135,11 @@ export async function POST(req: NextRequest) {
         .eq('id', user.id);
     }
 
-    // Apply tiered welcome reward coupon:
-    //   0-24h after unlock:  50% off first month
-    //   24-72h after unlock: 25% off first month
-    //   72h+: no discount (expired)
+    // Apply the tiered welcome reward. Monthly plans use percent-off coupons;
+    // annual plans use fixed amount-off coupons so the reward is bounded.
     let welcomeDiscount: { coupon: string }[] | undefined;
-    if (profile?.promo_unlocked_at) {
-      const unlockedAt = new Date(profile.promo_unlocked_at).getTime();
-      const hoursElapsed = (Date.now() - unlockedAt) / (1000 * 60 * 60);
-      if (hoursElapsed < 24) {
-        welcomeDiscount = [{ coupon: 'welcome_reward_50' }];
-      } else if (hoursElapsed < 72) {
-        welcomeDiscount = [{ coupon: 'welcome_reward_25' }];
-      }
-    }
+    const welcomeCoupon = getWelcomeRewardCouponForPlan(plan, profile?.promo_unlocked_at);
+    if (welcomeCoupon) welcomeDiscount = [{ coupon: welcomeCoupon }];
 
     const session = await getStripe().checkout.sessions.create({
       customer: customerId,
