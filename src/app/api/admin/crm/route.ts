@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const ADMIN_ID = "93f38fdf-4506-4dfc-89a2-28767bc0b37d";
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const DRIP_SECRET = process.env.DRIP_SECRET?.trim();
+const ADMIN_API_SECRET = process.env.ADMIN_API_SECRET?.trim();
+
+function isAuthorized(req: NextRequest) {
+  const adminKey = req.headers.get("x-admin-key")?.trim();
+  const auth = req.headers.get("authorization") || "";
+  const bearer = auth.replace(/^Bearer\s+/i, "").trim();
+  const validTokens = [SERVICE_ROLE_KEY, DRIP_SECRET, ADMIN_API_SECRET].filter(Boolean);
+  return validTokens.some((token) => adminKey === token || bearer === token);
+}
 
 export async function GET(req: NextRequest) {
-  // Verify admin via auth header or query param
-  const authKey = req.headers.get("x-admin-key");
-  if (authKey !== process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
