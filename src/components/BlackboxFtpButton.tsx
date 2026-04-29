@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { normalizeEntitlementPlan } from "@/lib/plans";
 
 type ClipResult = {
   id: string;
@@ -28,8 +29,9 @@ const FTP_PLANS = ['pro', 'studio', 'founder'];
 const PRORES_PLANS = ['pro', 'studio', 'founder'];
 
 export function BlackboxFtpButton({ projectId, clipCount, userPlan = 'free' }: Props) {
-  const canFtp = FTP_PLANS.includes(userPlan);
-  const canProRes = PRORES_PLANS.includes(userPlan);
+  const basePlan = normalizeEntitlementPlan(userPlan);
+  const canFtp = FTP_PLANS.includes(basePlan);
+  const canProRes = PRORES_PLANS.includes(basePlan);
   const [stage, setStage] = useState<Stage>("idle");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

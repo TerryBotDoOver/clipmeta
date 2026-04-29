@@ -9,6 +9,7 @@ import { ReviewQueue } from "@/components/ReviewQueue";
 import { BlackboxFtpButton } from "@/components/BlackboxFtpButton";
 import { ClipLimitWarning } from "@/components/ClipLimitWarning";
 import { ProjectMetaCard } from "@/components/ProjectMetaCard";
+import { normalizePlan } from "@/lib/plans";
 
 type ReviewPageProps = {
   params: Promise<{ id: string }>;
@@ -28,7 +29,7 @@ export default async function ProjectReviewPage({ params }: ReviewPageProps) {
 
   const activeStatuses = ["active", "trialing", "founder"];
   const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
-  const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free";
+  const userPlan = normalizePlan(isActiveSub ? profile?.plan : "free");
 
   if (!project) {
     return (

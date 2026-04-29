@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { r2, R2_BUCKET } from "@/lib/r2";
 import { CreateMultipartUploadCommand } from "@aws-sdk/client-s3";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { PLAN_FILE_SIZE_LIMITS } from "@/lib/plans";
+import { PLAN_FILE_SIZE_LIMITS, normalizePlan } from "@/lib/plans";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
           .eq("user_id", user.id)
           .eq("status", "active")
           .single();
-        const plan = (subscription?.plan ?? "free") as string;
+        const plan = normalizePlan(subscription?.plan);
         const limit = PLAN_FILE_SIZE_LIMITS[plan] ?? PLAN_FILE_SIZE_LIMITS.free;
         if (file_size_bytes > limit) {
           const limitLabel = limit >= 1024 * 1024 * 1024

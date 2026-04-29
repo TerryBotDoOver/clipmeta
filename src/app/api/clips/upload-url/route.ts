@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getR2UploadUrl } from "@/lib/r2";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { PLANS, PLAN_FILE_SIZE_LIMITS, type Plan } from "@/lib/plans";
+import { PLANS, PLAN_FILE_SIZE_LIMITS, getUsagePeriodStart, normalizePlan } from "@/lib/plans";
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,9 +28,7 @@ export async function POST(req: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const basePlan = (profile?.plan && profile.plan in PLANS
-      ? profile.plan
-      : "free") as Plan;
+    const basePlan = normalizePlan(profile?.plan);
 
     let plan = basePlan;
     if (profile?.referral_pro_forever) {
@@ -76,9 +74,7 @@ export async function POST(req: NextRequest) {
           used = usedCount ?? 0;
         }
       } else {
-        const billingStart = profile?.billing_period_start
-          ? new Date(profile.billing_period_start).toISOString()
-          : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+        const billingStart = getUsagePeriodStart(profile?.plan, profile?.billing_period_start).toISOString();
         const { count: uploadCount } = await supabaseAdmin
           .from('clip_history')
           .select('id', { count: 'exact', head: true })

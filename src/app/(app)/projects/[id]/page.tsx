@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ExportButton } from "@/components/ExportButton";
 import { ProjectCreatedTracker } from "@/components/ProjectCreatedTracker";
 import { Platform, PLATFORM_LABELS } from "@/lib/platform-presets";
+import { normalizePlan } from "@/lib/plans";
 
 type ProjectDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -24,7 +25,7 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
 
   const activeStatuses = ["active", "trialing", "founder"];
   const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
-  const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free";
+  const userPlan = normalizePlan(isActiveSub ? profile?.plan : "free");
 
   if (!project) {
     return (

@@ -3,7 +3,7 @@ import { getStripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getResend } from '@/lib/resend';
 import { receiptEmail } from '@/lib/emails';
-import { PLANS, type Plan } from '@/lib/plans';
+import { ANNUAL_PLANS, PLANS, normalizePlan } from '@/lib/plans';
 import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
@@ -127,10 +127,14 @@ export async function POST(req: NextRequest) {
 
           // Derive plan from price amount (source of truth) instead of metadata alone
           const priceAmount = sub.items?.data?.[0]?.price?.unit_amount;
+          const priceId = sub.items?.data?.[0]?.price?.id?.replace(/[\r\n\s]/g, '');
           // Map both monthly and annual prices to plan names
-          const planFromPrice = (priceAmount === 4900 || priceAmount === 49000) ? 'studio'
-            : (priceAmount === 1900 || priceAmount === 19000) ? 'pro'
-            : (priceAmount === 900 || priceAmount === 9000) ? 'starter'
+          const planFromPrice = priceId === ANNUAL_PLANS.starter_annual.priceId ? 'starter_annual'
+            : priceId === ANNUAL_PLANS.pro_annual.priceId ? 'pro_annual'
+            : priceId === ANNUAL_PLANS.studio_annual.priceId ? 'studio_annual'
+            : priceAmount === 4900 ? 'studio'
+            : priceAmount === 1900 ? 'pro'
+            : priceAmount === 900 ? 'starter'
             : null;
           const plan = (isActive || isTrial) ? (planFromPrice || sub.metadata?.plan || 'free') : 'free';
 
@@ -255,7 +259,7 @@ export async function POST(req: NextRequest) {
           .maybeSingle();
         if (!profile) break;
 
-        let plan = (profile.plan && profile.plan in PLANS ? profile.plan : 'free') as Plan;
+        let plan = normalizePlan(profile.plan);
         if (profile.referral_pro_forever) plan = 'pro';
         if (profile.referral_pro_until && new Date(profile.referral_pro_until) > new Date()) plan = 'pro';
         if (plan === 'free') break;

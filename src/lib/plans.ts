@@ -64,6 +64,90 @@ export const ANNUAL_PLANS = {
 
 export type AnnualPlan = keyof typeof ANNUAL_PLANS;
 
+export const PLAN_ALIASES: Record<AnnualPlan, Plan> = {
+  starter_annual: 'starter',
+  pro_annual: 'pro',
+  studio_annual: 'studio',
+};
+
+export type EntitlementPlan = Plan | 'founder';
+
+export function isAnnualPlan(plan: string | null | undefined): plan is AnnualPlan {
+  return !!plan && plan in PLAN_ALIASES;
+}
+
+export function normalizePlan(plan: string | null | undefined): Plan {
+  const key = (plan ?? '').trim();
+  if (key in PLANS) return key as Plan;
+  if (key in PLAN_ALIASES) return PLAN_ALIASES[key as AnnualPlan];
+  return 'free';
+}
+
+export function normalizeEntitlementPlan(plan: string | null | undefined): EntitlementPlan {
+  const key = (plan ?? '').trim();
+  if (key === 'founder') return 'founder';
+  return normalizePlan(key);
+}
+
+export function getPlanDisplayName(plan: string | null | undefined): string {
+  const key = (plan ?? '').trim();
+  if (key in ANNUAL_PLANS) return ANNUAL_PLANS[key as AnnualPlan].name;
+  return PLANS[normalizePlan(key)].name;
+}
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function startOfUtcMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function parseDateOrNull(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function daysInUtcMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+}
+
+function monthlyPeriodFromAnchor(anchor: Date, now: Date): Date {
+  const anchorDay = anchor.getUTCDate();
+  const buildCandidate = (year: number, month: number) => {
+    const day = Math.min(anchorDay, daysInUtcMonth(year, month));
+    return new Date(Date.UTC(
+      year,
+      month,
+      day,
+      anchor.getUTCHours(),
+      anchor.getUTCMinutes(),
+      anchor.getUTCSeconds(),
+      anchor.getUTCMilliseconds()
+    ));
+  };
+
+  let candidate = buildCandidate(now.getUTCFullYear(), now.getUTCMonth());
+  if (candidate.getTime() > now.getTime()) {
+    candidate = buildCandidate(now.getUTCFullYear(), now.getUTCMonth() - 1);
+  }
+  return candidate;
+}
+
+export function getUsagePeriodStart(
+  plan: string | null | undefined,
+  billingPeriodStart: string | null | undefined,
+  now = new Date()
+): Date {
+  const basePlan = normalizePlan(plan);
+  if (basePlan === 'free') return startOfUtcDay(now);
+
+  const anchor = parseDateOrNull(billingPeriodStart) ?? startOfUtcMonth(now);
+  if (isAnnualPlan(plan)) return monthlyPeriodFromAnchor(anchor, now);
+  return anchor;
+}
+
 export const CREDIT_PACKS = {
   small:  { clips: 50,  regens: 10,  price: 5,  label: '50 clips + 10 regens' },
   medium: { clips: 200, regens: 40,  price: 14, label: '200 clips + 40 regens' },

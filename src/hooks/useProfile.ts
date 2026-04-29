@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { PLANS, Plan } from '@/lib/plans';
+import { PLANS, Plan, getUsagePeriodStart, normalizePlan } from '@/lib/plans';
 
 export function useProfile() {
   const [plan, setPlan] = useState<Plan>('free');
@@ -27,7 +27,7 @@ export function useProfile() {
         .select('plan, regens_used_this_month, billing_period_start, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until')
         .eq('id', user.id)
         .single();
-      const basePlan = (profile?.plan as Plan) || 'free';
+      const basePlan = normalizePlan(profile?.plan as string | null | undefined);
       const userPlan = profile?.referral_pro_forever ||
         (profile?.referral_pro_until && new Date(profile.referral_pro_until as string) > new Date())
         ? 'pro'
@@ -40,9 +40,10 @@ export function useProfile() {
       setRegensUsed((profile as Record<string, unknown>)?.regens_used_this_month as number || 0);
 
       // Count clip uploads from clip_history for usage display
-      const billingStart = profile?.billing_period_start
-        ? new Date(profile.billing_period_start as string).toISOString()
-        : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const billingStart = getUsagePeriodStart(
+        profile?.plan as string | null | undefined,
+        profile?.billing_period_start as string | null | undefined
+      ).toISOString();
 
       const [{ count: historyCount }, { count: lifetimeCount }] = await Promise.all([
         supabase

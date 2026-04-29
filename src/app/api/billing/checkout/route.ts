@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getStripe, PLANS } from '@/lib/stripe';
-import { ANNUAL_PLANS } from '@/lib/plans';
+import { ANNUAL_PLANS, normalizePlan } from '@/lib/plans';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 const VALID_MONTHLY_PLANS = ['starter', 'pro', 'studio'] as const;
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[checkout] priceId after clean:', JSON.stringify(priceId), 'plan:', plan);
+    const basePlan = normalizePlan(plan);
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://clipmeta.app').replace(/[\r\n\s]/g, '');
 
@@ -159,9 +160,9 @@ export async function POST(req: NextRequest) {
         : { allow_promotion_codes: true }),
       success_url: `${appUrl}/dashboard?upgraded=true`,
       cancel_url: `${appUrl}/pricing`,
-      metadata: { supabase_uid: user.id, plan, ...utmMeta },
+      metadata: { supabase_uid: user.id, plan, base_plan: basePlan, ...utmMeta },
       subscription_data: {
-        metadata: { supabase_uid: user.id, plan },
+        metadata: { supabase_uid: user.id, plan, base_plan: basePlan },
         ...(trialDays ? { trial_period_days: trialDays } : {}),
       },
     });

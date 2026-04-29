@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UploadForm } from "@/components/UploadForm";
-import { PLAN_FILE_SIZE_LIMITS } from "@/lib/plans";
+import { PLAN_FILE_SIZE_LIMITS, formatFileSize, getPlanDisplayName, normalizePlan } from "@/lib/plans";
 
 type UploadPageProps = {
   params: Promise<{ id: string }>;
@@ -43,8 +43,10 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
     .single();
   const activeStatuses = ["active", "trialing", "founder"];
   const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
-  const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free" as string;
-  const maxFileSizeBytes = PLAN_FILE_SIZE_LIMITS[userPlan] ?? PLAN_FILE_SIZE_LIMITS.free;
+  const rawPlan = isActiveSub ? profile?.plan : "free";
+  const userPlan = normalizePlan(rawPlan);
+  const planLabel = getPlanDisplayName(rawPlan);
+  const maxFileSizeBytes = PLAN_FILE_SIZE_LIMITS[userPlan];
 
   const { data: clips } = await supabase
     .from("clips")
@@ -66,7 +68,7 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">Upload</p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">{project.name}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Files go directly to storage. Max file size: {userPlan === 'studio' ? '10GB' : userPlan === 'pro' ? '5GB' : userPlan === 'starter' ? '2GB' : '500MB'} on your current plan.</p>
+              <p className="mt-1 text-sm text-muted-foreground">Files go directly to storage. Max file size: {formatFileSize(maxFileSizeBytes)} on your {planLabel} plan.</p>
             </div>
 
             {/* Right: clips count + navigation */}

@@ -4,6 +4,7 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { extractFrames } from "@/lib/extractFrames";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { trackClarityEvent } from "@/lib/clarity-events";
+import { getPlanDisplayName, normalizePlan } from "@/lib/plans";
 
 // Codecs the browser cannot decode — need server-side worker processing
 const WORKER_CODEC_EXTENSIONS = new Set(['.mov', '.mxf', '.mts', '.m2ts']);
@@ -117,6 +118,8 @@ type QueuedFile = {
 };
 
 export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan }: UploadFormProps) {
+  const basePlan = normalizePlan(userPlan);
+  const planLabel = getPlanDisplayName(userPlan);
   const effectiveLimit = maxFileSizeBytes ?? 500 * 1024 * 1024; // default 500MB
   const limitLabel = effectiveLimit >= 1024 * 1024 * 1024
     ? `${(effectiveLimit / (1024 * 1024 * 1024)).toFixed(0)}GB`
@@ -185,12 +188,11 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     if (videoFiles.length === 0) return;
     const newItems: QueuedFile[] = videoFiles.map((file) => {
       if (file.size > effectiveLimit) {
-        const planName = userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "Free";
-        const nextPlan = userPlan === "free" ? "Starter" : userPlan === "starter" ? "Pro" : userPlan === "pro" ? "Studio" : null;
-        const nextPlanLimit = userPlan === "free" ? "2GB" : userPlan === "starter" ? "5GB" : userPlan === "pro" ? "10GB" : null;
+        const nextPlan = basePlan === "free" ? "Starter" : basePlan === "starter" ? "Pro" : basePlan === "pro" ? "Studio" : null;
+        const nextPlanLimit = basePlan === "free" ? "2GB" : basePlan === "starter" ? "5GB" : basePlan === "pro" ? "10GB" : null;
         const upgradeMsg = nextPlan && nextPlanLimit
-          ? `${planName} plan supports up to ${limitLabel}. Upgrade to ${nextPlan} for ${nextPlanLimit} files.`
-          : `${planName} plan supports up to ${limitLabel}.`;
+          ? `${planLabel} plan supports up to ${limitLabel}. Upgrade to ${nextPlan} for ${nextPlanLimit} files.`
+          : `${planLabel} plan supports up to ${limitLabel}.`;
         return {
           id: `${Date.now()}-${Math.random()}`,
           file,
@@ -536,7 +538,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
           or click to browse — multiple files supported
         </p>
         <p className="mt-1 text-xs text-muted-foreground/60">
-          Max {limitLabel} per file ({userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "Free"} plan)
+          Max {limitLabel} per file ({planLabel} plan)
         </p>
         <input
           ref={inputRef}

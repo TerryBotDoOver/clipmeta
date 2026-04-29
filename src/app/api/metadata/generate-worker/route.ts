@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateMetadata } from "@/lib/generateMetadata";
 import { Platform, GenerationSettings } from "@/lib/platform-presets";
+import { PLANS, normalizePlan } from "@/lib/plans";
 
 const WORKER_SECRET = process.env.WORKER_SECRET || 'vyzpFC5PVM7HRI4EkZsmTOd8DgJe2cAX';
 
@@ -57,21 +58,9 @@ export async function POST(req: NextRequest) {
         .update({ credits: userCredits - 1, updated_at: new Date().toISOString() })
         .eq('id', userId);
     } else {
-      let plan = profile?.plan || 'free';
+      let plan = normalizePlan(profile?.plan);
       if (profile?.referral_pro_forever) plan = 'pro';
       if (profile?.referral_pro_until && new Date(profile.referral_pro_until) > new Date()) plan = 'pro';
-
-      const planLimits: Record<string, number> = { free: 3, starter: 140, pro: 320, studio: 2000 };
-      const planBaseLimit = planLimits[plan] || 3;
-      const bonusClips = profile?.bonus_clips || 0;
-      const rolloverClips = profile?.rollover_clips || 0;
-      const totalLimit = planBaseLimit + bonusClips + rolloverClips;
-
-      const { data: userProjects } = await supabaseAdmin
-        .from('projects')
-        .select('id')
-        .eq('user_id', userId);
-      const projectIds = (userProjects || []).map((p: { id: string }) => p.id);
 
       // ─── Clip upload limits are NOT checked here ──────────────────────────
       // Upload limits are enforced in POST /api/clips when the clip record is
@@ -85,8 +74,7 @@ export async function POST(req: NextRequest) {
       // Uses dedicated counter (profiles.regens_used_this_month) — no derivation.
       // Limits: free=1/day, starter=100/month, pro=300/month, studio=500/month
       if (isRegeneration) {
-        const regenLimits: Record<string, number> = { free: 1, starter: 100, pro: 300, studio: 500 };
-        const regenLimit = regenLimits[plan] || 1;
+        const regenLimit = PLANS[plan].regens;
         const regensUsed: number = profile?.regens_used_this_month ?? 0;
 
         if (plan === 'free') {

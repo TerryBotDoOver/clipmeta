@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { fbEvent } from "@/components/MetaPixel";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 import { trackClarityEvent } from "@/lib/clarity-events";
+import { normalizePlan } from "@/lib/plans";
 
 function getPlanButtonLabel(targetPlan: string, currentPlan: string, isLoggedIn: boolean | null): string {
   if (!isLoggedIn) return targetPlan === 'free' ? 'Get started free' : 'Start free trial';
   const planOrder = ['free', 'starter', 'pro', 'studio'];
-  const current = planOrder.indexOf(currentPlan);
+  const current = planOrder.indexOf(normalizePlan(currentPlan));
   const target = planOrder.indexOf(targetPlan);
   if (current === target) return 'Current plan';
   if (target > current) return 'Upgrade';

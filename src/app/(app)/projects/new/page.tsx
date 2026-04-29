@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { Platform, GenerationSettings } from "@/lib/platform-presets";
 import { ProjectSettingsForm } from "@/components/ProjectSettingsForm";
 import { BLACKBOX_COUNTRIES } from "@/lib/blackbox-countries";
+import { normalizePlan } from "@/lib/plans";
 
 function slugify(value: string) {
   const base = value
@@ -68,7 +69,7 @@ export default async function NewProjectPage({ searchParams }: { searchParams: P
     const { data: profile } = await supabase.from("profiles").select("plan, stripe_subscription_status").eq("id", user.id).single();
     const activeStatuses = ["active", "trialing", "founder"];
     const isActiveSub = activeStatuses.includes(profile?.stripe_subscription_status ?? "");
-    const userPlan = (isActiveSub ? profile?.plan : "free") ?? "free";
+    const userPlan = normalizePlan(isActiveSub ? profile?.plan : "free");
     const PROJECT_LIMITS: Record<string, number> = { free: 1, trial: 3, starter: 3, pro: 999, studio: 999 };
     const limit = PROJECT_LIMITS[userPlan] ?? 1;
     const { count } = await supabase.from("projects").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("deleted_at", null);

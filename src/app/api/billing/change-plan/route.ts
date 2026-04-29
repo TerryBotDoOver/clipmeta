@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getStripe } from '@/lib/stripe';
-import { PLANS, ANNUAL_PLANS } from '@/lib/plans';
+import { PLANS, ANNUAL_PLANS, normalizePlan } from '@/lib/plans';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Plan hierarchy for determining upgrade vs downgrade
@@ -23,11 +23,6 @@ function getPriceId(plan: string): string | null {
     return (ANNUAL_PLANS as Record<string, { priceId: string }>)[plan]?.priceId ?? null;
   }
   return null;
-}
-
-// Map any plan key to its base plan name (e.g. 'pro_annual' -> 'pro')
-function basePlanName(plan: string): string {
-  return plan.replace('_annual', '');
 }
 
 export async function POST(req: NextRequest) {
@@ -86,21 +81,21 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanPriceId = newPriceId.replace(/[\r\n\s]/g, '');
-    const newBasePlan = basePlanName(plan);
+    const newBasePlan = normalizePlan(plan);
 
     if (direction === 'upgrade') {
       // UPGRADE: Apply immediately with proration
       await stripe.subscriptions.update(profile.stripe_subscription_id, {
         items: [{ id: subscriptionItemId, price: cleanPriceId }],
         proration_behavior: 'always_invoice',
-        metadata: { supabase_uid: user.id, plan: newBasePlan },
+        metadata: { supabase_uid: user.id, plan, base_plan: newBasePlan },
       });
 
       // Update DB immediately — user gets the new plan now
       // Don't reset clip counter — user keeps their usage, but the higher plan limit
       // gives them more room (e.g. Starter 140 used → Pro 320 limit = 180 more clips)
       await supabaseAdmin.from('profiles').update({
-        plan: newBasePlan,
+        plan,
         pending_plan: null,
         pending_plan_effective_date: null,
         updated_at: new Date().toISOString(),
@@ -118,17 +113,17 @@ export async function POST(req: NextRequest) {
       const updated = await stripe.subscriptions.update(profile.stripe_subscription_id, {
         items: [{ id: subscriptionItemId, price: cleanPriceId }],
         proration_behavior: 'none',
-        metadata: { supabase_uid: user.id, plan: newBasePlan },
+        metadata: { supabase_uid: user.id, plan, base_plan: newBasePlan },
       });
 
       // current_period_end is on the subscription object itself
-      const periodEnd = (updated as any).current_period_end ??
+      const periodEnd = (updated as typeof updated & { current_period_end?: number }).current_period_end ??
         Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60; // fallback: ~30 days
       const effectiveDate = new Date(periodEnd * 1000).toISOString();
 
       // Store pending downgrade — keep current plan active until period end
       await supabaseAdmin.from('profiles').update({
-        pending_plan: newBasePlan,
+        pending_plan: plan,
         pending_plan_effective_date: effectiveDate,
         updated_at: new Date().toISOString(),
         // DO NOT change `plan` — user keeps current plan until period end

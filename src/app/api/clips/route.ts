@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { PLANS, type Plan } from "@/lib/plans";
+import { PLANS, getUsagePeriodStart, normalizePlan } from "@/lib/plans";
 import { headR2Object } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
@@ -47,9 +47,7 @@ export async function POST(req: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const basePlan = (profile?.plan && profile.plan in PLANS
-      ? profile.plan
-      : "free") as Plan;
+    const basePlan = normalizePlan(profile?.plan);
 
     // Referral rewards can upgrade effective plan to Pro
     let plan = basePlan;
@@ -82,9 +80,7 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Paid plans: count from clip_history (includes deleted clips, excludes regens)
-      const billingStart = profile?.billing_period_start
-        ? new Date(profile.billing_period_start).toISOString()
-        : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const billingStart = getUsagePeriodStart(profile?.plan, profile?.billing_period_start).toISOString();
       const { count: uploadCount } = await supabaseAdmin
         .from('clip_history')
         .select('id', { count: 'exact', head: true })

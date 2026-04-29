@@ -6,12 +6,20 @@ import NameForm from "@/components/NameForm";
 import ReferralSection from "@/components/ReferralSection";
 import { ManageBillingButton } from "@/components/ManageBillingButton";
 import DeleteAccountDialog from "@/components/DeleteAccountDialog";
+import { getPlanDisplayName, isAnnualPlan, normalizePlan } from "@/lib/plans";
 
 const PLANS = {
   free:    { label: "Free",    color: "text-muted-foreground", badge: "bg-muted text-muted-foreground",    clips: 3,    period: "daily",   projects: 1,   rolloverCap: 0,    price: null },
   starter: { label: "Starter", color: "text-sky-400",          badge: "bg-sky-500/15 text-sky-400",         clips: 140,   period: "monthly", projects: 3,   rolloverCap: 280,  price: "$9/mo" },
   pro:     { label: "Pro",     color: "text-indigo-400",        badge: "bg-indigo-500/15 text-indigo-400",   clips: 320,  period: "monthly", projects: 999, rolloverCap: 640,  price: "$19/mo" },
   studio:  { label: "Studio",  color: "text-amber-400",         badge: "bg-amber-500/15 text-amber-400",    clips: 2000, period: "monthly", projects: 999, rolloverCap: 4000, price: "$49/mo" },
+};
+
+const ANNUAL_PRICES: Record<keyof typeof PLANS, string | null> = {
+  free: null,
+  starter: "$90/yr",
+  pro: "$190/yr",
+  studio: "$490/yr",
 };
 
 export default async function SettingsPage() {
@@ -45,7 +53,8 @@ export default async function SettingsPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  const rawPlan = (userProfile?.plan && userProfile.plan in PLANS ? userProfile.plan : "free") as keyof typeof PLANS;
+  const storedPlan = userProfile?.plan ?? "free";
+  const rawPlan = normalizePlan(storedPlan) as keyof typeof PLANS;
   // Check referral upgrades
   let plan = rawPlan;
   if (userProfile?.referral_pro_forever) {
@@ -54,6 +63,9 @@ export default async function SettingsPage() {
     plan = "pro";
   }
   const planInfo = PLANS[plan];
+  const displayPlanName = plan === rawPlan ? getPlanDisplayName(storedPlan) : planInfo.label;
+  const planPrice = isAnnualPlan(storedPlan) ? ANNUAL_PRICES[plan] : planInfo.price;
+  const billingCadence = isAnnualPlan(storedPlan) ? "billed yearly" : "billed monthly";
   const bonusClips: number = userProfile?.bonus_clips ?? 0;
   const rolloverClips: number = userProfile?.rollover_clips ?? 0;
   const totalAvailable = planInfo.clips + rolloverClips + bonusClips;
@@ -150,13 +162,16 @@ export default async function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
-              {planInfo.price && (
+              {planPrice && isAnnualPlan(storedPlan) && (
+                <p className="text-sm text-muted-foreground mt-0.5">{planPrice} &middot; {billingCadence}</p>
+              )}
+              {planPrice && !isAnnualPlan(storedPlan) && (
                 <p className="text-sm text-muted-foreground mt-0.5">{planInfo.price} · billed monthly</p>
               )}
             </div>
             <div className="flex items-center gap-3">
               <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ${planInfo.badge}`}>
-                {planInfo.label}
+                {displayPlanName}
               </span>
             </div>
           </div>

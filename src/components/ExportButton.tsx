@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { PLATFORM_LABELS, type ExportPlatform } from "@/lib/csvExport";
+import { normalizePlan } from "@/lib/plans";
 
 const PLATFORMS: ExportPlatform[] = ["blackbox", "shutterstock", "adobe", "pond5", "generic"];
 
@@ -10,7 +11,8 @@ const PRO_PLATFORMS: ExportPlatform[] = ["shutterstock", "adobe", "pond5"];
 
 function isPlanGated(platform: ExportPlatform, plan: string): boolean {
   if (!PRO_PLATFORMS.includes(platform)) return false;
-  return plan === "free" || plan === "starter";
+  const basePlan = normalizePlan(plan);
+  return basePlan === "free" || basePlan === "starter";
 }
 
 type ClipPreview = {
@@ -31,6 +33,7 @@ export function ExportButton({ projectId, clipCount, clips = [], plan = "free" }
   const [open, setOpen] = useState(false);
   const [previewPlatform, setPreviewPlatform] = useState<ExportPlatform | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const basePlan = normalizePlan(plan);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -107,7 +110,7 @@ export function ExportButton({ projectId, clipCount, clips = [], plan = "free" }
               );
             })}
             <div className="border-t border-border px-3 py-2">
-              {(plan === "free" || plan === "starter") ? (
+              {(basePlan === "free" || basePlan === "starter") ? (
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   🔒 Shutterstock, Adobe Stock & Pond5 exports are available on{' '}
                   <a href="/pricing" className="text-violet-400 hover:underline font-medium">Pro plan →</a>
