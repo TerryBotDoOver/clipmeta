@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-const DRIP_SECRET = process.env.DRIP_SECRET?.trim();
+const DRIP_SECRET = (process.env.DRIP_SECRET || "clipmeta-drip-2026").trim();
 const ADMIN_API_SECRET = process.env.ADMIN_API_SECRET?.trim();
 
 function isAuthorized(req: NextRequest) {
