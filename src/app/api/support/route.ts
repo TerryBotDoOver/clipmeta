@@ -10,6 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { buildSupportResearchContext } from "@/lib/supportResearchContext";
 
 const FROM = process.env.RESEND_FROM || "ClipMeta <hello@clipmeta.app>";
+const CODEX_EMAIL_DRAFTS_ENABLED = process.env.CODEX_EMAIL_DRAFTS_ENABLED === "true";
 
 function escapeHtml(value: unknown) {
   return String(value ?? "")
@@ -114,21 +115,23 @@ export async function POST(req: NextRequest) {
 
     if (cleanEmail) {
       try {
-        const researchedContext = await buildSupportResearchContext({
-          email: cleanEmail,
-          from: displayFrom,
-          subject: ticketSubject,
-          body: ticketBody,
-          authenticatedUserId,
-          baseAccountContext: accountContext,
-        });
+        if (CODEX_EMAIL_DRAFTS_ENABLED) {
+          const researchedContext = await buildSupportResearchContext({
+            email: cleanEmail,
+            from: displayFrom,
+            subject: ticketSubject,
+            body: ticketBody,
+            authenticatedUserId,
+            baseAccountContext: accountContext,
+          });
 
-        draft = await draftCustomerEmail({
-          from: displayFrom,
-          subject: ticketSubject,
-          body: ticketBody,
-          accountContext: researchedContext,
-        });
+          draft = await draftCustomerEmail({
+            from: displayFrom,
+            subject: ticketSubject,
+            body: ticketBody,
+            accountContext: researchedContext,
+          });
+        }
 
         const { data: insertedEmail, error: insertError } = await supabaseAdmin
           .from("inbound_emails")
@@ -141,8 +144,8 @@ export async function POST(req: NextRequest) {
             body_html: "",
             attachments: [],
             received_at: new Date().toISOString(),
-            status: "pending_approval",
-            reply_text: draft,
+            status: CODEX_EMAIL_DRAFTS_ENABLED && draft ? "pending_approval" : "unread",
+            reply_text: CODEX_EMAIL_DRAFTS_ENABLED && draft ? draft : null,
           })
           .select("id")
           .single();
@@ -152,8 +155,8 @@ export async function POST(req: NextRequest) {
         } else {
           emailDbId = insertedEmail?.id || null;
         }
-      } catch (draftError) {
-        console.error("[support] Failed to draft support reply:", draftError);
+      } catch (storeError) {
+        console.error("[support] Failed to store support ticket in inbound_emails:", storeError);
       }
     }
 
@@ -171,7 +174,7 @@ export async function POST(req: NextRequest) {
       ].join("\n"),
     });
 
-    if (emailDbId && draft) {
+    if (CODEX_EMAIL_DRAFTS_ENABLED && emailDbId && draft) {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://clipmeta.app";
       await sendDiscordMessage({
         channelId: DISCORD_CHANNELS.emailApprovals,
@@ -185,17 +188,6 @@ export async function POST(req: NextRequest) {
           `Approve and send: ${emailApprovalUrl(baseUrl, emailDbId, "send")}`,
           `Discard draft: ${emailApprovalUrl(baseUrl, emailDbId, "discard")}`,
           `Revise draft: ${emailReviseUrl(baseUrl, emailDbId)}`,
-        ].join("\n"),
-      });
-    } else {
-      await sendDiscordMessage({
-        channelId: DISCORD_CHANNELS.emailApprovals,
-        content: [
-          "**Support ticket needs manual reply**",
-          `From: ${displayFrom}`,
-          `Subject: ${ticketSubject}`,
-          "",
-          "No approval draft was created. Check the support ticket before replying.",
         ].join("\n"),
       });
     }

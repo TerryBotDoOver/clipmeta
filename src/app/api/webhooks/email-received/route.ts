@@ -5,6 +5,8 @@ import { emailApprovalUrl, emailReviseUrl } from '@/lib/emailApproval';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { buildSupportResearchContext } from '@/lib/supportResearchContext';
 
+const CODEX_EMAIL_DRAFTS_ENABLED = process.env.CODEX_EMAIL_DRAFTS_ENABLED === 'true';
+
 function normalizeEmailAddress(value: unknown) {
   if (typeof value !== 'string') return '';
   const match = value.match(/<([^>]+)>/);
@@ -129,7 +131,7 @@ export async function POST(req: NextRequest) {
       }
 
       const emailDbId = insertedEmail?.id;
-      if (emailDbId) {
+      if (emailDbId && CODEX_EMAIL_DRAFTS_ENABLED) {
         try {
           const accountContext = await buildSupportResearchContext({
             from,
