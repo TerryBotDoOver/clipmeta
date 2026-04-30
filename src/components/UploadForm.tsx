@@ -721,16 +721,17 @@ function logUploadFailure(payload: Record<string, unknown>) {
   }
 }
 
-// 5 MB chunks. Smaller than the S3/R2 recommended minimum for bulk performance,
-// but dramatically more resilient on flaky residential/VPN connections --
-// short PUTs mean fewer midway TCP resets from home routers and middleboxes.
-const CHUNK_SIZE = 5 * 1024 * 1024;
+// 32 MB parts with a small parallel worker pool. This lets fast connections
+// move large ProRes batches much closer to line speed without creating hundreds
+// of tiny R2 part uploads per file.
+const CHUNK_SIZE = 32 * 1024 * 1024;
+const MULTIPART_CONCURRENCY = 4;
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
 
-// Hard timeout per chunk. 3 minutes is enough for a 5MB chunk on a 250 Kbps uplink
+// Hard timeout per chunk. 6 minutes is enough for a 32MB chunk on a slow uplink.
 // (which is below almost every real connection). Without this, a stuck chunk would
 // wait indefinitely for TCP to finally give up -- blocking the retry loop.
-const CHUNK_TIMEOUT_MS = 3 * 60 * 1000;
+const CHUNK_TIMEOUT_MS = 6 * 60 * 1000;
 
 function uploadChunkXHR(
   url: string,
@@ -763,31 +764,6 @@ function uploadChunkXHR(
   });
 }
 
-async function uploadChunkWithRetry(
-  url: string,
-  blob: Blob,
-  signal?: AbortSignal,
-  maxRetries = 4
-): Promise<string> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await uploadChunkXHR(url, blob, signal);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
-      if (msg.includes("status 4")) throw err;
-      if (attempt < maxRetries) {
-        const delay = 1500 * Math.pow(2, attempt - 1);
-        console.warn(`Chunk upload attempt ${attempt} failed (${msg}), retrying in ${delay}ms...`);
-        await new Promise((r) => setTimeout(r, delay));
-        continue;
-      }
-      throw new Error(`Chunk upload failed after ${maxRetries} attempts: ${msg}`);
-    }
-  }
-  throw new Error("Unexpected retry exit");
-}
-
 async function multipartUpload(
   file: File,
   storagePath: string,
@@ -806,20 +782,26 @@ async function multipartUpload(
 
   const totalSize = file.size;
   const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
-  const parts: { partNumber: number; etag: string }[] = [];
-  let uploaded = 0;
+  const parts: Array<{ partNumber: number; etag: string } | undefined> = new Array(totalChunks);
+  const inFlightLoaded = new Map<number, number>();
+  let completedBytes = 0;
+  let nextChunkIndex = 0;
 
-  // 2. Upload each chunk — fetch fresh presigned URL on every retry
-  for (let i = 0; i < totalChunks; i++) {
+  // 2. Upload chunks in parallel. Each retry fetches a fresh presigned URL.
+  function reportProgress() {
+    const activeBytes = Array.from(inFlightLoaded.values()).reduce((sum, value) => sum + value, 0);
+    onProgress(Math.min(99, Math.round(((completedBytes + activeBytes) / totalSize) * 100)));
+  }
+
+  async function uploadPart(partIndex: number): Promise<void> {
     if (signal?.aborted) throw new Error("Upload cancelled.");
 
-    const start = i * CHUNK_SIZE;
+    const start = partIndex * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, totalSize);
     const chunk = file.slice(start, end);
-    const partNumber = i + 1;
+    const partNumber = partIndex + 1;
 
     // Retry loop: get a FRESH presigned URL on each attempt
-    let etag = '';
     const maxRetries = 8;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       if (signal?.aborted) throw new Error("Upload cancelled.");
@@ -837,13 +819,17 @@ async function multipartUpload(
         if (!partRes.ok) throw new Error(`Failed to get URL for part ${partNumber}.`);
         const { signedUrl } = await partRes.json();
 
-        etag = await uploadChunkXHR(signedUrl, chunk, signal, (loaded) => {
-          // Report continuous progress: bytes already uploaded + current chunk progress
-          const totalUploaded = uploaded + loaded;
-          onProgress(Math.round((totalUploaded / totalSize) * 100));
+        const etag = await uploadChunkXHR(signedUrl, chunk, signal, (loaded) => {
+          inFlightLoaded.set(partNumber, loaded);
+          reportProgress();
         });
-        break; // success
+        inFlightLoaded.delete(partNumber);
+        parts[partIndex] = { partNumber, etag };
+        completedBytes += chunk.size;
+        reportProgress();
+        return;
       } catch (err) {
+        inFlightLoaded.delete(partNumber);
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("cancelled") || msg.includes("abort") || signal?.aborted) throw err;
         if (attempt < maxRetries) {
@@ -856,10 +842,21 @@ async function multipartUpload(
       }
     }
 
-    parts.push({ partNumber, etag });
-    uploaded += (end - start);
-    onProgress(Math.round((uploaded / totalSize) * 100));
   }
+
+  async function uploadWorker(): Promise<void> {
+    while (nextChunkIndex < totalChunks) {
+      if (signal?.aborted) throw new Error("Upload cancelled.");
+      const partIndex = nextChunkIndex++;
+      await uploadPart(partIndex);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(MULTIPART_CONCURRENCY, totalChunks) },
+    () => uploadWorker()
+  );
+  await Promise.all(workers);
 
   // 3. Complete multipart upload
   const completeRes = await fetch("/api/clips/multipart/complete", {
@@ -868,7 +865,9 @@ async function multipartUpload(
     body: JSON.stringify({
       storage_path: storagePath,
       upload_id: uploadId,
-      parts,
+      parts: parts
+        .filter((part): part is { partNumber: number; etag: string } => Boolean(part))
+        .sort((a, b) => a.partNumber - b.partNumber),
     }),
   });
   if (!completeRes.ok) throw new Error("Failed to complete multipart upload.");
