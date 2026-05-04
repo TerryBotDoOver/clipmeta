@@ -10,6 +10,13 @@ type RedditTrackingWindow = Window & {
   rdt?: (event: "track", name: string) => void;
 };
 
+function friendlyAuthError(message: string) {
+  if (/email rate limit exceeded/i.test(message)) {
+    return "Too many reset emails were requested for this address. Please wait a few minutes, then try again.";
+  }
+  return message;
+}
+
 function AuthForm() {
   const searchParams = useSearchParams();
   const refParam = searchParams.get("ref");
@@ -95,7 +102,7 @@ function AuthForm() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
-    if (error) { setError(error.message); setLoading(false); return; }
+    if (error) { setError(friendlyAuthError(error.message)); setLoading(false); return; }
     setResetDone(true);
     setLoading(false);
   }
