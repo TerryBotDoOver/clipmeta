@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { fbEvent } from "@/components/MetaPixel";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 
+type RedditTrackingWindow = Window & {
+  rdt?: (event: "track", name: string) => void;
+};
+
 function AuthForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
+  const refParam = searchParams.get("ref");
+  const fromPricing = refParam === "pricing";
+  const startsInSignup =
+    fromPricing ||
+    searchParams.get("mode") === "signup" ||
+    (refParam !== null && /^[0-9a-f]{8}$/i.test(refParam));
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">(startsInSignup ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -18,23 +27,23 @@ function AuthForm() {
   const [signupDone, setSignupDone] = useState(false);
   const [resetDone, setResetDone] = useState(false);
 
-  // Auto-switch to Sign Up if redirected from pricing
-  const fromPricing = searchParams.get("ref") === "pricing";
   useEffect(() => {
-    const m = searchParams.get("mode");
-    if (fromPricing || m === "signup") setMode("signup");
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const hasRecoveryHash = hashParams.get("type") === "recovery";
+    const hasRecoveryParams = searchParams.get("type") === "recovery" || searchParams.has("code");
+    if (hasRecoveryHash || hasRecoveryParams) {
+      window.location.replace(`/auth/reset-password${window.location.search}${window.location.hash}`);
+      return;
+    }
 
     // Capture referral code from ?ref= param (8 hex chars from referrer's user UUID)
     // Save to localStorage so it survives email confirmation / OAuth redirect
-    const refParam = searchParams.get("ref");
     if (refParam && /^[0-9a-f]{8}$/i.test(refParam)) {
       try {
         localStorage.setItem("pendingReferral", refParam.toLowerCase());
       } catch {}
-      // Force signup mode so referred users land on the right form
-      setMode("signup");
     }
-  }, [searchParams, fromPricing]);
+  }, [searchParams, refParam]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -70,8 +79,9 @@ function AuthForm() {
       return;
     }
     fbEvent('CompleteRegistration', { content_name: 'ClipMeta Signup' });
-    if (typeof window !== 'undefined' && (window as any).rdt) {
-      (window as any).rdt('track', 'SignUp');
+    if (typeof window !== 'undefined') {
+      const rdt = (window as RedditTrackingWindow).rdt;
+      if (typeof rdt === "function") rdt("track", "SignUp");
     }
     setSignupDone(true);
     setLoading(false);

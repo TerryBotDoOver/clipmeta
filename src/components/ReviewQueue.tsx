@@ -150,7 +150,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setShowBackToTop(window.scrollY > 500);
+    const handleScroll = () => setShowBackToTop(window.scrollY > 280);
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -1139,9 +1139,12 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
         <button
           type="button"
           onClick={scrollToTop}
-          className="fixed bottom-5 right-5 z-40 rounded-full border border-primary/30 bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-lg shadow-black/20 backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+          aria-label="Return to top of review queue"
+          className="fixed bottom-7 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/60 bg-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-2xl shadow-primary/30 ring-4 ring-primary/20 backdrop-blur transition hover:scale-105 hover:bg-primary/90 focus:outline-none focus:ring-4 focus:ring-primary/40 sm:bottom-8"
         >
-          ↑ Top
+          <span className="absolute inset-0 -z-10 animate-ping rounded-full bg-primary/30" />
+          <span aria-hidden className="text-base leading-none">↑</span>
+          <span>Top</span>
         </button>
       )}
     </div>

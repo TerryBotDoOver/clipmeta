@@ -1,27 +1,110 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 function ResetForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [verifying, setVerifying] = useState(true);
 
   useEffect(() => {
-    // Supabase sets session from the URL hash on this page
+    let active = true;
     const supabase = createSupabaseBrowserClient();
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setSessionReady(true);
+
+    function finishReady() {
+      if (!active) return;
+      setSessionReady(true);
+      setVerifying(false);
+      setError("");
+    }
+
+    function finishError(message: string) {
+      if (!active) return;
+      setSessionReady(false);
+      setVerifying(false);
+      setError(message);
+    }
+
+    async function verifyResetLink() {
+      setVerifying(true);
+
+      const urlError = searchParams.get("error_description") || searchParams.get("error");
+      if (urlError) {
+        finishError(decodeURIComponent(urlError.replace(/\+/g, " ")));
+        return;
+      }
+
+      const code = searchParams.get("code");
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          finishError(exchangeError.message || "This reset link is invalid or has expired. Please request a new one.");
+          return;
+        }
+        window.history.replaceState(null, "", "/auth/reset-password");
+        finishReady();
+        return;
+      }
+
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
+      const hashError = hashParams.get("error_description") || hashParams.get("error");
+
+      if (hashError) {
+        finishError(decodeURIComponent(hashError.replace(/\+/g, " ")));
+        return;
+      }
+
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (sessionError) {
+          finishError(sessionError.message || "This reset link is invalid or has expired. Please request a new one.");
+          return;
+        }
+        window.history.replaceState(null, "", "/auth/reset-password");
+        finishReady();
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        finishReady();
+        return;
+      }
+
+      finishError(
+        type === "recovery"
+          ? "We could not verify this reset link. Please request a new password reset email."
+          : "Open this page from the password reset link in your email."
+      );
+    }
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        finishReady();
       }
     });
-  }, []);
+
+    verifyResetLink();
+
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,9 +140,14 @@ function ResetForm() {
           {error}
         </div>
       )}
-      {!sessionReady && (
+      {verifying && (
         <div className="mb-5 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">
           Verifying your reset link…
+        </div>
+      )}
+      {!verifying && !sessionReady && (
+        <div className="mb-5 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+          <a href="/auth" className="font-semibold text-foreground underline">Request a new reset link</a>
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -88,7 +176,7 @@ function ResetForm() {
         </div>
         <button
           type="submit"
-          disabled={loading || !sessionReady}
+          disabled={loading || verifying || !sessionReady}
           className="w-full rounded-lg bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {loading ? "Updating…" : "Update Password"}
