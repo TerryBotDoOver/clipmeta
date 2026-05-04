@@ -98,11 +98,17 @@ function AuthForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+    const res = await fetch("/api/auth/password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
-    if (error) { setError(friendlyAuthError(error.message)); setLoading(false); return; }
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(friendlyAuthError(data.message || "We could not send a reset link right now. Please try again in a few minutes."));
+      setLoading(false);
+      return;
+    }
     setResetDone(true);
     setLoading(false);
   }
