@@ -159,9 +159,6 @@ export function FlightDeckShell({
           <div className="flex items-center gap-3 text-sm">
             <img src="/logo-icon.svg" className="h-5 w-5" alt="" />
             <span>© 2026 ClipMeta</span>
-            <span className="hud-chip hidden md:inline-flex">
-              <span>STATUS · OPERATIONAL</span>
-            </span>
           </div>
           <nav className="flex flex-wrap items-center gap-6 text-sm">
             <Link href="/tools/metadata-grader" className="transition hover:text-white">Free Grader</Link>
