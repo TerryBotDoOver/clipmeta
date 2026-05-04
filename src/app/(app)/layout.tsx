@@ -10,6 +10,7 @@ import { PlanBadge } from "@/components/PlanBadge";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { PromoReward } from "@/components/PromoReward";
 import { UTMSync } from "@/components/UTMSync";
+import { FailedPaymentBanner } from "@/components/FailedPaymentBanner";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "▦", exact: true },
@@ -106,6 +107,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <PromoReward />
         {/* Upgrade Banner (legacy, now disabled) */}
         <UpgradeBanner />
+        <FailedPaymentBanner />
         {/* Mobile top bar */}
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center border-b border-sidebar-border bg-sidebar px-4 md:hidden">
           <button
