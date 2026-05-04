@@ -131,6 +131,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelledRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const abortControllersRef = useRef<Set<AbortController>>(new Set());
   // Mirrors `queue` state so processQueue can read the freshest list even when
   // called immediately after a setQueue (e.g. from a retry button).
   const queueRef = useRef<QueuedFile[]>([]);
@@ -227,6 +228,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
   function handleCancelAll() {
     cancelledRef.current = true;
     abortControllerRef.current?.abort();
+    abortControllersRef.current.forEach((controller) => controller.abort());
   }
 
   function handleCancelOne(id: string) {
@@ -237,6 +239,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     } else {
       cancelledRef.current = true;
       abortControllerRef.current?.abort();
+      abortControllersRef.current.forEach((controller) => controller.abort());
     }
   }
 
@@ -253,29 +256,157 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     );
     queueRef.current = updated;
     setQueue(updated);
-    processQueue();
+    processQueueConcurrent();
   }
 
-  async function processQueue() {
+  async function processQueueConcurrent() {
     cancelledRef.current = false;
-    // Use the ref so a retry that set state a tick ago is still seen.
     const toProcess = queueRef.current.filter((f) => f.status === "queued");
     if (toProcess.length === 0) return;
     setIsRunning(true);
 
-    for (const item of toProcess) {
-      // Check cancellation at start of each iteration
+    const uploadLimiter = createAsyncLimiter(TOTAL_UPLOAD_PUT_SLOTS);
+    const metadataLimiter = createAsyncLimiter(METADATA_CONCURRENCY);
+    const metadataTasks: Promise<void>[] = [];
+    let nextUploadIndex = 0;
+    let stopQueue = false;
+
+    const markQueuedCancelled = () => {
+      setQueue((prev) =>
+        prev.map((f) =>
+          f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
+        )
+      );
+    };
+
+    const showLimitModal = (limitData: { message: string; upgrade_message?: string }) => {
+      stopQueue = true;
+      setQueue((prev) =>
+        prev.map((f) =>
+          f.status === "queued"
+            ? { ...f, status: "error" as FileStatus, error: "Clip limit reached", limitReached: true }
+            : f
+        )
+      );
+      setLimitModal({
+        message: limitData.message,
+        upgradeMessage: limitData.upgrade_message,
+      });
+    };
+
+    const logTerminalUploadFailure = (item: QueuedFile, msg: string) => {
+      if (cancelledRef.current || /cancel|abort/i.test(msg)) return;
+
+      const mpMatch = msg.match(/Part (\d+) failed after (\d+) attempts/);
+      const spMatch = msg.match(/^Upload failed after (\d+) attempts/);
+      if (!mpMatch && !spMatch) return;
+
+      logUploadFailure({
+        project_id: projectId,
+        filename: item.file.name,
+        file_size_bytes: item.file.size,
+        file_type: item.file.type || null,
+        upload_method: mpMatch ? "multipart" : "single-put",
+        error_message: msg,
+        attempts_tried: mpMatch ? parseInt(mpMatch[2], 10) : parseInt(spMatch![1], 10),
+        failed_at_part: mpMatch ? parseInt(mpMatch[1], 10) : null,
+      });
+    };
+
+    async function runMetadata(item: QueuedFile, clipId: string, isWorkerCodec: boolean) {
+      await metadataLimiter.run(async () => {
+        if (cancelledRef.current) {
+          updateFile(item.id, { status: "error", error: "Cancelled" });
+          return;
+        }
+
+        if (!isWorkerCodec) {
+          updateFile(item.id, { status: "extracting" });
+          const frames = await extractFrames(item.file, 4);
+          if (cancelledRef.current) {
+            updateFile(item.id, { status: "error", error: "Cancelled" });
+            return;
+          }
+
+          updateFile(item.id, { status: "generating" });
+          const genRes = await fetch("/api/metadata/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clip_id: clipId, frames: frames.map((f) => f.dataUrl) }),
+          });
+          if (genRes.status === 429) {
+            const genData = await genRes.json();
+            if (genData.limit_reached) {
+              updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
+              showLimitModal(genData);
+              return;
+            }
+          }
+          if (!genRes.ok) {
+            const genData = await genRes.json().catch(() => ({}));
+            throw new Error(genData.message || "Metadata generation failed.");
+          }
+          trackClarityEvent("MetadataGenerated");
+        } else {
+          updateFile(item.id, { status: "extracting" });
+          const frameRes = await fetch("/api/frames/extract", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clip_id: clipId }),
+          });
+          let serverFrames: string[] = [];
+          if (frameRes.ok) {
+            const frameData = await frameRes.json();
+            serverFrames = Array.isArray(frameData.frames) ? frameData.frames : [];
+          } else {
+            console.warn("Server-side frame extraction failed for", item.file.name);
+          }
+
+          if (cancelledRef.current) {
+            updateFile(item.id, { status: "error", error: "Cancelled" });
+            return;
+          }
+
+          updateFile(item.id, { status: "generating" });
+          const genRes = await fetch("/api/metadata/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ clip_id: clipId, frames: serverFrames }),
+          });
+          if (genRes.status === 429) {
+            const genData = await genRes.json();
+            if (genData.limit_reached) {
+              updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
+              showLimitModal(genData);
+              return;
+            }
+          }
+          if (!genRes.ok) {
+            const genData = await genRes.json().catch(() => ({}));
+            throw new Error(genData.message || "Metadata generation failed.");
+          }
+          trackClarityEvent("MetadataGenerated");
+        }
+
+        updateFile(item.id, { status: "done", progress: 100, error: undefined });
+      });
+    }
+
+    function scheduleMetadata(item: QueuedFile, clipId: string, isWorkerCodec: boolean) {
+      const task = runMetadata(item, clipId, isWorkerCodec).catch((err) => {
+        const msg = err instanceof Error ? err.message : "Metadata generation failed.";
+        updateFile(item.id, { status: "error", error: msg });
+      });
+      metadataTasks.push(task);
+    }
+
+    async function processUploadItem(item: QueuedFile) {
       if (cancelledRef.current) {
-        setQueue((prev) =>
-          prev.map((f) =>
-            f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
-          )
-        );
-        break;
+        markQueuedCancelled();
+        return;
       }
 
       try {
-        // 1. Check limits + get signed URL FIRST (before any heavy work)
         updateFile(item.id, { status: "uploading", progress: 0 });
         const urlRes = await fetch("/api/clips/upload-url", {
           method: "POST",
@@ -290,68 +421,35 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         if (urlRes.status === 429) {
           const limitData = await urlRes.json();
           updateFile(item.id, { status: "error", error: limitData.message, limitReached: true });
-          // Mark remaining queued files as blocked
-          setQueue((prev) =>
-            prev.map((f) =>
-              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Clip limit reached", limitReached: true } : f
-            )
-          );
-          setIsRunning(false);
-          // Show the centered modal
-          setLimitModal({
-            message: limitData.message,
-            upgradeMessage: limitData.upgrade_message,
-          });
+          showLimitModal(limitData);
           return;
         }
         if (!urlRes.ok) {
           const err = await urlRes.json();
           throw new Error(err.message || "Failed to get upload URL.");
         }
+
         const { signedUrl, storagePath } = await urlRes.json();
-
-        // 2. Detect ProRes / browser-incompatible codecs before extraction
-        // These need server-side processing — skip client extraction, upload anyway
         const isWorkerCodec = await needsServerWorker(item.file);
-        let frames: { dataUrl: string }[] = [];
 
-        if (!isWorkerCodec) {
-          // Standard browser-compatible codec — extract frames client-side
-          updateFile(item.id, { status: "extracting" });
-          frames = await extractFrames(item.file, 4);
-
-          if (cancelledRef.current) {
-            updateFile(item.id, { status: "error", error: "Cancelled" });
-            setQueue((prev) =>
-              prev.map((f) =>
-                f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
-              )
-            );
-            break;
-          }
-        }
-        // ProRes/incompatible: skip frame extraction, worker handles it after upload
-
-        // 3. Upload to storage with abort support
-        updateFile(item.id, { status: "uploading", progress: 0 });
         const ac = new AbortController();
-        abortControllerRef.current = ac;
-        await uploadWithProgress(signedUrl, item.file, storagePath, (pct) =>
-          updateFile(item.id, { progress: pct }),
-          ac.signal
-        );
-        abortControllerRef.current = null;
+        abortControllersRef.current.add(ac);
+        try {
+          await uploadWithProgress(signedUrl, item.file, storagePath, (pct) =>
+            updateFile(item.id, { progress: pct }),
+            ac.signal,
+            uploadLimiter
+          );
+        } finally {
+          abortControllersRef.current.delete(ac);
+        }
 
         if (cancelledRef.current) {
-          setQueue((prev) =>
-            prev.map((f) =>
-              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
-            )
-          );
-          break;
+          updateFile(item.id, { status: "error", error: "Cancelled" });
+          markQueuedCancelled();
+          return;
         }
 
-        // 4. Create clip record
         const clipRes = await fetch("/api/clips", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -360,139 +458,46 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
             original_filename: item.file.name,
             storage_path: storagePath,
             file_size_bytes: item.file.size,
-            needs_worker: isWorkerCodec, // Flag for server-side processing
+            needs_worker: isWorkerCodec,
           }),
         });
         if (!clipRes.ok) {
           const err = await clipRes.json();
           throw new Error(err.message || "Failed to save clip record.");
         }
+
         const { clip_id } = await clipRes.json();
         if (clip_id) {
           trackClarityEvent("ClipUploaded");
-        }
-
-        // 5. Auto-generate metadata
-        if (clip_id) {
           updateFile(item.id, { status: "generating" });
-          if (frames.length > 0 && !isWorkerCodec) {
-            // Standard codec — send frames directly
-            const genRes = await fetch("/api/metadata/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clip_id, frames: frames.map((f) => f.dataUrl) }),
-            });
-            if (genRes.status === 429) {
-              const genData = await genRes.json();
-              if (genData.limit_reached) {
-                updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
-                setIsRunning(false);
-                setLimitModal({
-                  message: genData.message,
-                  upgradeMessage: genData.upgrade_message,
-                });
-                return;
-              }
-            }
-            if (!genRes.ok) {
-              const genData = await genRes.json().catch(() => ({}));
-              throw new Error(genData.message || "Metadata generation failed.");
-            }
-            if (genRes.ok) {
-              trackClarityEvent("MetadataGenerated");
-            }
-          } else {
-            // Worker codec (ProRes, etc.) — extract frames server-side, then generate
-            updateFile(item.id, { status: "extracting" });
-            const frameRes = await fetch("/api/frames/extract", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clip_id }),
-            });
-            let serverFrames: string[] = [];
-            if (frameRes.ok) {
-              const frameData = await frameRes.json();
-              serverFrames = Array.isArray(frameData.frames) ? frameData.frames : [];
-            } else {
-              console.warn("Server-side frame extraction failed for", item.file.name);
-            }
-
-            updateFile(item.id, { status: "generating" });
-            const genRes = await fetch("/api/metadata/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clip_id, frames: serverFrames }),
-            });
-            if (genRes.status === 429) {
-              const genData = await genRes.json();
-              if (genData.limit_reached) {
-                updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
-                setIsRunning(false);
-                setLimitModal({
-                  message: genData.message,
-                  upgradeMessage: genData.upgrade_message,
-                });
-                return;
-              }
-            }
-            if (!genRes.ok) {
-              const genData = await genRes.json().catch(() => ({}));
-              throw new Error(genData.message || "Metadata generation failed.");
-            }
-            if (genRes.ok) {
-              trackClarityEvent("MetadataGenerated");
-            }
-          }
+          scheduleMetadata(item, clip_id, isWorkerCodec);
         }
-
-        updateFile(item.id, {
-          status: "done",
-          progress: 100,
-          // Show a note for worker-processed files
-          ...(isWorkerCodec ? { error: undefined } : {}),
-        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed.";
-        updateFile(item.id, {
-          status: "error",
-          error: msg,
-        });
-
-        // Log terminal upload failures so we can tell systemic outages from
-        // one user's flaky connection. Only log genuine upload-retry exhaustions
-        // (the two error-message patterns emitted by the retry loops), not
-        // cancellations or other plumbing errors.
-        if (!cancelledRef.current && !/cancel|abort/i.test(msg)) {
-          const mpMatch = msg.match(/Part (\d+) failed after (\d+) attempts/);
-          const spMatch = msg.match(/^Upload failed after (\d+) attempts/);
-          if (mpMatch || spMatch) {
-            logUploadFailure({
-              project_id: projectId,
-              filename: item.file.name,
-              file_size_bytes: item.file.size,
-              file_type: item.file.type || null,
-              upload_method: mpMatch ? "multipart" : "single-put",
-              error_message: msg,
-              attempts_tried: mpMatch ? parseInt(mpMatch[2], 10) : parseInt(spMatch![1], 10),
-              failed_at_part: mpMatch ? parseInt(mpMatch[1], 10) : null,
-            });
-          }
-        }
-
-        if (cancelledRef.current) {
-          setQueue((prev) =>
-            prev.map((f) =>
-              f.status === "queued" ? { ...f, status: "error" as FileStatus, error: "Cancelled" } : f
-            )
-          );
-          break;
-        }
+        updateFile(item.id, { status: "error", error: msg });
+        logTerminalUploadFailure(item, msg);
+        if (cancelledRef.current) markQueuedCancelled();
       }
     }
 
+    async function uploadWorker() {
+      while (!cancelledRef.current && !stopQueue) {
+        const item = toProcess[nextUploadIndex++];
+        if (!item) return;
+        await processUploadItem(item);
+      }
+    }
+
+    const uploadWorkers = Array.from(
+      { length: Math.min(ACTIVE_FILE_UPLOADS, toProcess.length) },
+      () => uploadWorker()
+    );
+
+    await Promise.all(uploadWorkers);
+    await Promise.all(metadataTasks);
+
     setIsRunning(false);
-    abortControllerRef.current = null;
-    // If all done, reload after a beat
+    abortControllersRef.current.clear();
     const finalQueue = queueRef.current;
     if (finalQueue.length > 0 && finalQueue.every((f) => f.status === "done")) {
       setTimeout(() => window.location.reload(), 1500);
@@ -578,7 +583,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       {hasQueue && (
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <button
-            onClick={processQueue}
+            onClick={processQueueConcurrent}
             disabled={isRunning || queuedCount === 0}
             className="w-full rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40 sm:w-auto"
           >
@@ -657,7 +662,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       {hasQueue && (
         <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={processQueue}
+            onClick={processQueueConcurrent}
             disabled={isRunning || queuedCount === 0}
             className="w-full rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40 sm:w-auto"
           >
@@ -721,6 +726,46 @@ function logUploadFailure(payload: Record<string, unknown>) {
   }
 }
 
+type AsyncLimiter = {
+  run<T>(task: () => Promise<T>): Promise<T>;
+};
+
+function createAsyncLimiter(maxConcurrent: number): AsyncLimiter {
+  let active = 0;
+  const pending: Array<() => void> = [];
+
+  async function acquire() {
+    if (active < maxConcurrent) {
+      active += 1;
+      return;
+    }
+
+    await new Promise<void>((resolve) => pending.push(resolve));
+    active += 1;
+  }
+
+  function release() {
+    active = Math.max(0, active - 1);
+    const next = pending.shift();
+    if (next) next();
+  }
+
+  return {
+    async run<T>(task: () => Promise<T>) {
+      await acquire();
+      try {
+        return await task();
+      } finally {
+        release();
+      }
+    },
+  };
+}
+
+const ACTIVE_FILE_UPLOADS = 2;
+const METADATA_CONCURRENCY = 2;
+const TOTAL_UPLOAD_PUT_SLOTS = 8;
+
 // 32 MB parts with a small parallel worker pool. This lets fast connections
 // move large ProRes batches much closer to line speed without creating hundreds
 // of tiny R2 part uploads per file.
@@ -769,7 +814,8 @@ async function multipartUpload(
   storagePath: string,
   contentType: string,
   onProgress: (pct: number) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  uploadLimiter?: AsyncLimiter
 ): Promise<void> {
   // 1. Start multipart upload
   const startRes = await fetch("/api/clips/multipart/start", {
@@ -819,10 +865,14 @@ async function multipartUpload(
         if (!partRes.ok) throw new Error(`Failed to get URL for part ${partNumber}.`);
         const { signedUrl } = await partRes.json();
 
-        const etag = await uploadChunkXHR(signedUrl, chunk, signal, (loaded) => {
-          inFlightLoaded.set(partNumber, loaded);
-          reportProgress();
-        });
+        const uploadChunk = () =>
+          uploadChunkXHR(signedUrl, chunk, signal, (loaded) => {
+            inFlightLoaded.set(partNumber, loaded);
+            reportProgress();
+          });
+        const etag = uploadLimiter
+          ? await uploadLimiter.run(uploadChunk)
+          : await uploadChunk();
         inFlightLoaded.delete(partNumber);
         parts[partIndex] = { partNumber, etag };
         completedBytes += chunk.size;
@@ -914,11 +964,12 @@ async function uploadWithProgress(
   file: File,
   storagePath: string,
   onProgress: (pct: number) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  uploadLimiter?: AsyncLimiter
 ): Promise<void> {
   // Use multipart for large files
   if (file.size > MULTIPART_THRESHOLD) {
-    return multipartUpload(file, storagePath, file.type || "video/mp4", onProgress, signal);
+    return multipartUpload(file, storagePath, file.type || "video/mp4", onProgress, signal, uploadLimiter);
   }
 
   // Small files: single PUT with retry. 5 attempts with exponential backoff
@@ -928,7 +979,12 @@ async function uploadWithProgress(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       onProgress(0);
-      await singleUploadAttempt(signedUrl, file, onProgress, signal);
+      const uploadSmallFile = () => singleUploadAttempt(signedUrl, file, onProgress, signal);
+      if (uploadLimiter) {
+        await uploadLimiter.run(uploadSmallFile);
+      } else {
+        await uploadSmallFile();
+      }
       return;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
