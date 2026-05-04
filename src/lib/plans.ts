@@ -83,6 +83,17 @@ export function normalizePlan(plan: string | null | undefined): Plan {
   return 'free';
 }
 
+export function hasActiveSubscriptionStatus(status: string | null | undefined): boolean {
+  return ['active', 'trialing', 'founder'].includes((status ?? '').trim());
+}
+
+export function entitlementPlanFromProfile(
+  plan: string | null | undefined,
+  subscriptionStatus: string | null | undefined
+): Plan {
+  return hasActiveSubscriptionStatus(subscriptionStatus) ? normalizePlan(plan) : 'free';
+}
+
 export function normalizeEntitlementPlan(plan: string | null | undefined): EntitlementPlan {
   const key = (plan ?? '').trim();
   if (key === 'founder') return 'founder';

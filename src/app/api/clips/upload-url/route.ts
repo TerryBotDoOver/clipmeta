@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getR2UploadUrl } from "@/lib/r2";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { PLANS, PLAN_FILE_SIZE_LIMITS, getUsagePeriodStart, normalizePlan } from "@/lib/plans";
+import { PLANS, PLAN_FILE_SIZE_LIMITS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,11 +24,11 @@ export async function POST(req: NextRequest) {
     // ─── Get profile for plan checks ──────────────────────────────────────────
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("plan, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, billing_period_start")
+      .select("plan, stripe_subscription_status, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, billing_period_start")
       .eq("id", user.id)
       .maybeSingle();
 
-    const basePlan = normalizePlan(profile?.plan);
+    const basePlan = entitlementPlanFromProfile(profile?.plan, profile?.stripe_subscription_status);
 
     let plan = basePlan;
     if (profile?.referral_pro_forever) {

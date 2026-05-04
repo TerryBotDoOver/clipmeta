@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateMetadata } from "@/lib/generateMetadata";
 import { Platform, GenerationSettings } from "@/lib/platform-presets";
-import { PLANS, normalizePlan } from "@/lib/plans";
+import { PLANS, entitlementPlanFromProfile } from "@/lib/plans";
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     // ─── Check plan limits ─────────────────────────────────────────────────────
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('plan, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, regens_used_this_month, billing_period_start')
+      .select('plan, stripe_subscription_status, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, regens_used_this_month, billing_period_start')
       .eq('id', userId)
       .single();
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         .eq('id', userId);
     } else {
       // Check plan limits normally
-      let plan = normalizePlan(profile?.plan);
+      let plan = entitlementPlanFromProfile(profile?.plan, profile?.stripe_subscription_status);
       if (profile?.referral_pro_forever) plan = 'pro';
       if (profile?.referral_pro_until && new Date(profile.referral_pro_until) > new Date()) plan = 'pro';
 

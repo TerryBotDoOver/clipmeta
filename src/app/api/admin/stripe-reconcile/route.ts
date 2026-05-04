@@ -38,6 +38,11 @@ export async function GET(req: NextRequest) {
 
     for (const profile of profiles) {
       try {
+        // Internal/manual grants are intentionally detached from Stripe.
+        if (profile.stripe_subscription_status === "founder") {
+          continue;
+        }
+
         // Fetch active subscriptions from Stripe for this customer
         const subs = await getStripe().subscriptions.list({
           customer: profile.stripe_customer_id!,
@@ -45,19 +50,36 @@ export async function GET(req: NextRequest) {
           limit: 5,
         });
 
-        // Find the most recent active/trialing subscription
+        // Find the most recent subscription that should grant paid access.
+        // past_due is intentionally excluded while Stripe retries payment.
         const activeSub = subs.data.find(s =>
           s.status === "trialing" || s.status === "active"
-        ) ?? subs.data.find(s => s.status === "past_due");
+        );
 
         if (!activeSub) {
           // No active sub in Stripe — if Supabase says paid, downgrade to free
-          if (profile.plan !== "free" && profile.stripe_subscription_status === "canceled") {
+          const latestSub = subs.data[0];
+          const latestStatus = latestSub?.status ?? "canceled";
+          if (
+            profile.plan !== "free" ||
+            profile.stripe_subscription_status !== latestStatus ||
+            (latestSub?.id && profile.stripe_subscription_id !== latestSub.id)
+          ) {
+            const { data: user } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+            const email = user?.user?.email ?? profile.id;
             await supabaseAdmin.from("profiles").update({
               plan: "free",
-              stripe_subscription_status: "canceled",
+              stripe_subscription_status: latestStatus,
+              ...(latestSub?.id ? { stripe_subscription_id: latestSub.id } : {}),
               updated_at: new Date().toISOString(),
             }).eq("id", profile.id);
+
+            fixed.push({
+              email,
+              was: `${profile.plan}/${profile.stripe_subscription_status ?? "null"}`,
+              now: `free/${latestStatus}`,
+              sub_id: latestSub?.id ?? "none",
+            });
           }
           continue;
         }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { PLANS, getUsagePeriodStart, normalizePlan } from "@/lib/plans";
+import { PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
 import { headR2Object } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
@@ -43,11 +43,11 @@ export async function POST(req: NextRequest) {
 
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("plan, billing_period_start, bonus_clips, referral_pro_forever, referral_pro_until, rollover_clips, credits")
+      .select("plan, stripe_subscription_status, billing_period_start, bonus_clips, referral_pro_forever, referral_pro_until, rollover_clips, credits")
       .eq("id", user.id)
       .maybeSingle();
 
-    const basePlan = normalizePlan(profile?.plan);
+    const basePlan = entitlementPlanFromProfile(profile?.plan, profile?.stripe_subscription_status);
 
     // Referral rewards can upgrade effective plan to Pro
     let plan = basePlan;

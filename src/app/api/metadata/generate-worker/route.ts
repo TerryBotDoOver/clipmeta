@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateMetadata } from "@/lib/generateMetadata";
 import { Platform, GenerationSettings } from "@/lib/platform-presets";
-import { PLANS, normalizePlan } from "@/lib/plans";
+import { PLANS, entitlementPlanFromProfile } from "@/lib/plans";
 
 const WORKER_SECRET = process.env.WORKER_SECRET || 'vyzpFC5PVM7HRI4EkZsmTOd8DgJe2cAX';
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // ─── Check plan limits (same as main generate route) ──────────────────────
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('plan, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, regens_used_this_month, billing_period_start')
+      .select('plan, stripe_subscription_status, bonus_clips, rollover_clips, referral_pro_forever, referral_pro_until, credits, regens_used_this_month, billing_period_start')
       .eq('id', userId)
       .single();
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         .update({ credits: userCredits - 1, updated_at: new Date().toISOString() })
         .eq('id', userId);
     } else {
-      let plan = normalizePlan(profile?.plan);
+      let plan = entitlementPlanFromProfile(profile?.plan, profile?.stripe_subscription_status);
       if (profile?.referral_pro_forever) plan = 'pro';
       if (profile?.referral_pro_until && new Date(profile.referral_pro_until) > new Date()) plan = 'pro';
 
