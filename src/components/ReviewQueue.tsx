@@ -147,6 +147,14 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
 
   // Track whether bulk generation is actively running (signaled via custom events)
   const [generationActive, setGenerationActive] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 500);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Poll for clip status updates when there are pending/processing clips OR generation is active
   const hasPending = useMemo(() => liveClips.some(c =>
@@ -593,6 +601,14 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
     });
   }
 
+  function closeAllClips() {
+    setExpandedIds(new Set());
+  }
+
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <div>
       <LimitReachedModal
@@ -717,16 +733,33 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
       </div>
 
       {filteredClips.length > 0 && (
-        <div className="mb-4 flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
-          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={allFilteredSelected}
-              onChange={(e) => toggleSelectAll(e.target.checked)}
-              className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-            />
-            <span>Select All</span>
-          </label>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allFilteredSelected}
+                onChange={(e) => toggleSelectAll(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <span>Select All</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => toggleSelectAll(!allFilteredSelected)}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted"
+            >
+              {allFilteredSelected ? "Clear visible" : "Select visible"}
+            </button>
+            <button
+              type="button"
+              onClick={closeAllClips}
+              disabled={expandedIds.size === 0}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Close all clips
+            </button>
+          </div>
           <span className="text-xs text-muted-foreground">
             {filteredClips.length} clip{filteredClips.length > 1 ? "s" : ""}
           </span>
@@ -1101,6 +1134,16 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
           })
         )}
       </div>
+
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-5 right-5 z-40 rounded-full border border-primary/30 bg-card/95 px-4 py-2 text-sm font-semibold text-foreground shadow-lg shadow-black/20 backdrop-blur transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+        >
+          ↑ Top
+        </button>
+      )}
     </div>
   );
 }
