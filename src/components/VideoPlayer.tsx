@@ -29,7 +29,8 @@ export function VideoPlayer({ src }: { src: string }) {
       <video
         src={src}
         controls
-        preload="none"
+        preload="metadata"
+        playsInline
         onError={() => setFailed(true)}
         className="max-h-52 w-full object-contain"
       />

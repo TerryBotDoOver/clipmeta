@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { extractFrames } from "@/lib/extractFrames";
+import { CLIENT_FRAME_EXTRACTION_MAX_BYTES, extractFrames } from "@/lib/extractFrames";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { trackClarityEvent } from "@/lib/clarity-events";
 import { getPlanDisplayName, normalizePlan } from "@/lib/plans";
@@ -313,14 +313,14 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       });
     };
 
-    async function runMetadata(item: QueuedFile, clipId: string, isWorkerCodec: boolean) {
+    async function runMetadata(item: QueuedFile, clipId: string, useServerFrames: boolean) {
       await metadataLimiter.run(async () => {
         if (cancelledRef.current) {
           updateFile(item.id, { status: "error", error: "Cancelled" });
           return;
         }
 
-        if (!isWorkerCodec) {
+        if (!useServerFrames) {
           updateFile(item.id, { status: "extracting" });
           const frames = await extractFrames(item.file, 4);
           if (cancelledRef.current) {
@@ -392,8 +392,8 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       });
     }
 
-    function scheduleMetadata(item: QueuedFile, clipId: string, isWorkerCodec: boolean) {
-      const task = runMetadata(item, clipId, isWorkerCodec).catch((err) => {
+    function scheduleMetadata(item: QueuedFile, clipId: string, useServerFrames: boolean) {
+      const task = runMetadata(item, clipId, useServerFrames).catch((err) => {
         const msg = err instanceof Error ? err.message : "Metadata generation failed.";
         updateFile(item.id, { status: "error", error: msg });
       });
@@ -431,6 +431,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
 
         const { signedUrl, storagePath } = await urlRes.json();
         const isWorkerCodec = await needsServerWorker(item.file);
+        const useServerFrames = isWorkerCodec || item.file.size > CLIENT_FRAME_EXTRACTION_MAX_BYTES;
 
         const ac = new AbortController();
         abortControllersRef.current.add(ac);
@@ -470,7 +471,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         if (clip_id) {
           trackClarityEvent("ClipUploaded");
           updateFile(item.id, { status: "generating" });
-          scheduleMetadata(item, clip_id, isWorkerCodec);
+          scheduleMetadata(item, clip_id, useServerFrames);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed.";

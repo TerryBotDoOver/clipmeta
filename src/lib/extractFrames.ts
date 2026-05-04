@@ -12,7 +12,8 @@ export type ExtractedFrame = {
  * @returns        - Array of ExtractedFrame objects
  */
 /** Codecs the browser usually can't decode — resolve empty instead of hanging */
-const UNSUPPORTED_EXTENSIONS = ['.mov', '.mxf', '.avi', '.r3d', '.braw', '.dng'];
+export const UNSUPPORTED_FRAME_EXTENSIONS = ['.mov', '.mxf', '.avi', '.r3d', '.braw', '.dng'];
+export const CLIENT_FRAME_EXTRACTION_MAX_BYTES = 500 * 1024 * 1024;
 
 export async function extractFrames(
   file: File,
@@ -22,7 +23,7 @@ export async function extractFrames(
   // These would require downloading the full file to the browser which is wasteful,
   // and ProRes / RAW codecs can't be decoded in Chrome anyway.
   const ext = (file.name.match(/\.[^.]+$/) || [''])[0].toLowerCase();
-  if (file.size > 500 * 1024 * 1024 || UNSUPPORTED_EXTENSIONS.includes(ext)) {
+  if (file.size > CLIENT_FRAME_EXTRACTION_MAX_BYTES || UNSUPPORTED_FRAME_EXTENSIONS.includes(ext)) {
     console.warn(`Skipping frame extraction: ${file.name} (${(file.size / 1024 / 1024).toFixed(0)} MB, ext=${ext})`);
     return [];
   }
