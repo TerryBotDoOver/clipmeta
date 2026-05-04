@@ -4,6 +4,11 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getResend } from '@/lib/resend';
 import { receiptEmail } from '@/lib/emails';
 import { ANNUAL_PLANS, PLANS, normalizePlan } from '@/lib/plans';
+import {
+  findDuplicatePaymentTrialClaim,
+  getSubscriptionPaymentFingerprint,
+  recordTrialClaim,
+} from '@/lib/trial-claims';
 import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
@@ -23,6 +28,13 @@ export async function POST(req: NextRequest) {
   }
 
   const getUid = (obj: Stripe.Metadata | null) => obj?.supabase_uid;
+  const stripeId = (value: string | Stripe.Customer | Stripe.DeletedCustomer | null) =>
+    typeof value === 'string' ? value : value?.id ?? null;
+  const getCustomerEmail = async (customerId: string | null) => {
+    if (!customerId) return null;
+    const customer = await getStripe().customers.retrieve(customerId);
+    return customer.deleted ? null : customer.email;
+  };
   const getSubscriptionPeriodStartIso = (sub: Stripe.Subscription) => {
     const periodStart =
       (sub.items?.data?.[0] as unknown as { current_period_start?: number } | undefined)?.current_period_start ??
@@ -30,6 +42,55 @@ export async function POST(req: NextRequest) {
     return typeof periodStart === 'number'
       ? new Date(periodStart * 1000).toISOString()
       : null;
+  };
+  const captureTrialClaim = async (
+    uid: string,
+    plan: string,
+    sub: Stripe.Subscription | null,
+    source: string,
+    metadata?: Stripe.Metadata | null
+  ) => {
+    if (!sub) return { duplicatePaymentTrialCanceled: false };
+
+    const customerId = stripeId(sub.customer);
+    const paymentFingerprint = await getSubscriptionPaymentFingerprint(sub);
+    const paymentMatch = await findDuplicatePaymentTrialClaim(paymentFingerprint, uid, sub.id);
+    const duplicatePaymentTrial =
+      sub.status === 'trialing' && !!paymentMatch;
+
+    await recordTrialClaim({
+      userId: uid,
+      email: await getCustomerEmail(customerId),
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: sub.id,
+      paymentFingerprint,
+      ipHash: metadata?.trial_ip_hash || null,
+      plan,
+      source,
+      metadata: {
+        stripe_status: sub.status,
+        duplicate_payment_trial: duplicatePaymentTrial,
+      },
+    });
+
+    if (duplicatePaymentTrial) {
+      await getStripe().subscriptions.cancel(sub.id, {
+        invoice_now: false,
+        prorate: false,
+      });
+      await supabaseAdmin.from('profiles').upsert({
+        id: uid,
+        plan: 'free',
+        stripe_subscription_id: sub.id,
+        stripe_subscription_status: 'canceled',
+        had_trial: true,
+        updated_at: new Date().toISOString(),
+      });
+      console.warn(`[trial-guard] Canceled duplicate trial for ${uid} on ${sub.id}`);
+      return { duplicatePaymentTrialCanceled: true };
+    }
+
+    return { duplicatePaymentTrialCanceled: false };
   };
 
   try {
@@ -61,6 +122,14 @@ export async function POST(req: NextRequest) {
           const sub = session.subscription
             ? await getStripe().subscriptions.retrieve(session.subscription as string)
             : null;
+          const trialClaim = await captureTrialClaim(
+            uid,
+            plan,
+            sub,
+            'checkout.session.completed',
+            session.metadata
+          );
+          if (trialClaim.duplicatePaymentTrialCanceled) break;
           // Only reset clip counter when trial converts to paid (not during trial upgrades)
           const isTrialing = sub?.status === 'trialing';
           await supabaseAdmin.from('profiles').upsert({
@@ -95,6 +164,15 @@ export async function POST(req: NextRequest) {
           const isTrial = sub.status === 'trialing';
           const isActive = sub.status === 'active';
           if (isTrial || isActive) {
+            const trialClaim = await captureTrialClaim(
+              uid,
+              plan,
+              sub,
+              'customer.subscription.created',
+              sub.metadata
+            );
+            if (trialClaim.duplicatePaymentTrialCanceled) break;
+
             // Only update if profile is still on free (don't overwrite existing paid plan)
             const { data: existing } = await supabaseAdmin
               .from('profiles')

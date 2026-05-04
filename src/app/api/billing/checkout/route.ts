@@ -4,6 +4,7 @@ import { getStripe, PLANS } from '@/lib/stripe';
 import { ANNUAL_PLANS, normalizePlan } from '@/lib/plans';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getWelcomeRewardCouponForPlan } from '@/lib/welcome-reward';
+import { findTrialClaimMatches, getClientIp, trialIpHash } from '@/lib/trial-claims';
 
 const VALID_MONTHLY_PLANS = ['starter', 'pro', 'studio'] as const;
 const VALID_ANNUAL_PLANS = ['starter_annual', 'pro_annual', 'studio_annual'] as const;
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
     let customerId: string | undefined;
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('stripe_customer_id, utm_source, utm_medium, utm_campaign, utm_referrer, promo_unlocked_at')
+      .select('stripe_customer_id, stripe_subscription_id, had_trial, utm_source, utm_medium, utm_campaign, utm_referrer, promo_unlocked_at')
       .eq('id', user.id)
       .single();
 
@@ -68,12 +69,23 @@ export async function POST(req: NextRequest) {
     if (profile?.utm_campaign) utmMeta.utm_campaign = profile.utm_campaign;
     if (profile?.utm_referrer) utmMeta.utm_referrer = profile.utm_referrer;
 
+    if (!customerId && user.email) {
+      const existingCustomers = await getStripe().customers.search({
+        query: `email:'${user.email.replace(/'/g, "\\'")}'`,
+        limit: 1,
+      });
+      customerId = existingCustomers.data[0]?.id;
+    }
+
     if (!customerId) {
       const customer = await getStripe().customers.create({
         email: user.email!,
         metadata: { supabase_uid: user.id, ...utmMeta },
       });
       customerId = customer.id;
+    }
+
+    if (customerId && customerId !== profile?.stripe_customer_id) {
       await supabaseAdmin.from('profiles').upsert({
         id: user.id,
         stripe_customer_id: customerId,
@@ -81,18 +93,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Check if this user already had a trial (don't give second trials)
-    // Belt-and-suspenders: check BOTH our DB and Stripe directly to prevent race conditions
-    const { data: existingProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('had_trial, stripe_subscription_id, trial_ip')
-      .eq('id', user.id)
-      .single();
-
-    // Get client IP for IP-based dedup
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || req.headers.get('x-real-ip')
-      || null;
+    const clientIpHash = trialIpHash(getClientIp(req.headers));
 
     // Check Stripe directly for any existing subscriptions (catches race conditions)
     let stripeHadTrial = false;
@@ -107,33 +108,24 @@ export async function POST(req: NextRequest) {
       // Non-fatal — fall back to DB check
     }
 
-    // Check if another account already used a trial from this IP
-    let ipAlreadyUsedTrial = false;
-    if (clientIp) {
-      const { data: ipMatch } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('trial_ip', clientIp)
-        .neq('id', user.id)
-        .limit(1)
-        .single();
-      ipAlreadyUsedTrial = !!ipMatch;
-    }
+    const trialClaimMatches = await findTrialClaimMatches({
+      email: user.email,
+      stripeCustomerId: customerId,
+    });
 
-    const alreadyHadTrial = existingProfile?.had_trial
-      || existingProfile?.stripe_subscription_id
+    const trialDenialReasons = [
+      ...(profile?.had_trial ? ['profile_had_trial'] : []),
+      ...(profile?.stripe_subscription_id ? ['profile_subscription'] : []),
+      ...(stripeHadTrial ? ['stripe_subscription_history'] : []),
+      ...trialClaimMatches.map((match) => `trial_claim_${match.reason}`),
+    ];
+
+    const alreadyHadTrial = profile?.had_trial
+      || profile?.stripe_subscription_id
       || stripeHadTrial
-      || ipAlreadyUsedTrial;
+      || trialClaimMatches.length > 0;
 
     const trialDays = alreadyHadTrial ? undefined : 7;
-
-    // Record trial IP on this user's profile before creating checkout
-    if (!alreadyHadTrial && clientIp) {
-      await supabaseAdmin
-        .from('profiles')
-        .update({ trial_ip: clientIp })
-        .eq('id', user.id);
-    }
 
     // Apply the tiered welcome reward. Monthly plans use percent-off coupons;
     // annual plans use fixed amount-off coupons so the reward is bounded.
@@ -152,9 +144,24 @@ export async function POST(req: NextRequest) {
         : { allow_promotion_codes: true }),
       success_url: `${appUrl}/dashboard?upgraded=true`,
       cancel_url: `${appUrl}/pricing`,
-      metadata: { supabase_uid: user.id, plan, base_plan: basePlan, ...utmMeta },
+      metadata: {
+        supabase_uid: user.id,
+        plan,
+        base_plan: basePlan,
+        trial_eligible: trialDays ? 'true' : 'false',
+        trial_denial_reasons: trialDenialReasons.join(',').slice(0, 500),
+        trial_ip_hash: clientIpHash ?? '',
+        ...utmMeta,
+      },
       subscription_data: {
-        metadata: { supabase_uid: user.id, plan, base_plan: basePlan },
+        metadata: {
+          supabase_uid: user.id,
+          plan,
+          base_plan: basePlan,
+          trial_eligible: trialDays ? 'true' : 'false',
+          trial_denial_reasons: trialDenialReasons.join(',').slice(0, 500),
+          trial_ip_hash: clientIpHash ?? '',
+        },
         ...(trialDays ? { trial_period_days: trialDays } : {}),
       },
     });
