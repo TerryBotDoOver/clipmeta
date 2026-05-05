@@ -24,7 +24,11 @@ export function ClipsUsageCard() {
 
   if (isUnlimited) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <Link
+        href="/pricing"
+        aria-label="View plan details"
+        className="group block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 sm:p-5"
+      >
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clips This Month</p>
           <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-400">
@@ -38,13 +42,20 @@ export function ClipsUsageCard() {
             Regenerations: <span className="text-foreground">Unlimited</span>
           </p>
         </div>
-      </div>
+        <p className="mt-3 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+          View plan details →
+        </p>
+      </Link>
     );
   }
 
   if (isFree) {
     return (
-      <div className="rounded-xl border border-amber-500/30 bg-card p-4 sm:p-5">
+      <Link
+        href="/pricing"
+        aria-label="Upgrade ClipMeta plan"
+        className="group block rounded-xl border border-amber-500/30 bg-card p-4 transition-colors hover:border-amber-400/70 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-amber-400/40 sm:p-5"
+      >
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clips</p>
           <span className="rounded-full bg-zinc-700 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">Free</span>
@@ -52,8 +63,8 @@ export function ClipsUsageCard() {
         <p className="mt-3 text-2xl font-bold text-foreground">3 <span className="text-sm font-medium text-muted-foreground">/ day</span></p>
         <p className="mt-1 text-xs text-muted-foreground">
           {lifetimeClips > 0
-            ? <>{`You've generated ${lifetimeClips} clips with ClipMeta. `}<Link href="/pricing" className="text-violet-400 hover:underline font-medium">Unlock 140/month for $9/mo →</Link></>
-            : <>Free plan limit.{' '}<Link href="/pricing" className="text-violet-400 hover:underline font-medium">Upgrade for 140+/month →</Link></>
+            ? <>{`You've generated ${lifetimeClips} clips with ClipMeta. `}<span className="font-medium text-violet-400">Unlock 140/month for $9/mo →</span></>
+            : <>Free plan limit.{' '}<span className="font-medium text-violet-400">Upgrade for 140+/month →</span></>
           }
         </p>
         <div className="mt-3 border-t border-border pt-3">
@@ -61,7 +72,7 @@ export function ClipsUsageCard() {
             Regenerations: <span className="text-foreground">{regensUsed}</span> <span className="text-muted-foreground">/ 1 per day</span>
           </p>
         </div>
-      </div>
+      </Link>
     );
   }
 
@@ -75,7 +86,11 @@ export function ClipsUsageCard() {
   const borderColor = isFull ? 'border-red-500/30' : isWarning ? 'border-amber-500/30' : 'border-border';
 
   return (
-    <div className={`rounded-xl border ${borderColor} bg-card p-4 sm:p-5`}>
+    <Link
+      href="/pricing"
+      aria-label="View ClipMeta usage and plan options"
+      className={`group block rounded-xl border ${borderColor} bg-card p-4 transition-colors hover:border-primary/60 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 sm:p-5`}
+    >
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Clips This Month</p>
         <span className={`text-xs font-semibold ${valueColor}`}>{Math.min(pct, 100)}%</span>
@@ -95,17 +110,17 @@ export function ClipsUsageCard() {
       {isFull && (
         <p className="mt-2 text-xs text-red-400">
           Monthly limit reached —{' '}
-          <Link href="/pricing" className="font-semibold underline hover:text-red-300">
+          <span className="font-semibold underline">
             Upgrade to continue →
-          </Link>
+          </span>
         </p>
       )}
       {isWarning && (
         <p className="mt-2 text-xs text-amber-400">
           Running low —{' '}
-          <Link href="/pricing" className="font-semibold underline hover:text-amber-300">
+          <span className="font-semibold underline">
             Upgrade for more clips →
-          </Link>
+          </span>
         </p>
       )}
       {!isWarning && !isFull && (
@@ -136,12 +151,15 @@ export function ClipsUsageCard() {
             {regenFull && (
               <p className="mt-1 text-[10px] text-red-400">
                 Regeneration limit reached.{' '}
-                <Link href="/pricing" className="font-semibold underline hover:text-red-300">Upgrade →</Link>
+                <span className="font-semibold underline">Upgrade →</span>
               </p>
             )}
           </div>
         );
       })()}
-    </div>
+      <p className="mt-3 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+        View plan details →
+      </p>
+    </Link>
   );
 }

@@ -18,7 +18,6 @@ export default async function DashboardPage() {
     { data: projects },
     { count: activeClips },
     { count: lifetimeUploads },
-    { count: totalExports },
     { data: profile },
   ] = await Promise.all([
     supabase
@@ -37,9 +36,6 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .eq("action", "created"),
     supabase
-      .from("exports")
-      .select("id", { count: "exact", head: true }),
-    supabase
       .from("profiles")
       .select("onboarding_complete")
       .eq("id", user.id)
@@ -54,9 +50,9 @@ export default async function DashboardPage() {
     "there";
 
   const stats = [
-    { label: "Projects", value: projectCount, icon: "⊞", hint: "Active batches" },
-    { label: "Active Clips", value: activeClips ?? 0, icon: "▶", hint: "Currently in your account" },
-    { label: "Total Clips Uploaded", value: lifetimeUploads ?? 0, icon: "✦", hint: "Lifetime uploads (incl. deleted)" },
+    { label: "Projects", value: projectCount, icon: "⊞", hint: "Active batches", href: "/projects", action: "View projects" },
+    { label: "Active Clips", value: activeClips ?? 0, icon: "▶", hint: "Currently in your account", href: "/projects", action: "Browse clips" },
+    { label: "Total Clips Uploaded", value: lifetimeUploads ?? 0, icon: "✦", hint: "Lifetime uploads (incl. deleted)", href: "/projects", action: "Review library" },
   ];
 
   return (
@@ -75,14 +71,24 @@ export default async function DashboardPage() {
       {/* Stats row */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <Link
+            key={s.label}
+            href={s.href}
+            aria-label={`${s.action}: ${s.label}`}
+            className="group rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 sm:p-5"
+          >
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{s.label}</p>
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm">{s.icon}</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                {s.icon}
+              </span>
             </div>
             <p className="mt-3 text-3xl font-bold tracking-tight text-foreground">{s.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{s.hint}</p>
-          </div>
+            <p className="mt-3 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
+              {s.action} →
+            </p>
+          </Link>
         ))}
         <ClipsUsageCard />
       </div>
