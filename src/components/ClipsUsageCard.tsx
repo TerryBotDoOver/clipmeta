@@ -25,8 +25,8 @@ export function ClipsUsageCard() {
   if (isUnlimited) {
     return (
       <Link
-        href="/pricing"
-        aria-label="View plan details"
+        href="/settings"
+        aria-label="View usage and plan settings"
         className="group block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 sm:p-5"
       >
         <div className="flex items-center justify-between">
@@ -43,7 +43,7 @@ export function ClipsUsageCard() {
           </p>
         </div>
         <p className="mt-3 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-          View plan details →
+          Manage usage →
         </p>
       </Link>
     );
@@ -87,8 +87,8 @@ export function ClipsUsageCard() {
 
   return (
     <Link
-      href="/pricing"
-      aria-label="View ClipMeta usage and plan options"
+      href="/settings"
+      aria-label="View ClipMeta usage and plan settings"
       className={`group block rounded-xl border ${borderColor} bg-card p-4 transition-colors hover:border-primary/60 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/40 sm:p-5`}
     >
       <div className="flex items-center justify-between">
@@ -111,7 +111,7 @@ export function ClipsUsageCard() {
         <p className="mt-2 text-xs text-red-400">
           Monthly limit reached —{' '}
           <span className="font-semibold underline">
-            Upgrade to continue →
+            Manage plan →
           </span>
         </p>
       )}
@@ -119,7 +119,7 @@ export function ClipsUsageCard() {
         <p className="mt-2 text-xs text-amber-400">
           Running low —{' '}
           <span className="font-semibold underline">
-            Upgrade for more clips →
+            Manage plan →
           </span>
         </p>
       )}
@@ -151,14 +151,14 @@ export function ClipsUsageCard() {
             {regenFull && (
               <p className="mt-1 text-[10px] text-red-400">
                 Regeneration limit reached.{' '}
-                <span className="font-semibold underline">Upgrade →</span>
+                <span className="font-semibold underline">Manage plan →</span>
               </p>
             )}
           </div>
         );
       })()}
       <p className="mt-3 text-xs font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-        View plan details →
+        Manage usage →
       </p>
     </Link>
   );

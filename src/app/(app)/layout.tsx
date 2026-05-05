@@ -14,6 +14,7 @@ import { FailedPaymentBanner } from "@/components/FailedPaymentBanner";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "▦", exact: true },
+  { href: "/analytics", label: "Analytics", icon: "▥", exact: true },
   { href: "/projects", label: "Projects", icon: "⊞", exact: false },
   { href: "/feedback", label: "Feedback", icon: "✦", exact: true },
   { href: "/support", label: "Support", icon: "🎧", exact: true },

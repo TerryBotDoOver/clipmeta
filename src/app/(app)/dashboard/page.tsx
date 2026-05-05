@@ -51,8 +51,8 @@ export default async function DashboardPage() {
 
   const stats = [
     { label: "Projects", value: projectCount, icon: "⊞", hint: "Active batches", href: "/projects", action: "View projects" },
-    { label: "Active Clips", value: activeClips ?? 0, icon: "▶", hint: "Currently in your account", href: "/projects", action: "Browse clips" },
-    { label: "Total Clips Uploaded", value: lifetimeUploads ?? 0, icon: "✦", hint: "Lifetime uploads (incl. deleted)", href: "/projects", action: "Review library" },
+    { label: "Active Clips", value: activeClips ?? 0, icon: "▶", hint: "Currently in your account", href: "/analytics#active-clips", action: "View analytics" },
+    { label: "Total Clips Uploaded", value: lifetimeUploads ?? 0, icon: "✦", hint: "Lifetime uploads (incl. deleted)", href: "/analytics#upload-history", action: "See history" },
   ];
 
   return (
