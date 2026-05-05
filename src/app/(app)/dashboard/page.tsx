@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { redirect } from "next/navigation";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ClipsUsageCard } from "@/components/ClipsUsageCard";
@@ -13,36 +14,40 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth");
 
-  // Run all queries in parallel to cut LCP in half
+  // Run all user-scoped queries in parallel to keep dashboard counts aligned.
   const [
     { data: projects },
-    { count: activeClips },
     { count: lifetimeUploads },
     { data: profile },
   ] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from("projects")
       .select("id, name, slug, created_at, status")
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
-      .from("clips")
-      .select("id", { count: "exact", head: true }),
-    supabase
+      .order("created_at", { ascending: false }),
+    supabaseAdmin
       .from("clip_history")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("action", "created"),
-    supabase
+    supabaseAdmin
       .from("profiles")
       .select("onboarding_complete")
       .eq("id", user.id)
-      .single(),
+      .maybeSingle(),
   ]);
 
-  const projectCount = projects?.length ?? 0;
+  const projectRows = projects ?? [];
+  const projectIds = projectRows.map((project) => project.id);
+  const { count: activeClips } = projectIds.length > 0
+    ? await supabaseAdmin
+        .from("clips")
+        .select("id", { count: "exact", head: true })
+        .in("project_id", projectIds)
+    : { count: 0 };
+  const recentProjects = projectRows.slice(0, 5);
+  const projectCount = projectRows.length;
   const displayName =
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||
@@ -99,7 +104,7 @@ export default async function DashboardPage() {
           hasProject={projectCount > 0}
           hasClips={(activeClips ?? 0) > 0}
           hasMeta={(activeClips ?? 0) > 0}
-          firstProjectSlug={projects?.[0]?.slug ?? null}
+          firstProjectSlug={recentProjects[0]?.slug ?? null}
         />
       )}
 
@@ -113,8 +118,8 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="p-3 space-y-1">
-            {projects && projects.length > 0 ? (
-              projects.map((p) => (
+            {recentProjects.length > 0 ? (
+              recentProjects.map((p) => (
                 <Link
                   key={p.id}
                   href={`/projects/${p.slug}`}

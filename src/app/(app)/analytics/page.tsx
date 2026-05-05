@@ -52,7 +52,7 @@ export default async function AnalyticsPage() {
 
   const [
     { data: projects },
-    { data: profile },
+    { data: profile, error: profileError },
     { count: lifetimeUploads },
   ] = await Promise.all([
     supabaseAdmin
@@ -63,7 +63,7 @@ export default async function AnalyticsPage() {
       .order("created_at", { ascending: false }),
     supabaseAdmin
       .from("profiles")
-      .select("plan, subscription_status, billing_period_start, bonus_clips, rollover_clips, regens_used_this_month, referral_pro_forever, referral_pro_until")
+      .select("plan, billing_period_start, bonus_clips, rollover_clips, regens_used_this_month, referral_pro_forever, referral_pro_until")
       .eq("id", user.id)
       .maybeSingle(),
     supabaseAdmin
@@ -72,6 +72,10 @@ export default async function AnalyticsPage() {
       .eq("user_id", user.id)
       .eq("action", "created"),
   ]);
+
+  if (profileError) {
+    throw new Error(`Failed to load analytics profile: ${profileError.message}`);
+  }
 
   const projectRows = (projects ?? []) as ProjectRow[];
   const projectIds = projectRows.map((project) => project.id);
@@ -84,6 +88,12 @@ export default async function AnalyticsPage() {
       : planFromProfile
   );
   const planInfo = entitlementPlan === "founder" ? null : PLANS[entitlementPlan];
+  const displayPlanName =
+    entitlementPlan === "founder"
+      ? "Founder"
+      : entitlementPlan !== normalizeEntitlementPlan(planFromProfile)
+        ? PLANS[entitlementPlan].name
+        : getPlanDisplayName(planFromProfile);
   const bonusClips = (profile?.bonus_clips as number | null) ?? 0;
   const rolloverClips = (profile?.rollover_clips as number | null) ?? 0;
   const monthlyLimit = planInfo ? planInfo.clips + (planInfo.period === "monthly" ? bonusClips + rolloverClips : 0) : null;
@@ -191,7 +201,7 @@ export default async function AnalyticsPage() {
         </div>
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plan</p>
-          <p className="mt-3 text-3xl font-bold text-foreground">{getPlanDisplayName(planFromProfile)}</p>
+          <p className="mt-3 text-3xl font-bold text-foreground">{displayPlanName}</p>
           <Link href="/settings" className="mt-1 inline-block text-xs font-semibold text-primary hover:text-primary/80">
             Manage settings &rarr;
           </Link>
