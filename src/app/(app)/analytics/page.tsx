@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getPlanDisplayName, getUsagePeriodStart, normalizeEntitlementPlan, PLANS } from "@/lib/plans";
+import { getRegensUsedSince } from "@/lib/regenerationUsage";
 
 type ProjectRow = {
   id: string;
@@ -97,9 +98,9 @@ export default async function AnalyticsPage() {
   const bonusClips = (profile?.bonus_clips as number | null) ?? 0;
   const rolloverClips = (profile?.rollover_clips as number | null) ?? 0;
   const monthlyLimit = planInfo ? planInfo.clips + (planInfo.period === "monthly" ? bonusClips + rolloverClips : 0) : null;
-  const regensLimit = planInfo?.regens ?? null;
-  const regensUsed = (profile?.regens_used_this_month as number | null) ?? 0;
   const usagePeriodStart = getUsagePeriodStart(planFromProfile, profile?.billing_period_start as string | null | undefined, now);
+  const regensLimit = planInfo?.regens ?? null;
+  const regensUsed = await getRegensUsedSince(user.id, usagePeriodStart.toISOString());
   const thirtyDaysAgoDate = new Date(now);
   thirtyDaysAgoDate.setDate(now.getDate() - 30);
   const thirtyDaysAgo = thirtyDaysAgoDate.toISOString();

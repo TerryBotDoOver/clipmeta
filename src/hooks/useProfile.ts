@@ -36,16 +36,13 @@ export function useProfile() {
       setBonusClips((profile as Record<string, unknown>)?.bonus_clips as number || 0);
       setRolloverClips((profile as Record<string, unknown>)?.rollover_clips as number || 0);
 
-      // Regen count comes directly from the dedicated counter — no derivation.
-      setRegensUsed((profile as Record<string, unknown>)?.regens_used_this_month as number || 0);
-
       // Count clip uploads from clip_history for usage display
       const billingStart = getUsagePeriodStart(
         profile?.plan as string | null | undefined,
         profile?.billing_period_start as string | null | undefined
       ).toISOString();
 
-      const [{ count: historyCount }, { count: lifetimeCount }] = await Promise.all([
+      const [{ count: historyCount }, { count: lifetimeCount }, { count: regenCount }] = await Promise.all([
         supabase
           .from('clip_history')
           .select('id', { count: 'exact', head: true })
@@ -57,9 +54,16 @@ export function useProfile() {
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .eq('action', 'created'),
+        supabase
+          .from('clip_history')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('action', 'regenerated')
+          .gte('created_at', billingStart),
       ]);
       setClipsUsed(historyCount ?? 0);
       setLifetimeClips(lifetimeCount ?? 0);
+      setRegensUsed(regenCount ?? 0);
 
       setLoading(false);
     });
