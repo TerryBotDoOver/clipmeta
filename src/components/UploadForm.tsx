@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { CLIENT_FRAME_EXTRACTION_MAX_BYTES, extractFrames } from "@/lib/extractFrames";
+import { extractFrames } from "@/lib/extractFrames";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { trackClarityEvent } from "@/lib/clarity-events";
 import { getPlanDisplayName, normalizePlan } from "@/lib/plans";
@@ -313,87 +313,67 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       });
     };
 
-    async function runMetadata(item: QueuedFile, clipId: string, useServerFrames: boolean) {
+    async function runMetadata(item: QueuedFile, clipId: string) {
       await metadataLimiter.run(async () => {
         if (cancelledRef.current) {
           updateFile(item.id, { status: "error", error: "Cancelled" });
           return;
         }
 
-        if (!useServerFrames) {
-          updateFile(item.id, { status: "extracting" });
-          const frames = await extractFrames(item.file, 4);
-          if (cancelledRef.current) {
-            updateFile(item.id, { status: "error", error: "Cancelled" });
-            return;
-          }
+        updateFile(item.id, { status: "extracting" });
+        let frameDataUrls: string[] = [];
 
-          updateFile(item.id, { status: "generating" });
-          const genRes = await fetch("/api/metadata/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ clip_id: clipId, frames: frames.map((f) => f.dataUrl) }),
-          });
-          if (genRes.status === 429) {
-            const genData = await genRes.json();
-            if (genData.limit_reached) {
-              updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
-              showLimitModal(genData);
-              return;
-            }
-          }
-          if (!genRes.ok) {
-            const genData = await genRes.json().catch(() => ({}));
-            throw new Error(genData.message || "Metadata generation failed.");
-          }
-          trackClarityEvent("MetadataGenerated");
-        } else {
-          updateFile(item.id, { status: "extracting" });
+        try {
           const frameRes = await fetch("/api/frames/extract", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ clip_id: clipId }),
           });
-          let serverFrames: string[] = [];
           if (frameRes.ok) {
             const frameData = await frameRes.json();
-            serverFrames = Array.isArray(frameData.frames) ? frameData.frames : [];
+            frameDataUrls = Array.isArray(frameData.frames) ? frameData.frames : [];
           } else {
             console.warn("Server-side frame extraction failed for", item.file.name);
           }
-
-          if (cancelledRef.current) {
-            updateFile(item.id, { status: "error", error: "Cancelled" });
-            return;
-          }
-
-          updateFile(item.id, { status: "generating" });
-          const genRes = await fetch("/api/metadata/generate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ clip_id: clipId, frames: serverFrames }),
-          });
-          if (genRes.status === 429) {
-            const genData = await genRes.json();
-            if (genData.limit_reached) {
-              updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
-              showLimitModal(genData);
-              return;
-            }
-          }
-          if (!genRes.ok) {
-            const genData = await genRes.json().catch(() => ({}));
-            throw new Error(genData.message || "Metadata generation failed.");
-          }
-          trackClarityEvent("MetadataGenerated");
+        } catch (serverErr) {
+          console.warn("Server-side frame extraction failed for", item.file.name, serverErr);
         }
 
+        if (frameDataUrls.length === 0) {
+          const clientFrames = await extractFrames(item.file, 4);
+          frameDataUrls = clientFrames.map((frame) => frame.dataUrl);
+        }
+
+        if (cancelledRef.current) {
+          updateFile(item.id, { status: "error", error: "Cancelled" });
+          return;
+        }
+
+        updateFile(item.id, { status: "generating" });
+        const genRes = await fetch("/api/metadata/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clip_id: clipId, frames: frameDataUrls }),
+        });
+        if (genRes.status === 429) {
+          const genData = await genRes.json();
+          if (genData.limit_reached) {
+            updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
+            showLimitModal(genData);
+            return;
+          }
+        }
+        if (!genRes.ok) {
+          const genData = await genRes.json().catch(() => ({}));
+          throw new Error(genData.message || "Metadata generation failed.");
+        }
+        trackClarityEvent("MetadataGenerated");
         updateFile(item.id, { status: "done", progress: 100, error: undefined });
       });
     }
 
-    function scheduleMetadata(item: QueuedFile, clipId: string, useServerFrames: boolean) {
-      const task = runMetadata(item, clipId, useServerFrames).catch((err) => {
+    function scheduleMetadata(item: QueuedFile, clipId: string) {
+      const task = runMetadata(item, clipId).catch((err) => {
         const msg = err instanceof Error ? err.message : "Metadata generation failed.";
         updateFile(item.id, { status: "error", error: msg });
       });
@@ -431,7 +411,6 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
 
         const { signedUrl, storagePath } = await urlRes.json();
         const isWorkerCodec = await needsServerWorker(item.file);
-        const useServerFrames = isWorkerCodec || item.file.size > CLIENT_FRAME_EXTRACTION_MAX_BYTES;
 
         const ac = new AbortController();
         abortControllersRef.current.add(ac);
@@ -471,7 +450,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         if (clip_id) {
           trackClarityEvent("ClipUploaded");
           updateFile(item.id, { status: "generating" });
-          scheduleMetadata(item, clip_id, useServerFrames);
+          scheduleMetadata(item, clip_id);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed.";

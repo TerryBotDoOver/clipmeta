@@ -24,7 +24,16 @@ export async function POST(req: NextRequest) {
     const { clip_id, frames } = await req.json();
 
     if (!clip_id) return NextResponse.json({ message: "clip_id required" }, { status: 400 });
-    if (!Array.isArray(frames) || frames.length === 0) return NextResponse.json({ message: "frames required" }, { status: 400 });
+    if (!Array.isArray(frames)) return NextResponse.json({ message: "frames required" }, { status: 400 });
+
+    const usableFrames = frames.filter(
+      (frame: unknown): frame is string =>
+        typeof frame === "string" && frame.startsWith("data:image/")
+    );
+
+    if (usableFrames.length === 0) {
+      return NextResponse.json({ message: "usable frames required" }, { status: 400 });
+    }
 
     // Fetch clip and project (include user_id from projects for plan checks)
     const { data: clip, error: clipError } = await supabaseAdmin
@@ -134,7 +143,7 @@ export async function POST(req: NextRequest) {
     // Generate metadata
     const metadata = await generateMetadata({
       filename: clip.original_filename,
-      frames,
+      frames: usableFrames,
       projectName: clip.projects?.name,
       platform,
       settings,
@@ -166,7 +175,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const thumbnailUrl = frames[0] ?? null;
+    const thumbnailUrl = usableFrames[0] ?? null;
 
     if (isRegeneration) {
       const { data: prevRow } = await supabaseAdmin

@@ -153,6 +153,10 @@ export async function generateMetadata(
 ): Promise<ClipMetadata> {
   const { filename, frames, projectName, platform = "generic", settings, existingTitles = [], existingDescriptions = [] } = input;
 
+  if (frames.length === 0) {
+    throw new Error("Cannot generate accurate metadata without extracted video frames.");
+  }
+
   const effectiveSettings: GenerationSettings = settings ?? {
     keywordCount: 35,
     titleStyle: "seo",

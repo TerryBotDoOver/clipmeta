@@ -14,10 +14,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "clip_id is required." }, { status: 400 });
     }
 
-    // Frames can be empty for large files or unsupported codecs (ProRes, RAW, etc.)
-    // In that case we generate metadata from filename + project context only
     if (!Array.isArray(frames)) {
-      return NextResponse.json({ message: "frames array is required (can be empty)." }, { status: 400 });
+      return NextResponse.json({ message: "frames array is required." }, { status: 400 });
     }
 
     // Fetch the clip and its project (include user_id from projects for plan checks)
@@ -29,6 +27,27 @@ export async function POST(req: NextRequest) {
 
     if (clipError || !clip) {
       return NextResponse.json({ message: "Clip not found." }, { status: 404 });
+    }
+
+    const usableFrames = frames.filter(
+      (frame: unknown): frame is string =>
+        typeof frame === "string" && frame.startsWith("data:image/")
+    );
+
+    if (usableFrames.length === 0) {
+      await supabaseAdmin
+        .from("clips")
+        .update({ metadata_status: "failed" })
+        .eq("id", clip_id);
+
+      return NextResponse.json(
+        {
+          message:
+            "We couldn't extract usable video frames for this clip. Please try again; if it continues, contact support and we will help.",
+          frame_extraction_failed: true,
+        },
+        { status: 422 }
+      );
     }
 
     // user_id comes from the projects relation, not clips table directly
@@ -152,7 +171,7 @@ export async function POST(req: NextRequest) {
     try {
       metadata = await generateMetadata({
         filename: clip.original_filename,
-        frames,
+        frames: usableFrames,
         projectName: clip.projects?.name,
         platform,
         settings,
