@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { draftCustomerEmail } from '@/lib/customerEmailDraft';
 import { DISCORD_CHANNELS, sendDiscordMessage } from '@/lib/discord';
-import { emailApprovalUrl, emailReviseUrl } from '@/lib/emailApproval';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { buildSupportResearchContext } from '@/lib/supportResearchContext';
-
-const CODEX_EMAIL_DRAFTS_ENABLED = process.env.CODEX_EMAIL_DRAFTS_ENABLED === 'true';
 
 function normalizeEmailAddress(value: unknown) {
   if (typeof value !== 'string') return '';
@@ -92,7 +87,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const { data: insertedEmail, error: insertError } = await supabaseAdmin
+      const { error: insertError } = await supabaseAdmin
         .from('inbound_emails')
         .insert({
           resend_email_id: dedupeId,
@@ -104,9 +99,7 @@ export async function POST(req: NextRequest) {
           attachments: attachments || [],
           received_at: created_at || new Date().toISOString(),
           status: 'unread',
-        })
-        .select('id')
-        .single();
+        });
 
       if (insertError) {
         console.error('[webhook] Supabase insert error:', insertError);
@@ -128,67 +121,6 @@ export async function POST(req: NextRequest) {
       });
       if (!inboxDiscord.ok) {
         console.error('[webhook] Inbox Discord notification failed:', inboxDiscord);
-      }
-
-      const emailDbId = insertedEmail?.id;
-      if (emailDbId && CODEX_EMAIL_DRAFTS_ENABLED) {
-        try {
-          const accountContext = await buildSupportResearchContext({
-            from,
-            subject: subject || '(no subject)',
-            body: body || htmlBody || '',
-            currentEmailId: emailDbId,
-          });
-          const draft = await draftCustomerEmail({
-            from,
-            subject: subject || '(no subject)',
-            body: body || htmlBody || '',
-            accountContext,
-          });
-
-          await supabaseAdmin
-            .from('inbound_emails')
-            .update({
-              status: 'pending_approval',
-              reply_text: draft,
-            })
-            .eq('id', emailDbId);
-
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://clipmeta.app';
-          const approvalDiscord = await sendDiscordMessage({
-            channelId: DISCORD_CHANNELS.emailApprovals,
-            content: [
-              '**Draft reply waiting for approval**',
-              `From: ${from}`,
-              `Subject: ${subject || '(no subject)'}`,
-              '',
-              draft,
-              '',
-              `Approve and send: ${emailApprovalUrl(baseUrl, emailDbId, 'send')}`,
-              `Discard draft: ${emailApprovalUrl(baseUrl, emailDbId, 'discard')}`,
-              `Revise draft: ${emailReviseUrl(baseUrl, emailDbId)}`,
-            ].join('\n'),
-          });
-          if (!approvalDiscord.ok) {
-            console.error('[webhook] Approval Discord notification failed:', approvalDiscord);
-          }
-        } catch (e) {
-          console.error('[webhook] Draft/approval notification failed:', e);
-          const manualDiscord = await sendDiscordMessage({
-            channelId: DISCORD_CHANNELS.emailApprovals,
-            content: [
-              '**New email needs manual reply**',
-              `From: ${from}`,
-              `Subject: ${subject || '(no subject)'}`,
-              `Email ID: ${emailDbId}`,
-              '',
-              'Draft generation failed. Check the inbox before replying.',
-            ].join('\n'),
-          });
-          if (!manualDiscord.ok) {
-            console.error('[webhook] Manual reply Discord notification failed:', manualDiscord);
-          }
-        }
       }
 
       return NextResponse.json({ received: true });
