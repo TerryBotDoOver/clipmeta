@@ -67,11 +67,13 @@ function enrichPost(post, today) {
 }
 
 function choosePost(calendar, today) {
-  const scheduled = calendar.calendar.filter(p => p.status === 'scheduled');
-  const exactToday = scheduled.find(p => p.scheduledFor === today);
+  // Include posts left in written state. A failed build/deploy used to leave posts
+  // as written, which made the scheduler skip them forever on future runs.
+  const publishable = calendar.calendar.filter(p => p.status === 'scheduled' || p.status === 'written');
+  const exactToday = publishable.find(p => p.scheduledFor === today);
   if (exactToday) return exactToday;
 
-  const due = scheduled.filter(p => p.scheduledFor <= today).sort((a, b) => String(b.scheduledFor).localeCompare(String(a.scheduledFor)))[0];
+  const due = publishable.filter(p => p.scheduledFor <= today).sort((a, b) => String(b.scheduledFor).localeCompare(String(a.scheduledFor)))[0];
   if (due) return due;
 
   const usedSlugs = new Set(calendar.calendar.map(p => p.slug));
@@ -141,6 +143,21 @@ function run(command, args, cwd) {
   return result;
 }
 
+function verifyLiveUrl(url) {
+  const result = spawnSync('curl', ['-I', '-L', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], {
+    cwd: APP_DIR,
+    stdio: 'pipe',
+    shell: true,
+    encoding: 'utf8',
+  });
+  const status = String(result.stdout || '').trim();
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.status !== 0 || status !== '200') {
+    throw new Error(`Live URL verification failed for ${url}. curl_status=${result.status}, http_status=${status || 'none'}`);
+  }
+  console.log(`HTTP verification returned 200 for ${url}`);
+}
+
 async function main() {
   fs.mkdirSync(BLOG_DIR, { recursive: true });
   const today = todayLocalISO();
@@ -174,6 +191,9 @@ async function main() {
   const deployResult = run('npx', deployArgs, APP_DIR);
   if (deployResult.status !== 0) throw new Error(`Deploy failed with status ${deployResult.status}`);
 
+  const url = `https://clipmeta.app/blog/${duePost.slug}`;
+  verifyLiveUrl(url);
+
   duePostRaw.status = 'published';
   duePostRaw.publishedAt = duePostRaw.publishedAt || new Date().toISOString();
   calendar.published = Array.isArray(calendar.published) ? calendar.published : [];
@@ -182,7 +202,6 @@ async function main() {
   }
   fs.writeFileSync(CALENDAR_PATH, JSON.stringify(calendar, null, 2));
 
-  const url = `https://clipmeta.app/blog/${duePost.slug}`;
   console.log(`Published! Live at: ${url}`);
 }
 
