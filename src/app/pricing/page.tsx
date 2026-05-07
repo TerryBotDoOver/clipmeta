@@ -318,7 +318,7 @@ export default function PricingPage() {
       <section className="relative mx-auto max-w-6xl px-6 pb-10 pt-20 text-center">
         <p className="hud-chip mx-auto mb-6 inline-flex">PRICING</p>
         <h1 className="mx-auto max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
-          Pricing built for <span className="gradient-text">creators who ship.</span>
+          Pricing built for <span className="gradient-text">stock footage creators.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/55">
           Start free. Upgrade when volume demands it. Cancel in one click. No gotchas.
