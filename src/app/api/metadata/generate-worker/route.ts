@@ -12,6 +12,41 @@ import { PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/pl
 import { getRegensUsedSince, recordRegenerationEvent, syncRegenerationCounter } from "@/lib/regenerationUsage";
 
 const WORKER_SECRET = process.env.WORKER_SECRET || 'vyzpFC5PVM7HRI4EkZsmTOd8DgJe2cAX';
+const METADATA_RETRY_DELAY_MS = 1500;
+
+function metadataFailureMessage(error: unknown, fallback = "Worker generation failed") {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : fallback;
+  return (message || fallback).slice(0, 1000);
+}
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function generateMetadataWithRetry(args: Parameters<typeof generateMetadata>[0]) {
+  try {
+    return await generateMetadata(args);
+  } catch (firstError: unknown) {
+    await delay(METADATA_RETRY_DELAY_MS);
+    try {
+      return await generateMetadata(args);
+    } catch (secondError: unknown) {
+      const retryMessage = metadataFailureMessage(secondError, metadataFailureMessage(firstError));
+      throw new Error(`Worker metadata generation failed after automatic retry: ${retryMessage}`);
+    }
+  }
+}
+
+async function markMetadataFailed(clipId: string, error: unknown, fallback?: string) {
+  const message = metadataFailureMessage(error, fallback);
+  await supabaseAdmin
+    .from("clips")
+    .update({
+      metadata_status: "failed",
+      metadata_status_detail: message,
+      worker_error: message,
+    })
+    .eq("id", clipId);
+  return message;
+}
 
 export async function POST(req: NextRequest) {
   // Authenticate worker
@@ -20,8 +55,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
+  let clipIdForFailure: string | null = null;
+
   try {
     const { clip_id, frames } = await req.json();
+    clipIdForFailure = typeof clip_id === "string" ? clip_id : null;
 
     if (!clip_id) return NextResponse.json({ message: "clip_id required" }, { status: 400 });
     if (!Array.isArray(frames)) return NextResponse.json({ message: "frames required" }, { status: 400 });
@@ -32,7 +70,11 @@ export async function POST(req: NextRequest) {
     );
 
     if (usableFrames.length === 0) {
-      return NextResponse.json({ message: "usable frames required" }, { status: 400 });
+      const message = await markMetadataFailed(
+        clip_id,
+        "Worker could not extract usable video frames for this clip. The upload is saved; retry metadata or contact support if it continues."
+      );
+      return NextResponse.json({ message }, { status: 422 });
     }
 
     // Fetch clip and project (include user_id from projects for plan checks)
@@ -138,17 +180,30 @@ export async function POST(req: NextRequest) {
       .filter((t): t is string => typeof t === "string" && t.length > 0);
 
     // Mark as processing
-    await supabaseAdmin.from("clips").update({ metadata_status: "processing" }).eq("id", clip_id);
+    await supabaseAdmin
+      .from("clips")
+      .update({
+        metadata_status: "processing",
+        metadata_status_detail: null,
+        worker_error: null,
+      })
+      .eq("id", clip_id);
 
     // Generate metadata
-    const metadata = await generateMetadata({
-      filename: clip.original_filename,
-      frames: usableFrames,
-      projectName: clip.projects?.name,
-      platform,
-      settings,
-      existingTitles,
-    });
+    let metadata;
+    try {
+      metadata = await generateMetadataWithRetry({
+        filename: clip.original_filename,
+        frames: usableFrames,
+        projectName: clip.projects?.name,
+        platform,
+        settings,
+        existingTitles,
+      });
+    } catch (genError: unknown) {
+      const message = await markMetadataFailed(clip_id, genError);
+      return NextResponse.json({ message }, { status: 500 });
+    }
 
     // Prepend pinned keywords from project settings
     if (project?.pinned_keywords) {
@@ -219,8 +274,12 @@ export async function POST(req: NextRequest) {
       }, { onConflict: 'clip_id' });
 
     if (insertError) {
-      await supabaseAdmin.from("clips").update({ metadata_status: "failed" }).eq("id", clip_id);
-      return NextResponse.json({ message: "Failed to save metadata" }, { status: 500 });
+      const message = await markMetadataFailed(
+        clip_id,
+        insertError,
+        "Metadata generated but failed to save. Please retry."
+      );
+      return NextResponse.json({ message }, { status: 500 });
     }
 
     if (isRegeneration) {
@@ -254,14 +313,25 @@ export async function POST(req: NextRequest) {
       .eq("id", clip_id);
 
     // Mark complete after metadata and usage event are saved.
-    await supabaseAdmin.from("clips").update({ metadata_status: "complete" }).eq("id", clip_id);
+    await supabaseAdmin
+      .from("clips")
+      .update({
+        metadata_status: "complete",
+        metadata_status_detail: null,
+        worker_error: null,
+      })
+      .eq("id", clip_id);
 
     return NextResponse.json({ ok: true, title: metadata.title });
 
   } catch (err: unknown) {
     console.error("[generate-worker] Error:", err);
+    const message = metadataFailureMessage(err);
+    if (clipIdForFailure) {
+      await markMetadataFailed(clipIdForFailure, message, message);
+    }
     return NextResponse.json(
-      { message: err instanceof Error ? err.message : "Worker generation failed" },
+      { message },
       { status: 500 }
     );
   }

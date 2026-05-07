@@ -6,9 +6,48 @@ import { Platform, GenerationSettings } from "@/lib/platform-presets";
 import { PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
 import { getRegensUsedSince, recordRegenerationEvent, syncRegenerationCounter } from "@/lib/regenerationUsage";
 
+const METADATA_RETRY_DELAY_MS = 1500;
+
+function metadataFailureMessage(error: unknown, fallback = "Metadata generation failed.") {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : fallback;
+  return (message || fallback).slice(0, 1000);
+}
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function generateMetadataWithRetry(args: Parameters<typeof generateMetadata>[0]) {
+  try {
+    return await generateMetadata(args);
+  } catch (firstError: unknown) {
+    await delay(METADATA_RETRY_DELAY_MS);
+    try {
+      return await generateMetadata(args);
+    } catch (secondError: unknown) {
+      const retryMessage = metadataFailureMessage(secondError, metadataFailureMessage(firstError));
+      throw new Error(`Metadata generation failed after automatic retry: ${retryMessage}`);
+    }
+  }
+}
+
+async function markMetadataFailed(clipId: string, error: unknown, fallback?: string) {
+  const message = metadataFailureMessage(error, fallback);
+  await supabaseAdmin
+    .from("clips")
+    .update({
+      metadata_status: "failed",
+      metadata_status_detail: message,
+      worker_error: message,
+    })
+    .eq("id", clipId);
+  return message;
+}
+
 export async function POST(req: NextRequest) {
+  let clipIdForFailure: string | null = null;
+
   try {
     const { clip_id, frames } = await req.json();
+    clipIdForFailure = typeof clip_id === "string" ? clip_id : null;
 
     if (!clip_id) {
       return NextResponse.json({ message: "clip_id is required." }, { status: 400 });
@@ -35,15 +74,14 @@ export async function POST(req: NextRequest) {
     );
 
     if (usableFrames.length === 0) {
-      await supabaseAdmin
-        .from("clips")
-        .update({ metadata_status: "failed" })
-        .eq("id", clip_id);
+      const message = await markMetadataFailed(
+        clip_id,
+        "ClipMeta could not extract usable video frames for this clip. The upload is saved; retry metadata or contact support if it continues."
+      );
 
       return NextResponse.json(
         {
-          message:
-            "We couldn't extract usable video frames for this clip. Please try again; if it continues, contact support and we will help.",
+          message,
           frame_extraction_failed: true,
         },
         { status: 422 }
@@ -163,13 +201,17 @@ export async function POST(req: NextRequest) {
     // Mark clip as processing
     await supabaseAdmin
       .from("clips")
-      .update({ metadata_status: "processing" })
+      .update({
+        metadata_status: "processing",
+        metadata_status_detail: null,
+        worker_error: null,
+      })
       .eq("id", clip_id);
 
     // Generate metadata
     let metadata;
     try {
-      metadata = await generateMetadata({
+      metadata = await generateMetadataWithRetry({
         filename: clip.original_filename,
         frames: usableFrames,
         projectName: clip.projects?.name,
@@ -179,13 +221,10 @@ export async function POST(req: NextRequest) {
         existingDescriptions,
       });
     } catch (genError: unknown) {
-      await supabaseAdmin
-        .from("clips")
-        .update({ metadata_status: "failed" })
-        .eq("id", clip_id);
+      const message = await markMetadataFailed(clip_id, genError);
 
       return NextResponse.json(
-        { message: genError instanceof Error ? genError.message : "Metadata generation failed." },
+        { message },
         { status: 500 }
       );
     }
@@ -267,12 +306,13 @@ export async function POST(req: NextRequest) {
       }, { onConflict: 'clip_id' });
 
     if (insertError) {
-      await supabaseAdmin
-        .from("clips")
-        .update({ metadata_status: "failed" })
-        .eq("id", clip_id);
+      const message = await markMetadataFailed(
+        clip_id,
+        insertError,
+        "Metadata generated but failed to save. Please retry."
+      );
 
-      return NextResponse.json({ message: "Failed to save metadata results." }, { status: 500 });
+      return NextResponse.json({ message }, { status: 500 });
     }
 
     if (isRegeneration) {
@@ -314,11 +354,19 @@ export async function POST(req: NextRequest) {
     // Mark complete — keep storage_path so video stays available for regeneration
     await supabaseAdmin
       .from("clips")
-      .update({ metadata_status: "complete" })
+      .update({
+        metadata_status: "complete",
+        metadata_status_detail: null,
+        worker_error: null,
+      })
       .eq("id", clip_id);
 
     return NextResponse.json({ ok: true, metadata });
-  } catch {
-    return NextResponse.json({ message: "Unexpected error during metadata generation." }, { status: 500 });
+  } catch (err: unknown) {
+    const message = metadataFailureMessage(err, "Unexpected error during metadata generation.");
+    if (clipIdForFailure) {
+      await markMetadataFailed(clipIdForFailure, message, message);
+    }
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

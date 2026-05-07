@@ -350,11 +350,13 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         }
 
         updateFile(item.id, { status: "generating" });
+        const metadataBody = JSON.stringify({ clip_id: clipId, frames: frameDataUrls });
         const genRes = await fetch("/api/metadata/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clip_id: clipId, frames: frameDataUrls }),
+          body: metadataBody,
         });
+
         if (genRes.status === 429) {
           const genData = await genRes.json();
           if (genData.limit_reached) {
@@ -375,7 +377,10 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     function scheduleMetadata(item: QueuedFile, clipId: string) {
       const task = runMetadata(item, clipId).catch((err) => {
         const msg = err instanceof Error ? err.message : "Metadata generation failed.";
-        updateFile(item.id, { status: "error", error: msg });
+        updateFile(item.id, {
+          status: "error",
+          error: `Upload complete. Metadata generation failed: ${msg}`,
+        });
       });
       metadataTasks.push(task);
     }

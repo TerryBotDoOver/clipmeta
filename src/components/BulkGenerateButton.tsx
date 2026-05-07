@@ -72,13 +72,15 @@ async function runGenerate(
 
       onClipUpdate(clip.id, "generating");
 
+      const body = JSON.stringify({
+        clip_id: clip.id,
+        frames: frames.map((f) => f.dataUrl),
+      });
+
       const metaRes = await fetch("/api/metadata/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clip_id: clip.id,
-          frames: frames.map((f) => f.dataUrl),
-        }),
+        body,
       });
 
       if (metaRes.status === 429) {
@@ -266,7 +268,7 @@ export function BulkGenerateButton({ clips, failedClips = [] }: Props) {
           onClick={() => handleGenerate("failed")}
           className="inline-flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-400 transition hover:bg-amber-500/20"
         >
-          ↺ Retry Failed ({failedClips.length})
+          ↺ Retry Metadata ({failedClips.length})
         </button>
       )}
     </div>

@@ -82,13 +82,15 @@ export function GenerateMetadataButton({
       }
 
       setStatus("generating");
+      const body = JSON.stringify({
+        clip_id: clipId,
+        frames: frames.map((f) => f.dataUrl),
+      });
+
       const metaRes = await fetch("/api/metadata/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clip_id: clipId,
-          frames: frames.map((f) => f.dataUrl),
-        }),
+        body,
       });
 
       if (metaRes.status === 429) {
@@ -160,7 +162,7 @@ export function GenerateMetadataButton({
         <div className="flex items-center gap-2">
           <span className="text-xs text-red-500">{error}</span>
           <button
-            onClick={() => setStatus("idle")}
+            onClick={handleGenerate}
             className="text-xs text-muted-foreground underline hover:text-foreground transition"
           >
             Retry

@@ -24,6 +24,8 @@ type Clip = {
   original_filename: string;
   file_size_bytes: number | null;
   metadata_status: string;
+  metadata_status_detail?: string | null;
+  worker_error?: string | null;
   upload_status: string | null;
   is_reviewed: boolean;
   metadata_results: MetadataResults | null;
@@ -38,7 +40,7 @@ type Clip = {
 type Props = {
   clips: Clip[];
   clipUrls: Record<string, string>;
-  pendingClips: { id: string; filename: string; storageUrl: string }[];
+  pendingClips: { id: string; filename: string; storageUrl: string; fileSize?: number }[];
   projectId: string;
   plan?: string;
   projectLocation?: string | null;
@@ -354,6 +356,26 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
     }
   }
 
+  function applyMetadataSuccess(clipId: string, meta: Partial<MetadataResults>, hasPreviousVersion: boolean) {
+    setMetadataOverrides((prev) => ({ ...prev, [clipId]: meta }));
+    setLiveClips((prev) =>
+      prev.map((clip) =>
+        clip.id === clipId
+          ? {
+              ...clip,
+              metadata_status: "complete",
+              metadata_status_detail: null,
+              worker_error: null,
+            }
+          : clip
+      )
+    );
+    bumpMetadataVersion(clipId);
+    if (hasPreviousVersion) {
+      setClipsWithHistory((prev) => new Set(prev).add(clipId));
+    }
+  }
+
   function startEditFilename(clipId: string, currentName: string, e: React.MouseEvent) {
     e.stopPropagation();
     setEditingFilename(clipId);
@@ -528,10 +550,11 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
           }
         }
 
+        const metadataBody = JSON.stringify({ clip_id: id, frames: frames.map((f) => f.dataUrl) });
         const metaRes = await fetch("/api/metadata/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clip_id: id, frames: frames.map((f) => f.dataUrl) }),
+          body: metadataBody,
         });
 
         if (metaRes.status === 429) {
@@ -549,11 +572,9 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
         if (!metaRes.ok) throw new Error("Generation failed");
         const { metadata } = await metaRes.json();
         trackClarityEvent("MetadataGenerated");
-        setMetadataOverrides((prev) => ({ ...prev, [id]: metadata }));
-        bumpMetadataVersion(id);
         // Bulk regen also creates a history row server-side, so the toggle
         // becomes available for each clip in the bulk batch.
-        setClipsWithHistory((prev) => new Set(prev).add(id));
+        applyMetadataSuccess(id, metadata, true);
       } catch {
         errCount++;
       }
@@ -778,6 +799,11 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
               : (metadataOverrides[clip.id] ? { ...metadataOverrides[clip.id] } as MetadataResults : null);
             const hasMetadata = !!effectiveMeta;
             const isReviewed = reviewedIds.has(clip.id) || clip.is_reviewed;
+            const statusLabel = hasMetadata
+              ? "ready"
+              : clip.metadata_status === "failed"
+              ? "metadata failed"
+              : clip.metadata_status;
 
             return (
               <div
@@ -893,7 +919,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                           : "bg-amber-500/15 text-amber-400"
                       }`}
                     >
-                      {hasMetadata ? "ready" : clip.metadata_status}
+                      {statusLabel}
                     </span>
                   </div>
 
@@ -1076,11 +1102,9 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                                 label="Regenerate"
                                 variant="subtle"
                                 onSuccess={(meta) => {
-                                  setMetadataOverrides(prev => ({ ...prev, [clip.id]: meta }));
-                                  bumpMetadataVersion(clip.id);
                                   // Generate route snapshots prior metadata into history,
                                   // so this clip now has a previous version to revert to.
-                                  setClipsWithHistory(prev => new Set(prev).add(clip.id));
+                                  applyMetadataSuccess(clip.id, meta, true);
                                 }}
                               />
                             ) : (
@@ -1109,6 +1133,28 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                           </div>
                         </div>
                       </>
+                    ) : clip.metadata_status === "failed" ? (
+                      <div className="flex flex-col gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-sm font-semibold text-red-300">
+                            Upload complete. Metadata generation failed.
+                          </p>
+                          <p className="text-xs leading-relaxed text-muted-foreground">
+                            {clip.worker_error || clip.metadata_status_detail || "Retry metadata; no re-upload needed."}
+                          </p>
+                        </div>
+                        {clipUrls[clip.id] && (
+                          <GenerateMetadataButton
+                            clipId={clip.id}
+                            filename={clip.original_filename}
+                            storageUrl={clipUrls[clip.id]}
+                            fileSize={clip.file_size_bytes ?? 0}
+                            label="Retry metadata"
+                            variant="subtle"
+                            onSuccess={(meta) => applyMetadataSuccess(clip.id, meta, false)}
+                          />
+                        )}
+                      </div>
                     ) : (
                       <div className="flex items-center justify-between">
                         <p className="text-sm italic text-muted-foreground">
@@ -1123,6 +1169,8 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
                             clipId={clip.id}
                             filename={clip.original_filename}
                             storageUrl={clipUrls[clip.id]}
+                            fileSize={clip.file_size_bytes ?? 0}
+                            onSuccess={(meta) => applyMetadataSuccess(clip.id, meta, false)}
                           />
                         )}
                       </div>
