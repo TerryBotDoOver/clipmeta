@@ -3,13 +3,184 @@ import { getStripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getResend } from '@/lib/resend';
 import { receiptEmail } from '@/lib/emails';
-import { ANNUAL_PLANS, PLANS, normalizePlan } from '@/lib/plans';
+import { ANNUAL_PLANS, PLANS, getPlanDisplayName, normalizePlan } from '@/lib/plans';
+import { DISCORD_CHANNELS, sendDiscordMessage } from '@/lib/discord';
 import {
   findDuplicatePaymentTrialClaim,
   getSubscriptionPaymentFingerprint,
   recordTrialClaim,
 } from '@/lib/trial-claims';
 import Stripe from 'stripe';
+
+type StripeObjectWithId = { id?: string } | null | undefined;
+
+function stripeObjectId(value: string | StripeObjectWithId) {
+  return typeof value === 'string' ? value : value?.id ?? null;
+}
+
+function formatCurrency(amount: number, currency: string) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+  }).format(amount / 100);
+}
+
+function formatPlan(plan: string | null | undefined) {
+  if (!plan) return null;
+  return getPlanDisplayName(plan);
+}
+
+function invoiceReasonLabel(reason: string | null | undefined, hasCredits: boolean) {
+  if (hasCredits) return 'Credit pack purchase';
+  switch (reason) {
+    case 'subscription_create':
+      return 'New subscription payment';
+    case 'subscription_cycle':
+      return 'Subscription renewal';
+    case 'subscription_update':
+      return 'Subscription change payment';
+    case 'manual':
+      return 'Manual invoice payment';
+    default:
+      return 'Payment';
+  }
+}
+
+async function sendStripePaymentDiscordNotification(charge: Stripe.Charge) {
+  if (charge.amount <= 0) return;
+
+  const stripe = getStripe();
+  const customerId = stripeObjectId(charge.customer as string | StripeObjectWithId);
+  const invoiceId = stripeObjectId(
+    (charge as Stripe.Charge & { invoice?: string | StripeObjectWithId }).invoice as string | StripeObjectWithId
+  );
+  const creditCount = charge.metadata?.credits;
+
+  let customer: Stripe.Customer | null = null;
+  if (customerId) {
+    try {
+      const retrieved = await stripe.customers.retrieve(customerId);
+      customer = retrieved.deleted ? null : retrieved;
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve customer:', error);
+    }
+  }
+
+  let subscription: Stripe.Subscription | null = null;
+  let invoiceReason: string | null = null;
+  let lineDescription: string | null = null;
+  if (invoiceId) {
+    try {
+      const invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ['subscription', 'lines.data.price'],
+      } as Stripe.InvoiceRetrieveParams);
+      invoiceReason = invoice.billing_reason ?? null;
+      lineDescription = invoice.lines?.data?.[0]?.description ?? null;
+      const invoiceSubscription = (invoice as Stripe.Invoice & {
+        subscription?: string | Stripe.Subscription | null;
+      }).subscription;
+      if (typeof invoiceSubscription === 'string') {
+        subscription = await stripe.subscriptions.retrieve(invoiceSubscription);
+      } else if (invoiceSubscription && 'id' in invoiceSubscription) {
+        subscription = invoiceSubscription;
+      }
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve invoice context:', error);
+    }
+  }
+
+  const uid =
+    charge.metadata?.supabase_uid ||
+    subscription?.metadata?.supabase_uid ||
+    customer?.metadata?.supabase_uid ||
+    null;
+
+  let profile: {
+    id: string;
+    plan: string | null;
+    stripe_customer_id: string | null;
+  } | null = null;
+
+  if (uid) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, plan, stripe_customer_id')
+      .eq('id', uid)
+      .maybeSingle();
+    profile = data ?? null;
+  } else if (customerId) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, plan, stripe_customer_id')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle();
+    profile = data ?? null;
+  }
+
+  let authEmail: string | null = null;
+  if (profile?.id) {
+    try {
+      const { data } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+      authEmail = data?.user?.email ?? null;
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve auth user:', error);
+    }
+  }
+
+  let priorPaidChargeCount = 0;
+  if (customerId) {
+    try {
+      const priorCharges = await stripe.charges.list({ customer: customerId, limit: 10 });
+      priorPaidChargeCount = priorCharges.data.filter(
+        (item) => item.id !== charge.id && item.amount > 0 && item.paid
+      ).length;
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve prior charges:', error);
+    }
+  }
+
+  const plan =
+    charge.metadata?.plan ||
+    subscription?.metadata?.plan ||
+    profile?.plan ||
+    null;
+
+  const what = creditCount
+    ? `${creditCount} ClipMeta clip credits`
+    : formatPlan(plan)
+    ? `${formatPlan(plan)} subscription`
+    : lineDescription || charge.description || 'ClipMeta purchase';
+
+  const paymentMethod = charge.payment_method_details?.card
+    ? `${charge.payment_method_details.card.brand?.toUpperCase() || 'Card'} ending ${charge.payment_method_details.card.last4}`
+    : null;
+
+  const customerEmail =
+    charge.receipt_email ||
+    charge.billing_details?.email ||
+    authEmail ||
+    customer?.email ||
+    'unknown email';
+  const customerName = charge.billing_details?.name || customer?.name || null;
+
+  const content = [
+    '**ClipMeta payment received**',
+    `Amount: ${formatCurrency(charge.amount, charge.currency)} ${charge.currency.toUpperCase()}`,
+    `Customer: ${customerName ? `${customerName} <${customerEmail}>` : customerEmail}`,
+    `Customer type: ${priorPaidChargeCount > 0 ? 'Repeat customer' : 'New paid customer'}`,
+    `Transaction: ${invoiceReasonLabel(invoiceReason, !!creditCount)}`,
+    `What they got: ${what}`,
+    paymentMethod ? `Payment method: ${paymentMethod}` : null,
+    profile?.id || uid ? `User ID: ${profile?.id || uid}` : null,
+    customerId ? `Stripe customer: ${customerId}` : null,
+    `Stripe charge: ${charge.id}`,
+  ].filter(Boolean).join('\n');
+
+  await sendDiscordMessage({
+    channelId: DISCORD_CHANNELS.signups,
+    content,
+  });
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -251,6 +422,13 @@ export async function POST(req: NextRequest) {
       // ── Send branded ClipMeta receipt on successful charge ──
       case 'charge.succeeded': {
         const charge = event.data.object as Stripe.Charge;
+        try {
+          await sendStripePaymentDiscordNotification(charge);
+        } catch (discordErr) {
+          // Don't fail Stripe webhooks if Discord is down or temporarily rate-limited.
+          console.error('[stripe-discord] Failed to send payment notification:', discordErr);
+        }
+
         // Only send for non-zero charges (skip $0 trial invoices)
         if (charge.amount > 0 && charge.receipt_email) {
           try {
