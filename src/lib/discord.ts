@@ -8,6 +8,7 @@ export const DISCORD_CHANNELS = {
   emailApprovals: "1485669162171760741",
   feedback: "1484279405646844004",
   signups: "1484408994356531371",
+  payments: "1502152652799217664",
   ops: "1482069898409541715",
 } as const;
 

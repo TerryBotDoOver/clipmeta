@@ -177,7 +177,7 @@ async function sendStripePaymentDiscordNotification(charge: Stripe.Charge) {
   ].filter(Boolean).join('\n');
 
   await sendDiscordMessage({
-    channelId: DISCORD_CHANNELS.signups,
+    channelId: DISCORD_CHANNELS.payments,
     content,
   });
 }
