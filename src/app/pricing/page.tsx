@@ -215,7 +215,7 @@ export default function PricingPage() {
     return () => clearInterval(interval);
   }, [promoUnlockedAt]);
 
-  const Check = () => <span className="text-emerald-400">&#10003;</span>;
+  const Check = () => <span className="text-orange-400">&#10003;</span>;
   const Dash = () => <span className="text-zinc-600">&#8212;</span>;
 
   const starterPlanKey = annual ? 'starter_annual' : 'starter';
@@ -697,7 +697,7 @@ export default function PricingPage() {
           ] as {f: string; v: (boolean|string)[]}[]).map(({f, v}) => {
             const Cell = ({val, highlight}: {val: boolean|string; highlight?: boolean}) => (
               <div className={`px-6 py-4 text-center text-sm${highlight ? ' bg-violet-500/[0.04] text-white' : ' text-white/55'}`}>
-                {val === true ? <span className="text-emerald-400">&#10003;</span>
+                {val === true ? <span className="text-orange-400">&#10003;</span>
                   : val === false ? <span className="text-white/20">&#10007;</span>
                   : <span className="text-amber-300 text-xs font-medium">{val as string}</span>}
               </div>
