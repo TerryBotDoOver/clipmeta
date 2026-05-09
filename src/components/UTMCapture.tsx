@@ -18,12 +18,20 @@ export function UTMCapture() {
       if (val) utm[key] = val;
     }
 
+    const clickIds = ["gclid", "fbclid", "msclkid", "rdt_cid"];
+    for (const key of clickIds) {
+      const val = searchParams.get(key);
+      if (val) utm[key] = val;
+    }
+
     if (document.referrer) {
       utm["referrer"] = document.referrer;
     }
 
     // Only store if we have something meaningful
     if (Object.keys(utm).length > 0) {
+      utm["landing_path"] = `${window.location.pathname}${window.location.search}`;
+      utm["captured_at"] = new Date().toISOString();
       localStorage.setItem("clipmeta_utm", JSON.stringify(utm));
     }
   }, [searchParams]);
