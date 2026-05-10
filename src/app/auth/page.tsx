@@ -10,6 +10,8 @@ type RedditTrackingWindow = Window & {
   rdt?: (event: "track", name: string) => void;
 };
 
+const TERMS_VERSION = "2026-05-10";
+
 function friendlyAuthError(message: string) {
   if (/email rate limit exceeded/i.test(message)) {
     return "Too many reset emails were requested for this address. Please wait a few minutes, then try again.";
@@ -33,6 +35,7 @@ function AuthForm() {
   const [error, setError] = useState("");
   const [signupDone, setSignupDone] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -64,6 +67,10 @@ function AuthForm() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    if (!acceptedTerms) {
+      setError("Please accept the Terms of Service and Privacy Policy to create an account.");
+      return;
+    }
     setLoading(true);
     setError("");
     const supabase = createSupabaseBrowserClient();
@@ -73,7 +80,12 @@ function AuthForm() {
       email,
       password,
       options: {
-        data: { full_name: name },
+        data: {
+          full_name: name,
+          terms_accepted_at: new Date().toISOString(),
+          terms_version: TERMS_VERSION,
+          privacy_version: TERMS_VERSION,
+        },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
@@ -114,14 +126,23 @@ function AuthForm() {
   }
 
   async function handleGoogleAuth() {
+    if (mode === "signup" && !acceptedTerms) {
+      setError("Please accept the Terms of Service and Privacy Policy to create an account.");
+      return;
+    }
     setLoading(true);
     setError("");
     const supabase = createSupabaseBrowserClient();
     const next = fromPricing ? "/pricing" : "/dashboard";
+    const redirectUrl = new URL(`${window.location.origin}/auth/callback`);
+    redirectUrl.searchParams.set("next", next);
+    if (mode === "signup" && acceptedTerms) {
+      redirectUrl.searchParams.set("terms", TERMS_VERSION);
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: redirectUrl.toString(),
         skipBrowserRedirect: false,
         queryParams: {
           access_type: "offline",
@@ -271,11 +292,29 @@ function AuthForm() {
         </div>
       )}
 
+      {mode === "signup" && (
+        <label className="mb-5 flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            required
+            className="mt-1 h-4 w-4 rounded border-border accent-primary"
+          />
+          <span>
+            I agree to the{" "}
+            <a href="/legal/terms" className="text-foreground underline">Terms of Service</a>{" "}
+            and{" "}
+            <a href="/legal/privacy" className="text-foreground underline">Privacy Policy</a>.
+          </span>
+        </label>
+      )}
+
       {/* Google OAuth */}
       <button
         type="button"
         onClick={handleGoogleAuth}
-        disabled={loading}
+        disabled={loading || (mode === "signup" && !acceptedTerms)}
         className="w-full flex items-center justify-center gap-3 rounded-lg border border-border bg-background px-4 py-3 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -354,7 +393,7 @@ function AuthForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (mode === "signup" && !acceptedTerms)}
           className="w-full rounded-lg bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {loading
@@ -374,9 +413,7 @@ function AuthForm() {
 
       {mode === "signup" && (
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          By creating an account you agree to our{" "}
-          <a href="/legal/terms" className="underline">Terms</a> and{" "}
-          <a href="/legal/privacy" className="underline">Privacy Policy</a>.
+          We record the current legal policy version when you create an account.
         </p>
       )}
     </div>
