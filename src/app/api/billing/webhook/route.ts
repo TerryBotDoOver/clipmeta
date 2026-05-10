@@ -46,6 +46,137 @@ function invoiceReasonLabel(reason: string | null | undefined, hasCredits: boole
   }
 }
 
+function formatStripeTimestamp(timestamp: number | null | undefined) {
+  if (!timestamp) return null;
+  return new Date(timestamp * 1000).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  });
+}
+
+function formatStripePrice(price: Stripe.Price | null | undefined) {
+  if (!price?.unit_amount || !price.currency) return null;
+  const amount = formatCurrency(price.unit_amount, price.currency);
+  const interval = price.recurring?.interval;
+  const intervalCount = price.recurring?.interval_count ?? 1;
+  if (!interval) return amount;
+  const cadence = intervalCount > 1 ? `${intervalCount} ${interval}s` : interval;
+  return `${amount}/${cadence}`;
+}
+
+async function sendPaidPlanSignupDiscordNotification(sub: Stripe.Subscription) {
+  const plan = sub.metadata?.plan;
+  if (!plan || normalizePlan(plan) === 'free') return;
+  if (!['trialing', 'active'].includes(sub.status)) return;
+
+  const stripe = getStripe();
+  const customerId = stripeObjectId(sub.customer as string | StripeObjectWithId);
+  let customer: Stripe.Customer | null = null;
+  if (customerId) {
+    try {
+      const retrieved = await stripe.customers.retrieve(customerId);
+      customer = retrieved.deleted ? null : retrieved;
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve signup customer:', error);
+    }
+  }
+
+  const uid = sub.metadata?.supabase_uid || customer?.metadata?.supabase_uid || null;
+  let profile: {
+    id: string;
+    plan: string | null;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    stripe_subscription_status: string | null;
+    utm_source: string | null;
+    utm_medium: string | null;
+    utm_campaign: string | null;
+    utm_referrer: string | null;
+  } | null = null;
+
+  if (uid) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, plan, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, utm_source, utm_medium, utm_campaign, utm_referrer')
+      .eq('id', uid)
+      .maybeSingle();
+    profile = data ?? null;
+  } else if (customerId) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, plan, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, utm_source, utm_medium, utm_campaign, utm_referrer')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle();
+    profile = data ?? null;
+  }
+
+  let authEmail: string | null = null;
+  if (profile?.id) {
+    try {
+      const { data } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+      authEmail = data?.user?.email ?? null;
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve signup auth user:', error);
+    }
+  }
+
+  let priorSubscriptionCount = 0;
+  let priorPaidChargeCount = 0;
+  if (customerId) {
+    try {
+      const [subscriptions, charges] = await Promise.all([
+        stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 }),
+        stripe.charges.list({ customer: customerId, limit: 10 }),
+      ]);
+      priorSubscriptionCount = subscriptions.data.filter((item) => item.id !== sub.id).length;
+      priorPaidChargeCount = charges.data.filter((item) => item.amount > 0 && item.paid).length;
+    } catch (error) {
+      console.warn('[stripe-discord] Could not retrieve signup customer history:', error);
+    }
+  }
+
+  const price = sub.items?.data?.[0]?.price ?? null;
+  const trialEnd = formatStripeTimestamp(sub.trial_end);
+  const nextCharge = formatStripeTimestamp(
+    (sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined)?.current_period_end ??
+      (sub as unknown as { current_period_end?: number }).current_period_end
+  );
+  const customerEmail = customer?.email || authEmail || 'unknown email';
+  const customerName = customer?.name || null;
+  const utm = [
+    profile?.utm_source ? `source=${profile.utm_source}` : null,
+    profile?.utm_medium ? `medium=${profile.utm_medium}` : null,
+    profile?.utm_campaign ? `campaign=${profile.utm_campaign}` : null,
+    profile?.utm_referrer ? `referrer=${profile.utm_referrer}` : null,
+  ].filter(Boolean).join(', ');
+
+  const content = [
+    '**ClipMeta paid plan signup**',
+    `Plan: ${formatPlan(plan) ?? plan}`,
+    `Status: ${sub.status}${sub.status === 'trialing' ? ' (trial)' : ''}`,
+    `Price: ${formatStripePrice(price) ?? 'unknown'}`,
+    sub.status === 'trialing' ? `Payment today: $0 trial signup` : null,
+    trialEnd ? `Trial ends: ${trialEnd}` : null,
+    nextCharge ? `Current period ends: ${nextCharge}` : null,
+    `Customer: ${customerName ? `${customerName} <${customerEmail}>` : customerEmail}`,
+    `Customer type: ${priorSubscriptionCount > 0 || priorPaidChargeCount > 0 ? 'Repeat Stripe customer' : 'New Stripe customer'}`,
+    profile?.id || uid ? `User ID: ${profile?.id || uid}` : null,
+    profile?.stripe_subscription_status ? `Previous app status: ${profile.stripe_subscription_status}` : null,
+    utm ? `Attribution: ${utm}` : null,
+    customerId ? `Stripe customer: ${customerId}` : null,
+    `Stripe subscription: ${sub.id}`,
+  ].filter(Boolean).join('\n');
+
+  await sendDiscordMessage({
+    channelId: DISCORD_CHANNELS.payments,
+    content,
+  });
+}
+
 async function sendStripePaymentDiscordNotification(charge: Stripe.Charge) {
   if (charge.amount <= 0) return;
 
@@ -343,6 +474,13 @@ export async function POST(req: NextRequest) {
               sub.metadata
             );
             if (trialClaim.duplicatePaymentTrialCanceled) break;
+
+            try {
+              await sendPaidPlanSignupDiscordNotification(sub);
+            } catch (discordErr) {
+              // Don't fail Stripe webhooks if Discord is down or temporarily rate-limited.
+              console.error('[stripe-discord] Failed to send paid signup notification:', discordErr);
+            }
 
             // Only update if profile is still on free (don't overwrite existing paid plan)
             const { data: existing } = await supabaseAdmin
