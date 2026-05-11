@@ -7,7 +7,9 @@
     "prebuild": "node scripts/check-rls.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seo:indexnow": "node scripts/submit-indexnow.mjs",
+    "deploy:prod": "npx vercel --prod --yes --scope leviclaude1998-7474s-projects && npm run seo:indexnow -- --sitemap"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1009.0",

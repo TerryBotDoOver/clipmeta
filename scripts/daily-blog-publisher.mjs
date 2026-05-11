@@ -158,6 +158,14 @@ function verifyLiveUrl(url) {
   console.log(`HTTP verification returned 200 for ${url}`);
 }
 
+function submitIndexNow(url) {
+  console.log(`Submitting to IndexNow: ${url}`);
+  const result = run('npm', ['run', 'seo:indexnow', '--', url], APP_DIR);
+  if (result.status !== 0) {
+    console.warn(`IndexNow submission failed with status ${result.status}. The post is still published; rerun npm run seo:indexnow -- ${url} to retry.`);
+  }
+}
+
 async function main() {
   fs.mkdirSync(BLOG_DIR, { recursive: true });
   const today = todayLocalISO();
@@ -193,6 +201,7 @@ async function main() {
 
   const url = `https://clipmeta.app/blog/${duePost.slug}`;
   verifyLiveUrl(url);
+  submitIndexNow(url);
 
   duePostRaw.status = 'published';
   duePostRaw.publishedAt = duePostRaw.publishedAt || new Date().toISOString();
