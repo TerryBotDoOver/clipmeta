@@ -210,7 +210,11 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         progress: 0,
       };
     });
-    setQueue((prev) => [...prev, ...newItems]);
+    setQueue((prev) => {
+      const next = [...prev, ...newItems];
+      queueRef.current = next;
+      return next;
+    });
   }
 
   // Drag & drop handlers
@@ -261,14 +265,13 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
 
   async function processQueueConcurrent() {
     cancelledRef.current = false;
-    const toProcess = queueRef.current.filter((f) => f.status === "queued");
-    if (toProcess.length === 0) return;
+    if (!queueRef.current.some((f) => f.status === "queued")) return;
     setIsRunning(true);
 
     const uploadLimiter = createAsyncLimiter(TOTAL_UPLOAD_PUT_SLOTS);
     const metadataLimiter = createAsyncLimiter(METADATA_CONCURRENCY);
     const metadataTasks: Promise<void>[] = [];
-    let nextUploadIndex = 0;
+    const assignedUploadIds = new Set<string>();
     let stopQueue = false;
 
     const markQueuedCancelled = () => {
@@ -385,6 +388,14 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
       metadataTasks.push(task);
     }
 
+    function getNextUploadItem() {
+      const item = queueRef.current.find(
+        (f) => f.status === "queued" && !assignedUploadIds.has(f.id)
+      );
+      if (item) assignedUploadIds.add(item.id);
+      return item;
+    }
+
     async function processUploadItem(item: QueuedFile) {
       if (cancelledRef.current) {
         markQueuedCancelled();
@@ -467,14 +478,14 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
 
     async function uploadWorker() {
       while (!cancelledRef.current && !stopQueue) {
-        const item = toProcess[nextUploadIndex++];
+        const item = getNextUploadItem();
         if (!item) return;
         await processUploadItem(item);
       }
     }
 
     const uploadWorkers = Array.from(
-      { length: Math.min(ACTIVE_FILE_UPLOADS, toProcess.length) },
+      { length: ACTIVE_FILE_UPLOADS },
       () => uploadWorker()
     );
 
