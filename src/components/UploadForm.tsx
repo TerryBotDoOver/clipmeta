@@ -428,11 +428,20 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         const { signedUrl, storagePath } = await urlRes.json();
         const isWorkerCodec = await needsServerWorker(item.file);
 
+        let maxUploadProgress = 0;
+        const reportUploadProgress = (pct: number) => {
+          maxUploadProgress = Math.max(maxUploadProgress, pct);
+          updateFile(item.id, { progress: maxUploadProgress });
+        };
+
         const ac = new AbortController();
         abortControllersRef.current.add(ac);
         try {
-          await uploadWithProgress(signedUrl, item.file, storagePath, (pct) =>
-            updateFile(item.id, { progress: pct }),
+          await uploadWithProgress(
+            signedUrl,
+            item.file,
+            storagePath,
+            reportUploadProgress,
             ac.signal,
             uploadLimiter
           );
@@ -760,13 +769,13 @@ function createAsyncLimiter(maxConcurrent: number): AsyncLimiter {
 
 const ACTIVE_FILE_UPLOADS = 2;
 const METADATA_CONCURRENCY = 2;
-const TOTAL_UPLOAD_PUT_SLOTS = 8;
+const TOTAL_UPLOAD_PUT_SLOTS = 4;
 
 // 32 MB parts with a small parallel worker pool. This lets fast connections
 // move large ProRes batches much closer to line speed without creating hundreds
 // of tiny R2 part uploads per file.
 const CHUNK_SIZE = 32 * 1024 * 1024;
-const MULTIPART_CONCURRENCY = 4;
+const MULTIPART_CONCURRENCY = 2;
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
 
 // Hard timeout per chunk. 6 minutes is enough for a 32MB chunk on a slow uplink.
