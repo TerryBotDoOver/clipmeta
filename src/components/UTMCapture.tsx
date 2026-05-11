@@ -24,6 +24,11 @@ export function UTMCapture() {
       if (val) utm[key] = val;
     }
 
+    const referralCode = searchParams.get("ref");
+    if (referralCode && /^[0-9a-f]{8}$/i.test(referralCode)) {
+      utm["ref"] = referralCode.toLowerCase();
+    }
+
     if (document.referrer) {
       utm["referrer"] = document.referrer;
     }
