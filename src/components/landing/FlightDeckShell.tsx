@@ -155,17 +155,26 @@ export function FlightDeckShell({
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/5 py-10 text-white/50">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6">
-          <div className="flex items-center gap-3 text-sm">
-            <img src="/logo-icon.svg" className="h-5 w-5" alt="" />
-            <span>© 2026 ClipMeta</span>
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6">
+          <div className="flex flex-wrap items-center justify-between gap-6">
+            <div className="flex items-center gap-3 text-sm">
+              <img src="/logo-icon.svg" className="h-5 w-5" alt="" />
+              <span>© 2026 ClipMeta</span>
+            </div>
+            <nav className="flex flex-wrap items-center gap-6 text-sm">
+              <Link href="/tools/metadata-grader" className="transition hover:text-white">Free Grader</Link>
+              <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
+              <Link href="/blog" className="transition hover:text-white">Blog</Link>
+              <Link href="/legal/terms" className="transition hover:text-white">Terms</Link>
+              <Link href="/legal/privacy" className="transition hover:text-white">Privacy</Link>
+            </nav>
           </div>
-          <nav className="flex flex-wrap items-center gap-6 text-sm">
-            <Link href="/tools/metadata-grader" className="transition hover:text-white">Free Grader</Link>
-            <Link href="/pricing" className="transition hover:text-white">Pricing</Link>
-            <Link href="/blog" className="transition hover:text-white">Blog</Link>
-            <Link href="/legal/terms" className="transition hover:text-white">Terms</Link>
-            <Link href="/legal/privacy" className="transition hover:text-white">Privacy</Link>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2 border-t border-white/5 pt-5 text-xs">
+            <Link href="/stock-video-keyword-generator" className="transition hover:text-white">Stock Video Keyword Generator</Link>
+            <Link href="/blackbox-metadata-generator" className="transition hover:text-white">Blackbox Metadata Generator</Link>
+            <Link href="/pond5-keyword-generator" className="transition hover:text-white">Pond5 Keyword Generator</Link>
+            <Link href="/adobe-stock-video-keywords" className="transition hover:text-white">Adobe Stock Video Keywords</Link>
+            <Link href="/shutterstock-video-keywording" className="transition hover:text-white">Shutterstock Video Keywording</Link>
           </nav>
         </div>
       </footer>
