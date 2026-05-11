@@ -1,8 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
 import { headR2Object } from "@/lib/r2";
+import { startMetadataGenerationForClip } from "@/lib/metadata-autostart";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   try {
@@ -175,8 +179,20 @@ export async function POST(req: NextRequest) {
         .upsert({ id: user.id, credits: userCredits - 1, updated_at: new Date().toISOString() });
     }
 
+    if (clip?.id && !needs_worker) {
+      const origin = req.nextUrl.origin;
+      after(() =>
+        startMetadataGenerationForClip({
+          clipId: clip.id,
+          origin,
+          source: "clip-create",
+        })
+      );
+    }
+
     return NextResponse.json({ ok: true, clip_id: clip?.id ?? null });
   } catch (err) {
+    console.error("[clips] unexpected create error:", err);
     return NextResponse.json(
       { message: "Unexpected error creating clip record." },
       { status: 500 }

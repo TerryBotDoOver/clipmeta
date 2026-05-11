@@ -1,5 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { startMetadataGenerationForClip } from "@/lib/metadata-autostart";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -17,7 +21,7 @@ export async function POST(req: NextRequest) {
       .order("created_at", { ascending: false });
 
     // Flatten metadata_results from array to single object (Supabase returns array for 1-to-many joins)
-    const formatted = (clips || []).map((c: Record<string, unknown>) => ({
+    const formatted: Record<string, unknown>[] = (clips || []).map((c: Record<string, unknown>) => ({
       ...c,
       metadata_results: Array.isArray(c.metadata_results)
         ? (c.metadata_results as Record<string, unknown>[]).length > 0
@@ -25,6 +29,23 @@ export async function POST(req: NextRequest) {
           : null
         : c.metadata_results,
     }));
+
+    const pendingIds = formatted
+      .filter((c) => c.metadata_status === "not_started" && typeof c.id === "string")
+      .map((c) => c.id as string);
+
+    if (pendingIds.length > 0) {
+      const origin = req.nextUrl.origin;
+      after(async () => {
+        for (const clipId of pendingIds) {
+          await startMetadataGenerationForClip({
+            clipId,
+            origin,
+            source: "review-list",
+          });
+        }
+      });
+    }
 
     return NextResponse.json({ clips: formatted });
   }

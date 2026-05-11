@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { extractFrames } from "@/lib/extractFrames";
 import { LimitReachedModal } from "@/components/LimitReachedModal";
 import { trackClarityEvent } from "@/lib/clarity-events";
 import { getPlanDisplayName, normalizePlan } from "@/lib/plans";
@@ -269,8 +268,6 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     setIsRunning(true);
 
     const uploadLimiter = createAsyncLimiter(TOTAL_UPLOAD_PUT_SLOTS);
-    const metadataLimiter = createAsyncLimiter(METADATA_CONCURRENCY);
-    const metadataTasks: Promise<void>[] = [];
     const assignedUploadIds = new Set<string>();
     let stopQueue = false;
 
@@ -315,78 +312,6 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         failed_at_part: mpMatch ? parseInt(mpMatch[1], 10) : null,
       });
     };
-
-    async function runMetadata(item: QueuedFile, clipId: string) {
-      await metadataLimiter.run(async () => {
-        if (cancelledRef.current) {
-          updateFile(item.id, { status: "error", error: "Cancelled" });
-          return;
-        }
-
-        updateFile(item.id, { status: "extracting" });
-        let frameDataUrls: string[] = [];
-
-        try {
-          const frameRes = await fetch("/api/frames/extract", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ clip_id: clipId }),
-          });
-          if (frameRes.ok) {
-            const frameData = await frameRes.json();
-            frameDataUrls = Array.isArray(frameData.frames) ? frameData.frames : [];
-          } else {
-            console.warn("Server-side frame extraction failed for", item.file.name);
-          }
-        } catch (serverErr) {
-          console.warn("Server-side frame extraction failed for", item.file.name, serverErr);
-        }
-
-        if (frameDataUrls.length === 0) {
-          const clientFrames = await extractFrames(item.file, 4);
-          frameDataUrls = clientFrames.map((frame) => frame.dataUrl);
-        }
-
-        if (cancelledRef.current) {
-          updateFile(item.id, { status: "error", error: "Cancelled" });
-          return;
-        }
-
-        updateFile(item.id, { status: "generating" });
-        const metadataBody = JSON.stringify({ clip_id: clipId, frames: frameDataUrls });
-        const genRes = await fetch("/api/metadata/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: metadataBody,
-        });
-
-        if (genRes.status === 429) {
-          const genData = await genRes.json();
-          if (genData.limit_reached) {
-            updateFile(item.id, { status: "error", error: genData.message, limitReached: true });
-            showLimitModal(genData);
-            return;
-          }
-        }
-        if (!genRes.ok) {
-          const genData = await genRes.json().catch(() => ({}));
-          throw new Error(genData.message || "Metadata generation failed.");
-        }
-        trackClarityEvent("MetadataGenerated");
-        updateFile(item.id, { status: "done", progress: 100, error: undefined });
-      });
-    }
-
-    function scheduleMetadata(item: QueuedFile, clipId: string) {
-      const task = runMetadata(item, clipId).catch((err) => {
-        const msg = err instanceof Error ? err.message : "Metadata generation failed.";
-        updateFile(item.id, {
-          status: "error",
-          error: `Upload complete. Metadata generation failed: ${msg}`,
-        });
-      });
-      metadataTasks.push(task);
-    }
 
     function getNextUploadItem() {
       const item = queueRef.current.find(
@@ -474,8 +399,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         const { clip_id } = await clipRes.json();
         if (clip_id) {
           trackClarityEvent("ClipUploaded");
-          updateFile(item.id, { status: "generating" });
-          scheduleMetadata(item, clip_id);
+          updateFile(item.id, { status: "done", progress: 100, error: undefined });
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Upload failed.";
@@ -499,7 +423,6 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
     );
 
     await Promise.all(uploadWorkers);
-    await Promise.all(metadataTasks);
 
     setIsRunning(false);
     abortControllersRef.current.clear();
@@ -768,7 +691,6 @@ function createAsyncLimiter(maxConcurrent: number): AsyncLimiter {
 }
 
 const ACTIVE_FILE_UPLOADS = 2;
-const METADATA_CONCURRENCY = 2;
 const TOTAL_UPLOAD_PUT_SLOTS = 4;
 
 // 32 MB parts with a small parallel worker pool. This lets fast connections
