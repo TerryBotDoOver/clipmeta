@@ -6,6 +6,14 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Blog | ClipMeta',
   description: 'Guides and tips for stock footage contributors. Learn how to improve your metadata, upload to platforms, and increase your sales.',
+  alternates: { canonical: 'https://clipmeta.app/blog' },
+  openGraph: {
+    title: 'ClipMeta Blog | Stock Footage Metadata Guides',
+    description: 'Guides and tips for stock footage contributors. Learn how to improve metadata, keywording, and marketplace CSV workflows.',
+    url: 'https://clipmeta.app/blog',
+    siteName: 'ClipMeta',
+    type: 'website',
+  },
 };
 
 function formatDate(dateStr: string): string {
@@ -16,9 +24,77 @@ function formatDate(dateStr: string): string {
 
 export default function BlogPage() {
   const posts = getBlogPosts();
+  const blogSchema = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': 'https://clipmeta.app/blog#collection',
+        name: 'ClipMeta Blog',
+        url: 'https://clipmeta.app/blog',
+        description: metadata.description,
+        isPartOf: {
+          '@type': 'WebSite',
+          '@id': 'https://clipmeta.app/#website',
+          name: 'ClipMeta',
+          url: 'https://clipmeta.app',
+        },
+      },
+      {
+        '@type': 'Blog',
+        '@id': 'https://clipmeta.app/blog#blog',
+        name: 'ClipMeta Blog',
+        url: 'https://clipmeta.app/blog',
+        description: metadata.description,
+        publisher: {
+          '@type': 'Organization',
+          '@id': 'https://clipmeta.app/#organization',
+          name: 'ClipMeta',
+          url: 'https://clipmeta.app',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://clipmeta.app/logo-full.png',
+          },
+        },
+      },
+      {
+        '@type': 'ItemList',
+        '@id': 'https://clipmeta.app/blog#posts',
+        itemListElement: posts.slice(0, 20).map((post, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          url: `https://clipmeta.app/blog/${post.slug}`,
+          name: post.title,
+        })),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': 'https://clipmeta.app/blog#breadcrumb',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'ClipMeta',
+            item: 'https://clipmeta.app',
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Blog',
+            item: 'https://clipmeta.app/blog',
+          },
+        ],
+      },
+    ],
+  };
 
   return (
     <FlightDeckShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogSchema) }}
+      />
+
       {/* Header */}
       <section className="mx-auto max-w-5xl px-6 py-16 text-center md:py-24">
         <p className="hud-chip mx-auto mb-4 inline-flex">BLOG · FIELD NOTES</p>

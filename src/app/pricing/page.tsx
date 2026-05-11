@@ -40,6 +40,203 @@ function getDirection(currentPlan: string, targetPlan: string): 'upgrade' | 'dow
 // Plans that mean the user has NO active paid subscription
 const NO_SUB_PLANS = ['free', 'trial'];
 
+const PRICING_SCHEMA = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://clipmeta.app/pricing",
+      name: "ClipMeta Pricing",
+      url: "https://clipmeta.app/pricing",
+      description:
+        "ClipMeta pricing for stock footage contributors, including Free, Starter, Pro, Studio, and one-time credit packs.",
+      mainEntity: {
+        "@id": "https://clipmeta.app/pricing#offer-catalog",
+      },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://clipmeta.app/#software",
+      name: "ClipMeta",
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Stock footage metadata generator",
+      operatingSystem: "Web",
+      url: "https://clipmeta.app",
+      description:
+        "AI metadata workflow for stock footage contributors. Generate titles, descriptions, keywords, and platform-ready CSV exports from video frames.",
+      featureList: [
+        "AI stock footage metadata generation",
+        "Blackbox, Shutterstock, Adobe Stock, and Pond5 CSV exports",
+        "Bulk generation and bulk regeneration on paid plans",
+        "Monthly clip allowances with rollover on paid plans",
+        "FTP transfer to Blackbox on Pro and Studio plans",
+      ],
+      offers: {
+        "@id": "https://clipmeta.app/pricing#offer-catalog",
+      },
+      publisher: {
+        "@type": "Organization",
+        "@id": "https://clipmeta.app/#organization",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "OfferCatalog",
+      "@id": "https://clipmeta.app/pricing#offer-catalog",
+      name: "ClipMeta plans and credit packs",
+      itemListElement: [
+        {
+          "@type": "Offer",
+          name: "Free",
+          url: "https://clipmeta.app/pricing",
+          price: "0",
+          priceCurrency: "USD",
+          description: "3 clips per day, 1 regeneration per day, 1 project, and CSV export.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Starter monthly",
+          url: "https://clipmeta.app/pricing",
+          price: "9",
+          priceCurrency: "USD",
+          description: "140 clips per month, 100 regenerations per month, rollover, and 3 projects.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Starter annual",
+          url: "https://clipmeta.app/pricing",
+          price: "90",
+          priceCurrency: "USD",
+          description: "Annual Starter plan with 140 clips per month and 100 regenerations per month.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Pro monthly",
+          url: "https://clipmeta.app/pricing",
+          price: "19",
+          priceCurrency: "USD",
+          description: "320 clips per month, 300 regenerations per month, unlimited projects, bulk tools, and Blackbox FTP.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Pro annual",
+          url: "https://clipmeta.app/pricing",
+          price: "190",
+          priceCurrency: "USD",
+          description: "Annual Pro plan with 320 clips per month and 300 regenerations per month.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Studio monthly",
+          url: "https://clipmeta.app/pricing",
+          price: "49",
+          priceCurrency: "USD",
+          description: "2000 clips per month, 500 regenerations per month, unlimited projects, bulk tools, FTP, and priority support.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Studio annual",
+          url: "https://clipmeta.app/pricing",
+          price: "490",
+          priceCurrency: "USD",
+          description: "Annual Studio plan with 2000 clips per month and 500 regenerations per month.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Starter credit pack",
+          url: "https://clipmeta.app/pricing#credits",
+          price: "5",
+          priceCurrency: "USD",
+          description: "One-time 50 clip credit pack with 10 bonus regenerations.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Creator credit pack",
+          url: "https://clipmeta.app/pricing#credits",
+          price: "14",
+          priceCurrency: "USD",
+          description: "One-time 200 clip credit pack with 40 bonus regenerations.",
+          availability: "https://schema.org/InStock",
+        },
+        {
+          "@type": "Offer",
+          name: "Pro credit pack",
+          url: "https://clipmeta.app/pricing#credits",
+          price: "29",
+          priceCurrency: "USD",
+          description: "One-time 500 clip credit pack with 100 bonus regenerations.",
+          availability: "https://schema.org/InStock",
+        },
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://clipmeta.app/pricing#faq",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Do paid plans include a free trial?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. All paid plans include a 7-day free trial so you can test the full experience before committing.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I cancel anytime?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. You can cancel your subscription at any time, and your plan stays active until the end of the billing period.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "What happens if I hit my monthly clip limit?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "You can upgrade to a higher tier for more monthly clip capacity and workflow features, or buy a one-time credit pack.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Can I switch plans later?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. You can move between plans as your needs change.",
+          },
+        },
+      ],
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://clipmeta.app/pricing#breadcrumb",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Pricing",
+          item: "https://clipmeta.app/pricing",
+        },
+      ],
+    },
+  ],
+};
+
 async function handleCheckout(
   plan: string,
   setLoading: (v: string | null) => void,
@@ -266,6 +463,11 @@ export default function PricingPage() {
 
   return (
     <FlightDeckShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(PRICING_SCHEMA) }}
+      />
+
       {/* Toast notification */}
       {toast && (
         <div className={`fixed top-6 left-1/2 z-[60] -translate-x-1/2 rounded-xl border px-6 py-3 text-sm font-medium shadow-lg backdrop-blur transition-all ${

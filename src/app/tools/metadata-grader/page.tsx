@@ -34,25 +34,69 @@ export const metadata: Metadata = {
   },
 };
 
-const softwareAppSchema = {
+const metadataGraderSchema = {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "ClipMeta Metadata Grader",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  description:
-    "Free tool that scores stock-footage metadata (title, description, keywords) against best practices for Blackbox, Shutterstock, Adobe Stock, and Pond5.",
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-  },
-  url: "https://clipmeta.app/tools/metadata-grader",
-  publisher: {
-    "@type": "Organization",
-    name: "ClipMeta",
-    url: "https://clipmeta.app",
-  },
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://clipmeta.app/tools/metadata-grader#software",
+      name: "ClipMeta Metadata Grader",
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Stock footage metadata checker",
+      operatingSystem: "Web",
+      browserRequirements: "Requires a modern web browser",
+      isAccessibleForFree: true,
+      url: "https://clipmeta.app/tools/metadata-grader",
+      description:
+        "Free tool that scores stock-footage metadata (title, description, keywords) against best practices for Blackbox, Shutterstock, Adobe Stock, and Pond5.",
+      featureList: [
+        "Score stock footage titles, descriptions, and keywords",
+        "Check keyword relevance and coverage",
+        "Identify weak, repetitive, or missing metadata",
+        "Review metadata before submitting clips to stock marketplaces",
+      ],
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+      },
+      publisher: {
+        "@type": "Organization",
+        "@id": "https://clipmeta.app/#organization",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://clipmeta.app/tools/metadata-grader",
+      name: "Free Metadata Grader for Stock Footage",
+      url: "https://clipmeta.app/tools/metadata-grader",
+      description: metadata.description,
+      mainEntity: {
+        "@id": "https://clipmeta.app/tools/metadata-grader#software",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://clipmeta.app/tools/metadata-grader#breadcrumb",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Free Metadata Grader",
+          item: "https://clipmeta.app/tools/metadata-grader",
+        },
+      ],
+    },
+  ],
 };
 
 export default function MetadataGraderPage() {
@@ -60,7 +104,7 @@ export default function MetadataGraderPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppSchema) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(metadataGraderSchema) }}
       />
       <FlightDeckShell>
         <MetadataGraderClient />

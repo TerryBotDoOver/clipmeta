@@ -661,7 +661,7 @@ export default function HomePage() {
 
           <RevealOnScroll className="mt-6 text-center">
             <p className="font-mono text-[11px] text-white/35">
-              // competitor feature sets based on public product pages · updated 2026-04
+              {"// competitor feature sets based on public product pages - updated 2026-04"}
             </p>
           </RevealOnScroll>
         </div>
@@ -752,7 +752,7 @@ export default function HomePage() {
               { q: "What is ClipMeta?", a: "ClipMeta is an AI-powered metadata workflow tool for stock footage contributors. You upload video clips, our vision AI analyzes actual video frames, and generates titles, descriptions, keywords, and categories. You review, edit inline, and export a platform-ready CSV." },
               { q: "Which stock footage platforms does ClipMeta support?", a: "ClipMeta supports Blackbox.global, Shutterstock, Adobe Stock, and Pond5 with platform-specific CSV export formats. Each export matches the exact column names, keyword counts, and formatting required by each platform." },
               { q: "How accurate is the AI-generated metadata?", a: "ClipMeta uses advanced vision AI to analyze actual video frames from your clips — not just the filename. This produces highly contextual metadata. You always review and edit before exporting, so you stay in control of quality." },
-              { q: "Is there a free plan?", a: "Yes. The free plan includes 3 clips per day with no credit card required. Paid plans start at $9/month for Starter (100 clips/month), $19/month for Pro (300 clips/month), and $49/month for Studio (1000 clips/month). All paid plans include a 7-day free trial." },
+              { q: "Is there a free plan?", a: "Yes. The free plan includes 3 clips per day with no credit card required. Paid plans start at $9/month for Starter (140 clips/month), $19/month for Pro (320 clips/month), and $49/month for Studio (2000 clips/month). All paid plans include a 7-day free trial." },
               { q: "Do unused clips roll over?", a: "Yes, on paid plans unused clips carry forward up to 2 months. If you have a slow week, you don't lose your budget." },
               { q: "Does ClipMeta support Blackbox.global?", a: "Yes — ClipMeta is the only metadata tool with native Blackbox.global CSV support. The export matches Blackbox's exact import template including the correct category taxonomy, column order, and formatting." },
               { q: "How does ClipMeta handle my video files?", a: "Your video clips are uploaded to secure Cloudflare R2 storage. After metadata generation, the source video is automatically deleted to protect your content and minimize storage costs. Only metadata and thumbnails are retained." },
@@ -783,7 +783,7 @@ export default function HomePage() {
                 { "@type": "Question", name: "What is ClipMeta?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta is an AI-powered metadata workflow tool for stock footage contributors. You upload video clips, our vision AI analyzes actual video frames, and generates titles, descriptions, keywords, and categories. You review, edit inline, and export a platform-ready CSV." } },
                 { "@type": "Question", name: "Which stock footage platforms does ClipMeta support?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta supports Blackbox.global, Shutterstock, Adobe Stock, and Pond5 with platform-specific CSV export formats. Each export matches the exact column names, keyword counts, and formatting required by each platform." } },
                 { "@type": "Question", name: "How accurate is the AI-generated metadata?", acceptedAnswer: { "@type": "Answer", text: "ClipMeta uses advanced vision AI to analyze actual video frames from your clips — not just the filename. This produces highly contextual metadata. You always review and edit before exporting, so you stay in control of quality." } },
-                { "@type": "Question", name: "Is there a free plan?", acceptedAnswer: { "@type": "Answer", text: "Yes. The free plan includes 3 clips per day with no credit card required. Paid plans start at $9/month for Starter (100 clips/month), $19/month for Pro (300 clips/month), and $49/month for Studio (1000 clips/month). All paid plans include a 7-day free trial." } },
+                { "@type": "Question", name: "Is there a free plan?", acceptedAnswer: { "@type": "Answer", text: "Yes. The free plan includes 3 clips per day with no credit card required. Paid plans start at $9/month for Starter (140 clips/month), $19/month for Pro (320 clips/month), and $49/month for Studio (2000 clips/month). All paid plans include a 7-day free trial." } },
                 { "@type": "Question", name: "Do unused clips roll over?", acceptedAnswer: { "@type": "Answer", text: "Yes, on paid plans unused clips carry forward up to 2 months. If you have a slow week, you don't lose your budget." } },
                 { "@type": "Question", name: "Does ClipMeta support Blackbox.global?", acceptedAnswer: { "@type": "Answer", text: "Yes — ClipMeta is the only metadata tool with native Blackbox.global CSV support. The export matches Blackbox's exact import template including the correct category taxonomy, column order, and formatting." } },
                 { "@type": "Question", name: "How does ClipMeta handle my video files?", acceptedAnswer: { "@type": "Answer", text: "Your video clips are uploaded to secure Cloudflare R2 storage. After metadata generation, the source video is automatically deleted to protect your content and minimize storage costs. Only metadata and thumbnails are retained." } },
@@ -852,23 +852,39 @@ export default function HomePage() {
                 applicationCategory: "BusinessApplication",
                 operatingSystem: "Web",
                 url: "https://clipmeta.app",
+                isAccessibleForFree: true,
                 description:
                   "AI-powered metadata workflow tool for stock footage contributors. Generate titles, descriptions, and keywords from video frames. Export platform-ready CSVs for Blackbox.global, Shutterstock, Adobe Stock, and Pond5.",
+                featureList: [
+                  "AI stock footage metadata generation from video frames",
+                  "Title, description, keyword, and category generation",
+                  "CSV exports for Blackbox, Shutterstock, Adobe Stock, and Pond5",
+                  "Review and edit metadata before export",
+                  "Bulk generation, bulk regeneration, and FTP workflows on paid plans",
+                ],
                 offers: [
-                  { "@type": "Offer", price: "0", priceCurrency: "USD", name: "Free Plan — 3 clips/day" },
-                  { "@type": "Offer", price: "9", priceCurrency: "USD", billingIncrement: "monthly", name: "Starter — 100 clips/month" },
-                  { "@type": "Offer", price: "19", priceCurrency: "USD", billingIncrement: "monthly", name: "Pro — 300 clips/month" },
-                  { "@type": "Offer", price: "49", priceCurrency: "USD", billingIncrement: "monthly", name: "Studio — 1000 clips/month" },
+                  { "@type": "Offer", price: "0", priceCurrency: "USD", name: "Free Plan - 3 clips/day" },
+                  { "@type": "Offer", price: "9", priceCurrency: "USD", name: "Starter - 140 clips/month" },
+                  { "@type": "Offer", price: "19", priceCurrency: "USD", name: "Pro - 320 clips/month" },
+                  { "@type": "Offer", price: "49", priceCurrency: "USD", name: "Studio - 2000 clips/month" },
                 ],
               },
               {
                 "@type": "Organization",
+                "@id": "https://clipmeta.app/#organization",
                 name: "ClipMeta",
                 url: "https://clipmeta.app",
                 logo: "https://clipmeta.app/logo-full.png",
                 contactPoint: { "@type": "ContactPoint", email: "hello@clipmeta.app", contactType: "customer support" },
               },
-              { "@type": "WebSite", name: "ClipMeta", url: "https://clipmeta.app" },
+              { "@type": "WebSite", "@id": "https://clipmeta.app/#website", name: "ClipMeta", url: "https://clipmeta.app" },
+              {
+                "@type": "BreadcrumbList",
+                "@id": "https://clipmeta.app/#breadcrumb",
+                itemListElement: [
+                  { "@type": "ListItem", position: 1, name: "ClipMeta", item: "https://clipmeta.app" },
+                ],
+              },
             ],
           }),
         }}

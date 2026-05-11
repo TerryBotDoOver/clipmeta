@@ -93,31 +93,91 @@ function parseFaqFromContent(content: string): Array<{ question: string; answer:
   return faqs;
 }
 
+function cleanTextForSchema(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/#{1,6}\s+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const post = getBlogPost(slug);
   if (!post) notFound();
 
+  const postUrl = `https://clipmeta.app/blog/${slug}`;
+  const ogImage = `https://clipmeta.app/og/blog/${slug}.png`;
+  const wordCount = cleanTextForSchema(post.content || '').split(/\s+/).filter(Boolean).length;
   const schemaOrg = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.title,
-    description: post.description,
-    datePublished: post.date,
-    author: {
-      '@type': 'Organization',
-      name: post.author,
-    },
-    publisher: {
-      '@type': 'Organization',
-      name: 'ClipMeta',
-      url: 'https://clipmeta.app',
-    },
-    url: `https://clipmeta.app/blog/${slug}`,
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': `https://clipmeta.app/blog/${slug}`,
-    },
+    '@graph': [
+      {
+        '@type': 'BlogPosting',
+        '@id': `${postUrl}#article`,
+        headline: post.title,
+        description: post.description || post.excerpt,
+        image: [ogImage],
+        datePublished: post.date,
+        dateModified: post.date,
+        author: {
+          '@type': 'Organization',
+          name: post.author,
+        },
+        publisher: {
+          '@type': 'Organization',
+          '@id': 'https://clipmeta.app/#organization',
+          name: 'ClipMeta',
+          url: 'https://clipmeta.app',
+          logo: {
+            '@type': 'ImageObject',
+            url: 'https://clipmeta.app/logo-full.png',
+          },
+        },
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': postUrl,
+        },
+        url: postUrl,
+        keywords: post.tags,
+        articleSection: post.tags[0] || 'Stock footage metadata',
+        wordCount,
+        timeRequired: `PT${post.readTime}M`,
+        isPartOf: {
+          '@type': 'Blog',
+          '@id': 'https://clipmeta.app/blog#blog',
+          name: 'ClipMeta Blog',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${postUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'ClipMeta',
+            item: 'https://clipmeta.app',
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Blog',
+            item: 'https://clipmeta.app/blog',
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: post.title,
+            item: postUrl,
+          },
+        ],
+      },
+    ],
   };
 
   // Parse FAQ from raw markdown content for structured data
@@ -127,10 +187,10 @@ export default async function BlogPostPage({ params }: Props) {
     '@type': 'FAQPage',
     mainEntity: faqs.map(faq => ({
       '@type': 'Question',
-      name: faq.question,
+      name: cleanTextForSchema(faq.question),
       acceptedAnswer: {
         '@type': 'Answer',
-        text: faq.answer,
+        text: cleanTextForSchema(faq.answer),
       },
     })),
   } : null;
