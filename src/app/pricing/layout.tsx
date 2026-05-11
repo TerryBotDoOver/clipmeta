@@ -10,7 +10,23 @@ export const metadata: Metadata = {
     description:
       "Start free with 3 clips/day. Upgrade for 140 to 2000 clips/month with AI metadata, platform CSV exports, and clip rollover. 7-day free trial on all paid plans.",
     url: "https://clipmeta.app/pricing",
+    siteName: "ClipMeta",
     type: "website",
+    images: [
+      {
+        url: "https://clipmeta.app/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "ClipMeta pricing",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ClipMeta Pricing - Plans for Every Stock Contributor",
+    description:
+      "Start free with 3 clips/day. Upgrade for 140 to 2000 clips/month with AI metadata, platform CSV exports, and clip rollover.",
+    images: ["https://clipmeta.app/logo-full.png"],
   },
 };
 

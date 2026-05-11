@@ -1,12 +1,49 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+const pageUrl = "https://clipmeta.app/legal/terms";
+
 export const metadata: Metadata = {
   title: "Terms of Service",
   description:
     "ClipMeta Terms of Service for using the AI metadata generation platform for stock footage.",
-  alternates: { canonical: "https://clipmeta.app/legal/terms" },
+  alternates: { canonical: pageUrl },
   robots: { index: true, follow: false },
+};
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "ClipMeta Terms of Service",
+      url: pageUrl,
+      description:
+        "ClipMeta Terms of Service for using the AI metadata generation platform for stock footage.",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Terms of Service",
+          item: pageUrl,
+        },
+      ],
+    },
+  ],
 };
 
 function Section({
@@ -27,6 +64,11 @@ function Section({
 export default function TermsPage() {
   return (
     <main className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+
       <nav className="border-b border-border">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">

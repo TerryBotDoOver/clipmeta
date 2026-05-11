@@ -2,15 +2,81 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 
+const pageUrl = "https://clipmeta.app/lp/stock-footage-metadata";
+
 export const metadata: Metadata = {
   title: "Free Stock Footage Metadata Grader — ClipMeta",
   description:
     "Paste one title, description, and keyword set. Score it against 1,000 real stock-footage patterns, see what is weak, then unlock the full rewrite inside ClipMeta.",
+  alternates: { canonical: pageUrl },
+  openGraph: {
+    title: "Free Stock Footage Metadata Grader - ClipMeta",
+    description:
+      "Paste one title, description, and keyword set. Score it against 1,000 real stock-footage patterns, see what is weak, then unlock the full rewrite inside ClipMeta.",
+    url: pageUrl,
+    siteName: "ClipMeta",
+    type: "website",
+    images: [
+      {
+        url: "https://clipmeta.app/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "ClipMeta metadata grader",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free Stock Footage Metadata Grader - ClipMeta",
+    description:
+      "Paste one title, description, and keyword set. Score it against 1,000 real stock-footage patterns, see what is weak, then unlock the full rewrite inside ClipMeta.",
+    images: ["https://clipmeta.app/logo-full.png"],
+  },
+};
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "Free Stock Footage Metadata Grader",
+      url: pageUrl,
+      description:
+        "Paste one title, description, and keyword set. Score it against 1,000 real stock-footage patterns and see what is weak.",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Metadata Grader",
+          item: pageUrl,
+        },
+      ],
+    },
+  ],
 };
 
 export default function StockFootageMetadataPage() {
   return (
     <FlightDeckShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+
       <section className="mx-auto max-w-6xl px-6 py-24">
         <div className="max-w-3xl">
           <p className="hud-chip mb-4 inline-flex">

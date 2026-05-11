@@ -1,17 +1,59 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+const pageUrl = "https://clipmeta.app/legal/privacy";
+
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "ClipMeta Privacy Policy — how we collect, use, and protect your data when you use our AI stock footage metadata platform.",
-  alternates: { canonical: "https://clipmeta.app/legal/privacy" },
+  alternates: { canonical: pageUrl },
   robots: { index: true, follow: false },
+};
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "ClipMeta Privacy Policy",
+      url: pageUrl,
+      description:
+        "ClipMeta Privacy Policy for the AI stock footage metadata platform.",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Privacy Policy",
+          item: pageUrl,
+        },
+      ],
+    },
+  ],
 };
 
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-background">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+
       <nav className="border-b border-border">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-bold text-foreground">

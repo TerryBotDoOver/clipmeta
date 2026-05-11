@@ -16,6 +16,21 @@ export const metadata: Metadata = {
     url: "https://clipmeta.app/blackbox",
     siteName: "ClipMeta",
     type: "website",
+    images: [
+      {
+        url: "https://clipmeta.app/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "ClipMeta for Blackbox.global",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ClipMeta for Blackbox.global | AI Metadata + Direct CSV Export",
+    description:
+      "AI metadata tool with direct Blackbox.global CSV support. Generate titles, descriptions, keywords, and categories from your footage.",
+    images: ["https://clipmeta.app/logo-full.png"],
   },
 };
 

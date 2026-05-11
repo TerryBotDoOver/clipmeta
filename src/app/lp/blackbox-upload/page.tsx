@@ -3,15 +3,80 @@ import { Metadata } from "next";
 import EmailCapture from "@/components/EmailCapture";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 
+const pageUrl = "https://clipmeta.app/lp/blackbox-upload";
+
 export const metadata: Metadata = {
   title: "Upload to Blackbox Faster — ClipMeta",
   description:
     "ClipMeta generates titles, descriptions, keywords, categories, and location for your stock clips — then exports a CSV that maps directly to Blackbox.global's upload template.",
+  alternates: { canonical: pageUrl },
+  openGraph: {
+    title: "Upload to Blackbox Faster - ClipMeta",
+    description:
+      "ClipMeta generates titles, descriptions, keywords, categories, and location for your stock clips, then exports a CSV for Blackbox.global.",
+    url: pageUrl,
+    siteName: "ClipMeta",
+    type: "website",
+    images: [
+      {
+        url: "https://clipmeta.app/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "ClipMeta Blackbox upload",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Upload to Blackbox Faster - ClipMeta",
+    description:
+      "ClipMeta generates titles, descriptions, keywords, categories, and location for your stock clips, then exports a CSV for Blackbox.global.",
+    images: ["https://clipmeta.app/logo-full.png"],
+  },
+};
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "Upload to Blackbox Faster",
+      url: pageUrl,
+      description:
+        "Generate Blackbox.global metadata and export a CSV that fits stock footage contributor upload workflows.",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Blackbox Upload",
+          item: pageUrl,
+        },
+      ],
+    },
+  ],
 };
 
 export default function BlackboxUploadPage() {
   return (
     <FlightDeckShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 py-24 text-center">
@@ -23,7 +88,7 @@ export default function BlackboxUploadPage() {
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/60">
           ClipMeta generates your titles, descriptions, keywords, categories, and location —
-          then exports a CSV that maps directly to Blackbox.global's upload template.
+          then exports a CSV that maps directly to Blackbox.global&apos;s upload template.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
@@ -45,7 +110,7 @@ export default function BlackboxUploadPage() {
       <section className="relative border-t border-white/10 py-20">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-white">
-            Blackbox submissions shouldn't slow you down
+            Blackbox submissions shouldn&apos;t slow you down
           </h2>
           <div className="grid gap-8 md:grid-cols-2">
             <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-8">
@@ -101,7 +166,7 @@ export default function BlackboxUploadPage() {
               <h3 className="mt-2 text-lg font-semibold text-white">Export Blackbox CSV</h3>
               <p className="mt-3 text-sm leading-6 text-white/60">
                 Review everything inline, then export a CSV mapped directly to
-                Blackbox.global's upload template. Upload and you're done.
+                Blackbox.global&apos;s upload template. Upload and you&apos;re done.
               </p>
             </div>
           </div>
@@ -138,7 +203,7 @@ export default function BlackboxUploadPage() {
             <div className="border-b border-white/10 pb-8">
               <h3 className="text-base font-semibold text-white">Does the CSV export match the Blackbox.global format?</h3>
               <p className="mt-2 text-sm leading-6 text-white/60">
-                Yes. The exported CSV is mapped to match Blackbox.global's upload template columns,
+                Yes. The exported CSV is mapped to match Blackbox.global&apos;s upload template columns,
                 so you can import it directly without reformatting.
               </p>
             </div>

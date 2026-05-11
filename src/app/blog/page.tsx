@@ -13,6 +13,20 @@ export const metadata: Metadata = {
     url: 'https://clipmeta.app/blog',
     siteName: 'ClipMeta',
     type: 'website',
+    images: [
+      {
+        url: 'https://clipmeta.app/logo-full.png',
+        width: 1200,
+        height: 630,
+        alt: 'ClipMeta Blog',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ClipMeta Blog | Stock Footage Metadata Guides',
+    description: 'Guides and tips for stock footage contributors. Learn how to improve metadata, keywording, and marketplace CSV workflows.',
+    images: ['https://clipmeta.app/logo-full.png'],
   },
 };
 

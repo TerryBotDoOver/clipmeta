@@ -3,15 +3,80 @@ import { Metadata } from "next";
 import EmailCapture from "@/components/EmailCapture";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 
+const pageUrl = "https://clipmeta.app/lp/bulk-keywording";
+
 export const metadata: Metadata = {
   title: "Bulk Keyword Stock Footage with AI — ClipMeta",
   description:
     "Keyword 50, 500, or 5000 stock footage clips in minutes. ClipMeta generates titles, descriptions, and keywords for every clip automatically. Review, export CSV, done.",
+  alternates: { canonical: pageUrl },
+  openGraph: {
+    title: "Bulk Keyword Stock Footage with AI - ClipMeta",
+    description:
+      "Keyword 50, 500, or 5000 stock footage clips in minutes. ClipMeta generates titles, descriptions, and keywords for every clip automatically.",
+    url: pageUrl,
+    siteName: "ClipMeta",
+    type: "website",
+    images: [
+      {
+        url: "https://clipmeta.app/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "ClipMeta bulk keywording",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Bulk Keyword Stock Footage with AI - ClipMeta",
+    description:
+      "Keyword 50, 500, or 5000 stock footage clips in minutes. ClipMeta generates titles, descriptions, and keywords for every clip automatically.",
+    images: ["https://clipmeta.app/logo-full.png"],
+  },
+};
+
+const schema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      name: "Bulk Keyword Stock Footage with AI",
+      url: pageUrl,
+      description:
+        "Keyword large batches of stock footage with AI-generated titles, descriptions, keywords, review tools, and CSV export.",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "ClipMeta",
+        url: "https://clipmeta.app",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "ClipMeta",
+          item: "https://clipmeta.app",
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Bulk Keywording",
+          item: pageUrl,
+        },
+      ],
+    },
+  ],
 };
 
 export default function BulkKeywordingPage() {
   return (
     <FlightDeckShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 py-24 text-center">
@@ -45,7 +110,7 @@ export default function BulkKeywordingPage() {
       <section className="relative border-t border-white/10 py-20">
         <div className="mx-auto max-w-6xl px-6">
           <h2 className="mb-12 text-center text-3xl font-bold tracking-tight text-white">
-            Keywording at scale shouldn't take a week
+            Keywording at scale shouldn&apos;t take a week
           </h2>
           <div className="grid gap-8 md:grid-cols-2">
             <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-8">
@@ -143,7 +208,7 @@ export default function BulkKeywordingPage() {
               </p>
             </div>
             <div className="border-b border-white/10 pb-8">
-              <h3 className="text-base font-semibold text-white">Can I edit keywords after they're generated?</h3>
+              <h3 className="text-base font-semibold text-white">Can I edit keywords after they&apos;re generated?</h3>
               <p className="mt-2 text-sm leading-6 text-white/60">
                 Yes — full inline editing on every clip. Add, remove, or reorder keywords before
                 you export.
@@ -157,7 +222,7 @@ export default function BulkKeywordingPage() {
               </p>
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">What's the export format?</h3>
+              <h3 className="text-base font-semibold text-white">What&apos;s the export format?</h3>
               <p className="mt-2 text-sm leading-6 text-white/60">
                 CSV, ready for direct platform upload to Blackbox.global, Pond5, Adobe Stock,
                 and Shutterstock.

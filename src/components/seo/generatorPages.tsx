@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { FlightDeckShell } from "@/components/landing/FlightDeckShell";
 
 const BASE_URL = "https://clipmeta.app";
+const DEFAULT_OG_IMAGE = `${BASE_URL}/logo-full.png`;
 
 type Faq = {
   question: string;
@@ -380,11 +381,20 @@ export function metadataForGeneratorPage(slug: GeneratorPageSlug): Metadata {
       url,
       siteName: "ClipMeta",
       type: "website",
+      images: [
+        {
+          url: DEFAULT_OG_IMAGE,
+          width: 1200,
+          height: 630,
+          alt: page.title,
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: page.metadataTitle,
       description: page.metadataDescription,
+      images: [DEFAULT_OG_IMAGE],
     },
   };
 }
