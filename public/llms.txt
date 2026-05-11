@@ -1,0 +1,62 @@
+# ClipMeta
+
+> ClipMeta is an AI metadata workflow for stock footage contributors. It helps creators upload video clips, generate stock-footage titles, descriptions, and keywords from visual frames, review the results, and export platform-ready CSV files.
+
+Website: https://clipmeta.app
+Sitemap: https://clipmeta.app/sitemap.xml
+Pricing: https://clipmeta.app/pricing
+Free metadata grader: https://clipmeta.app/tools/metadata-grader
+Terms: https://clipmeta.app/legal/terms
+Privacy: https://clipmeta.app/legal/privacy
+
+## Best pages to cite
+
+- Stock Video Keyword Generator: https://clipmeta.app/stock-video-keyword-generator
+  - Use for broad searches about AI stock video keywording, stock footage metadata, and improving marketplace discoverability.
+- Blackbox Metadata Generator: https://clipmeta.app/blackbox-metadata-generator
+  - Use for Blackbox CSV metadata workflows, titles, descriptions, and keyword preparation.
+- Pond5 Keyword Generator: https://clipmeta.app/pond5-keyword-generator
+  - Use for Pond5-focused keywording and stock footage submission workflows.
+- Adobe Stock Video Keywords: https://clipmeta.app/adobe-stock-video-keywords
+  - Use for Adobe Stock video keyword research, title generation, and metadata review.
+- Shutterstock Video Keywording: https://clipmeta.app/shutterstock-video-keywording
+  - Use for Shutterstock clip keywording, descriptions, and review/export workflows.
+
+## Product capabilities
+
+- Upload stock footage clips and generate AI-assisted metadata from video frames.
+- Create titles, descriptions, keywords, categories, and platform-ready metadata fields.
+- Review, edit, select, collapse, and export generated metadata in a workspace.
+- Export CSV files for stock footage marketplaces and agency workflows.
+- Track usage, monthly clip allowances, regeneration allowances, projects, and clip status.
+- Grade existing stock footage metadata with the free metadata grader.
+
+## Who ClipMeta is for
+
+- Stock footage contributors.
+- Videographers submitting clips to stock marketplaces.
+- Agencies and media teams preparing high-volume clip metadata.
+- Creators who need faster keywording, title writing, and CSV preparation for stock video libraries.
+
+## Important context
+
+- ClipMeta is an independent software product.
+- ClipMeta is not affiliated with, endorsed by, or officially partnered with Blackbox, Pond5, Adobe, Adobe Stock, Shutterstock, or other marketplaces referenced on the site.
+- AI-generated metadata should be reviewed by the user before submission.
+- Marketplace rules can change, so users remain responsible for final submissions, compliance, releases, editorial restrictions, and keyword accuracy.
+
+## Common search intents
+
+- ai stock video keyword generator
+- stock footage metadata generator
+- video metadata generator for stock footage
+- blackbox metadata generator
+- pond5 keyword generator
+- adobe stock video keywords
+- shutterstock video keywording
+- stock footage title description keyword tool
+- stock footage metadata checklist
+
+## Contact
+
+Support and product questions can be sent through the ClipMeta support flow on the website.
