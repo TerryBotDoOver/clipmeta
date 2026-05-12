@@ -112,7 +112,8 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-zA-Z0-9._-]/g, "")
       .toLowerCase();
 
-    const storagePath = `${project_id}/${safeFilename}`;
+    const uploadId = crypto.randomUUID();
+    const storagePath = `${project_id}/${uploadId}-${safeFilename}`;
     const signedUrl = await getR2UploadUrl(storagePath, content_type || "video/mp4");
 
     return NextResponse.json({ signedUrl, storagePath });

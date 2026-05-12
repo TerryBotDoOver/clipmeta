@@ -136,6 +136,7 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
   const [regenDone, setRegenDone] = useState<{ count: number; errors: number } | null>(null);
   const [limitModal, setLimitModal] = useState<{ message: string; upgradeMessage?: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autostartRequestedRef = useRef<Set<string>>(new Set());
   // Per-clip editorial overrides (local state before saving)
   const [clipEditorial, setClipEditorial] = useState<Record<string, {
     is_editorial: boolean;
@@ -164,6 +165,25 @@ export function ReviewQueue({ clips: initialClips, clipUrls, projectId, plan = '
   ), [liveClips]);
 
   const shouldPoll = hasPending || generationActive;
+
+  useEffect(() => {
+    const ids = liveClips
+      .filter((clip) => clip.metadata_status === "not_started" && !autostartRequestedRef.current.has(clip.id))
+      .map((clip) => clip.id)
+      .slice(0, 1);
+
+    if (ids.length === 0) return;
+
+    ids.forEach((id) => autostartRequestedRef.current.add(id));
+    fetch("/api/metadata/autostart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clip_ids: ids, source: "review" }),
+      keepalive: true,
+    }).catch(() => {
+      ids.forEach((id) => autostartRequestedRef.current.delete(id));
+    });
+  }, [liveClips]);
 
   const refreshClips = useCallback(async () => {
     if (!projectId) return;

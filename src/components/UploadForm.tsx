@@ -399,6 +399,7 @@ export function UploadForm({ projectId, projectSlug, maxFileSizeBytes, userPlan 
         const { clip_id } = await clipRes.json();
         if (clip_id) {
           trackClarityEvent("ClipUploaded");
+          queueMetadataAutostart([clip_id], "upload");
           updateFile(item.id, { status: "done", progress: 100, error: undefined });
         }
       } catch (err) {
@@ -651,6 +652,20 @@ function logUploadFailure(payload: Record<string, unknown>) {
     }).catch(() => {});
   } catch {
     // ignore
+  }
+}
+
+function queueMetadataAutostart(clipIds: string[], source: string) {
+  if (clipIds.length === 0) return;
+  try {
+    fetch("/api/metadata/autostart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clip_ids: clipIds, source }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // The cron recovery job will pick up any not_started clips.
   }
 }
 

@@ -6,6 +6,9 @@ type StartMetadataOptions = {
   source?: string;
 };
 
+const FRAME_EXTRACT_TIMEOUT_MS = 240_000;
+const METADATA_GENERATE_TIMEOUT_MS = 75_000;
+
 async function responseMessage(res: Response, fallback: string) {
   try {
     const body = await res.json();
@@ -65,6 +68,7 @@ export async function startMetadataGenerationForClip({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clip_id: clipId }),
       cache: "no-store",
+      signal: AbortSignal.timeout(FRAME_EXTRACT_TIMEOUT_MS),
     });
 
     if (!frameRes.ok) {
@@ -89,10 +93,12 @@ export async function startMetadataGenerationForClip({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clip_id: clipId, frames }),
       cache: "no-store",
+      signal: AbortSignal.timeout(METADATA_GENERATE_TIMEOUT_MS),
     });
 
     if (!metadataRes.ok) {
       const message = await responseMessage(metadataRes, "Metadata generation failed.");
+      await markMetadataFailed(clipId, message);
       console.error(`[metadata-autostart] generation failed from ${source}:`, message);
     }
   } catch (err) {

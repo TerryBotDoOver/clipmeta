@@ -1,9 +1,8 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { startMetadataGenerationForClip } from "@/lib/metadata-autostart";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -29,23 +28,6 @@ export async function POST(req: NextRequest) {
           : null
         : c.metadata_results,
     }));
-
-    const pendingIds = formatted
-      .filter((c) => c.metadata_status === "not_started" && typeof c.id === "string")
-      .map((c) => c.id as string);
-
-    if (pendingIds.length > 0) {
-      const origin = req.nextUrl.origin;
-      after(async () => {
-        for (const clipId of pendingIds) {
-          await startMetadataGenerationForClip({
-            clipId,
-            origin,
-            source: "review-list",
-          });
-        }
-      });
-    }
 
     return NextResponse.json({ clips: formatted });
   }

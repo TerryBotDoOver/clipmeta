@@ -1,12 +1,10 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
-import { headR2Object } from "@/lib/r2";
-import { startMetadataGenerationForClip } from "@/lib/metadata-autostart";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
@@ -120,41 +118,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── Verify the object actually landed in R2 ─────────────────────────────
-    // Clients sometimes call this endpoint after a PUT/multipart that silently
-    // failed (network abort, etc.). Without this check we create a zombie clip
-    // record that fails later with "R2 download failed: 404".
-    let r2Check: { size: number } | null;
-    try {
-      r2Check = await headR2Object(storage_path);
-    } catch (err) {
-      console.error("R2 verification failed with unexpected error:", err);
-      return NextResponse.json(
-        { message: "Unable to verify upload. Please try again." },
-        { status: 502 }
-      );
-    }
-    if (!r2Check) {
-      return NextResponse.json(
-        {
-          message: "Upload did not complete. The file was not found in storage. Please try uploading again.",
-          upload_missing: true,
-        },
-        { status: 400 }
-      );
-    }
-
-    const { error: insertError } = await supabaseAdmin.from("clips").insert({
+    const { data: clip, error: insertError } = await supabaseAdmin.from("clips").insert({
       project_id,
       original_filename,
       storage_path,
-      // Prefer the authoritative size from R2 when available
-      file_size_bytes: r2Check.size || file_size_bytes || null,
+      file_size_bytes: file_size_bytes || null,
       duration_seconds: null,
       upload_status: "uploaded",
       // ProRes/incompatible codec: mark for server-side worker processing
       metadata_status: needs_worker ? "worker_pending" : "not_started",
-    });
+    }).select("id").single();
 
     if (insertError) {
       await supabaseAdmin.storage.from("project-uploads").remove([storage_path]);
@@ -165,13 +138,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: clip } = await supabaseAdmin
-      .from("clips")
-      .select("id")
-      .eq("project_id", project_id)
-      .eq("storage_path", storage_path)
-      .single();
-
     if (usingCredit) {
       // Deduct one credit instead of counting against subscription allowance
       await supabaseAdmin
@@ -179,18 +145,11 @@ export async function POST(req: NextRequest) {
         .upsert({ id: user.id, credits: userCredits - 1, updated_at: new Date().toISOString() });
     }
 
-    if (clip?.id && !needs_worker) {
-      const origin = req.nextUrl.origin;
-      after(() =>
-        startMetadataGenerationForClip({
-          clipId: clip.id,
-          origin,
-          source: "clip-create",
-        })
-      );
-    }
-
-    return NextResponse.json({ ok: true, clip_id: clip?.id ?? null });
+    return NextResponse.json({
+      ok: true,
+      clip_id: clip?.id ?? null,
+      metadata_status: needs_worker ? "worker_pending" : "not_started",
+    });
   } catch (err) {
     console.error("[clips] unexpected create error:", err);
     return NextResponse.json(
