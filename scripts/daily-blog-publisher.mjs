@@ -191,6 +191,36 @@ function submitIndexNow(url) {
   console.log(`IndexNow submission succeeded for ${url}`);
 }
 
+function persistBlogPost(filePath, post) {
+  const relativePath = path.relative(APP_DIR, filePath);
+  const status = spawnSync('git', ['status', '--porcelain', '--', relativePath], {
+    cwd: APP_DIR,
+    stdio: 'pipe',
+    shell: true,
+    encoding: 'utf8',
+  });
+  if (status.status !== 0) {
+    if (status.stdout) process.stdout.write(status.stdout);
+    if (status.stderr) process.stderr.write(status.stderr);
+    throw new Error(`Git status failed while checking ${relativePath}`);
+  }
+  if (!String(status.stdout || '').trim()) {
+    console.log(`No git changes to commit for ${relativePath}`);
+    return;
+  }
+
+  const addResult = run('git', ['add', '--', relativePath], APP_DIR);
+  if (addResult.status !== 0) throw new Error(`Git add failed for ${relativePath}`);
+
+  const safeTitle = String(post.title || post.slug).replace(/["`$\\]/g, '').slice(0, 80);
+  const commitResult = run('git', ['commit', '-m', `Blog: ${safeTitle}`, '--', relativePath], APP_DIR);
+  if (commitResult.status !== 0) throw new Error(`Git commit failed for ${relativePath}`);
+
+  const pushResult = run('git', ['push', 'origin', 'HEAD:main'], APP_DIR);
+  if (pushResult.status !== 0) throw new Error(`Git push failed for ${relativePath}`);
+  console.log(`Committed and pushed ${relativePath}`);
+}
+
 async function main() {
   fs.mkdirSync(BLOG_DIR, { recursive: true });
   const today = todayLocalISO();
@@ -217,6 +247,8 @@ async function main() {
   console.log('Building...');
   const buildResult = run('npm', ['run', 'build'], APP_DIR);
   if (buildResult.status !== 0) throw new Error(`Build failed with status ${buildResult.status}`);
+
+  persistBlogPost(filePath, duePost);
 
   console.log('Deploying to production...');
   const deployArgs = ['vercel', 'deploy', '--prod', '--yes'];
