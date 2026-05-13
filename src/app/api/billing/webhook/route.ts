@@ -345,6 +345,14 @@ export async function POST(req: NextRequest) {
       ? new Date(periodStart * 1000).toISOString()
       : null;
   };
+  const getSubscriptionUsagePeriodStartIso = (sub: Stripe.Subscription | null) => {
+    if (!sub) return null;
+    const periodStart = getSubscriptionPeriodStartIso(sub);
+    if (periodStart) return periodStart;
+    return typeof sub.trial_start === 'number'
+      ? new Date(sub.trial_start * 1000).toISOString()
+      : null;
+  };
   const captureTrialClaim = async (
     uid: string,
     plan: string,
@@ -432,16 +440,19 @@ export async function POST(req: NextRequest) {
             session.metadata
           );
           if (trialClaim.duplicatePaymentTrialCanceled) break;
-          // Only reset clip counter when trial converts to paid (not during trial upgrades)
           const isTrialing = sub?.status === 'trialing';
+          const usagePeriodStart = getSubscriptionUsagePeriodStartIso(sub) ?? new Date().toISOString();
           await supabaseAdmin.from('profiles').upsert({
             id: uid,
             plan,
             stripe_subscription_id: session.subscription as string,
             stripe_subscription_status: sub?.status ?? 'active',
             had_trial: true,
-            // Reset counter only on first paid charge, not trial plan changes
-            ...(!isTrialing ? { regens_used_this_month: 0, billing_period_start: new Date().toISOString() } : {}),
+            // Usage should start at the Stripe subscription period, including trials.
+            // Otherwise long-time free users can carry old free-period uploads into
+            // a new paid/trial allowance.
+            billing_period_start: usagePeriodStart,
+            ...(!isTrialing ? { regens_used_this_month: 0 } : {}),
             // Move user to paid drip track; drip_track_switched_at anchors the paid email schedule.
             drip_track: 'paid',
             drip_track_switched_at: new Date().toISOString(),
@@ -489,12 +500,15 @@ export async function POST(req: NextRequest) {
               .eq('id', uid)
               .maybeSingle();
             if (!existing || existing.plan === 'free') {
+              const usagePeriodStart = getSubscriptionUsagePeriodStartIso(sub) ?? new Date().toISOString();
               await supabaseAdmin.from('profiles').upsert({
                 id: uid,
                 plan,
                 stripe_subscription_id: sub.id,
                 stripe_subscription_status: sub.status,
                 had_trial: isTrial ? true : undefined,
+                billing_period_start: usagePeriodStart,
+                ...(!isTrial ? { regens_used_this_month: 0 } : {}),
                 drip_track: 'paid',
                 drip_track_switched_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -540,7 +554,7 @@ export async function POST(req: NextRequest) {
           // If we have a pending plan and we're past the effective date, apply it
           const shouldApplyPending = currentProfile?.pending_plan && effectiveDate && now >= effectiveDate;
           const finalPlan = shouldApplyPending ? currentProfile.pending_plan : plan;
-          const billingPeriodStart = isActive ? getSubscriptionPeriodStartIso(sub) : null;
+          const billingPeriodStart = (isActive || isTrial) ? getSubscriptionUsagePeriodStartIso(sub) : null;
           await supabaseAdmin.from('profiles').upsert({
             id: uid,
             plan: finalPlan,

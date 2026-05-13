@@ -3,14 +3,33 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getStripe, PLANS } from '@/lib/stripe';
 import { ANNUAL_PLANS, normalizePlan } from '@/lib/plans';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getWelcomeRewardCouponForPlan } from '@/lib/welcome-reward';
+import {
+  ANNUAL_WELCOME_COUPONS,
+  MONTHLY_WELCOME_COUPONS,
+  getWelcomeRewardCouponForPlan,
+} from '@/lib/welcome-reward';
 import { findTrialClaimMatches, getClientIp, trialIpHash } from '@/lib/trial-claims';
 
 const VALID_MONTHLY_PLANS = ['starter', 'pro', 'studio'] as const;
 const VALID_ANNUAL_PLANS = ['starter_annual', 'pro_annual', 'studio_annual'] as const;
+const TRIAL_MAX_ACCOUNT_AGE_DAYS = 14;
+const TRIAL_MAX_LIFETIME_CLIPS = 9;
 
 type MonthlyPlanKey = typeof VALID_MONTHLY_PLANS[number];
 type AnnualPlanKey = typeof VALID_ANNUAL_PLANS[number];
+
+function daysSince(value: string | null | undefined) {
+  if (!value) return null;
+  const createdAt = new Date(value).getTime();
+  if (Number.isNaN(createdAt)) return null;
+  return Math.floor((Date.now() - createdAt) / (1000 * 60 * 60 * 24));
+}
+
+function getTrialDeniedCouponForPlan(plan: string) {
+  const annualCoupons = ANNUAL_WELCOME_COUPONS[plan as keyof typeof ANNUAL_WELCOME_COUPONS];
+  if (annualCoupons) return annualCoupons.tier1;
+  return MONTHLY_WELCOME_COUPONS.tier1;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,7 +71,7 @@ export async function POST(req: NextRequest) {
     let customerId: string | undefined;
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('stripe_customer_id, stripe_subscription_id, had_trial, utm_source, utm_medium, utm_campaign, utm_referrer, promo_unlocked_at')
+      .select('plan, stripe_customer_id, stripe_subscription_id, had_trial, utm_source, utm_medium, utm_campaign, utm_referrer, promo_unlocked_at')
       .eq('id', user.id)
       .single();
 
@@ -113,16 +132,40 @@ export async function POST(req: NextRequest) {
       stripeCustomerId: customerId,
     });
 
+    const { count: lifetimeCreatedClips } = await supabaseAdmin
+      .from('clip_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('action', 'created');
+
+    const accountAgeDays = daysSince(user.created_at);
+    const lifetimeClipCount = lifetimeCreatedClips ?? 0;
+    const isFreeAccount = normalizePlan(profile?.plan) === 'free';
+    const hasSubscriptionHistory = !!profile?.stripe_subscription_id || stripeHadTrial;
+    const accountTooOldForTrial =
+      isFreeAccount &&
+      !hasSubscriptionHistory &&
+      accountAgeDays !== null &&
+      accountAgeDays >= TRIAL_MAX_ACCOUNT_AGE_DAYS;
+    const lifetimeUsageTooHighForTrial =
+      isFreeAccount &&
+      !hasSubscriptionHistory &&
+      lifetimeClipCount > TRIAL_MAX_LIFETIME_CLIPS;
+
     const trialDenialReasons = [
       ...(profile?.had_trial ? ['profile_had_trial'] : []),
       ...(profile?.stripe_subscription_id ? ['profile_subscription'] : []),
       ...(stripeHadTrial ? ['stripe_subscription_history'] : []),
+      ...(accountTooOldForTrial ? [`free_account_age_${accountAgeDays}_days_gte_${TRIAL_MAX_ACCOUNT_AGE_DAYS}`] : []),
+      ...(lifetimeUsageTooHighForTrial ? [`lifetime_clips_${lifetimeClipCount}_gte_${TRIAL_MAX_LIFETIME_CLIPS + 1}`] : []),
       ...trialClaimMatches.map((match) => `trial_claim_${match.reason}`),
     ];
 
     const alreadyHadTrial = profile?.had_trial
       || profile?.stripe_subscription_id
       || stripeHadTrial
+      || accountTooOldForTrial
+      || lifetimeUsageTooHighForTrial
       || trialClaimMatches.length > 0;
 
     const trialDays = alreadyHadTrial ? undefined : 7;
@@ -130,7 +173,12 @@ export async function POST(req: NextRequest) {
     // Apply the tiered welcome reward. Monthly plans use percent-off coupons;
     // annual plans use fixed amount-off coupons so the reward is bounded.
     let welcomeDiscount: { coupon: string }[] | undefined;
-    const welcomeCoupon = getWelcomeRewardCouponForPlan(plan, profile?.promo_unlocked_at);
+    const trialDeniedCoupon =
+      (accountTooOldForTrial || lifetimeUsageTooHighForTrial)
+        ? getTrialDeniedCouponForPlan(plan)
+        : null;
+    const welcomeCoupon =
+      trialDeniedCoupon || getWelcomeRewardCouponForPlan(plan, profile?.promo_unlocked_at);
     if (welcomeCoupon) welcomeDiscount = [{ coupon: welcomeCoupon }];
 
     const session = await getStripe().checkout.sessions.create({
@@ -150,6 +198,9 @@ export async function POST(req: NextRequest) {
         base_plan: basePlan,
         trial_eligible: trialDays ? 'true' : 'false',
         trial_denial_reasons: trialDenialReasons.join(',').slice(0, 500),
+        lifetime_created_clips: String(lifetimeClipCount),
+        account_age_days: accountAgeDays === null ? '' : String(accountAgeDays),
+        trial_fallback_coupon: trialDeniedCoupon ?? '',
         trial_ip_hash: clientIpHash ?? '',
         ...utmMeta,
       },
@@ -160,6 +211,9 @@ export async function POST(req: NextRequest) {
           base_plan: basePlan,
           trial_eligible: trialDays ? 'true' : 'false',
           trial_denial_reasons: trialDenialReasons.join(',').slice(0, 500),
+          lifetime_created_clips: String(lifetimeClipCount),
+          account_age_days: accountAgeDays === null ? '' : String(accountAgeDays),
+          trial_fallback_coupon: trialDeniedCoupon ?? '',
           trial_ip_hash: clientIpHash ?? '',
         },
         ...(trialDays ? { trial_period_days: trialDays } : {}),
