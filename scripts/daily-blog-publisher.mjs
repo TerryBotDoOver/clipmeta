@@ -161,7 +161,7 @@ AEO OPTIMIZATION:
 }
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: 'pipe', shell: true, encoding: 'utf8' });
+  const result = spawnSync(command, args, { cwd, stdio: 'pipe', shell: false, encoding: 'utf8' });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   return result;
@@ -171,7 +171,7 @@ function verifyLiveUrl(url) {
   const result = spawnSync('curl', ['-I', '-L', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], {
     cwd: APP_DIR,
     stdio: 'pipe',
-    shell: true,
+    shell: false,
     encoding: 'utf8',
   });
   const status = String(result.stdout || '').trim();
@@ -196,7 +196,7 @@ function persistBlogPost(filePath, post) {
   const status = spawnSync('git', ['status', '--porcelain', '--', relativePath], {
     cwd: APP_DIR,
     stdio: 'pipe',
-    shell: true,
+    shell: false,
     encoding: 'utf8',
   });
   if (status.status !== 0) {
