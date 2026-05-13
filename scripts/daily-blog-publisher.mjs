@@ -186,8 +186,9 @@ function submitIndexNow(url) {
   console.log(`Submitting to IndexNow: ${url}`);
   const result = run('npm', ['run', 'seo:indexnow', '--', url], APP_DIR);
   if (result.status !== 0) {
-    console.warn(`IndexNow submission failed with status ${result.status}. The post is still published; rerun npm run seo:indexnow -- ${url} to retry.`);
+    throw new Error(`IndexNow submission failed with status ${result.status}. Rerun npm run seo:indexnow -- ${url} to retry.`);
   }
+  console.log(`IndexNow submission succeeded for ${url}`);
 }
 
 async function main() {
