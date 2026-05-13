@@ -25,6 +25,26 @@ const TOPIC_POOL = [
   { slug: 'blackbox-keywording-mistakes-stock-footage', title: 'Common Blackbox Keywording Mistakes That Make Footage Harder to Find', focus: 'Blackbox, keywording mistakes, stock footage discoverability' },
   { slug: 'drone-footage-keyword-workflow', title: 'A Practical Keyword Workflow for Drone Footage Contributors', focus: 'drone footage, aerial metadata, stock footage keywords' },
   { slug: 'pond5-adobe-shutterstock-metadata-differences', title: 'Pond5 vs Adobe Stock vs Shutterstock Metadata: What Actually Changes', focus: 'Pond5, Adobe Stock, Shutterstock, metadata differences, CSV export' },
+  { slug: 'stock-footage-metadata-template', title: 'A Stock Footage Metadata Template You Can Reuse Before Every Upload', focus: 'stock footage metadata template, reusable upload checklist, title description keywords' },
+  { slug: 'shutterstock-video-keywording-guide', title: 'Shutterstock Video Keywording Guide for Stock Footage Contributors', focus: 'Shutterstock video keywords, stock footage keywording, upload metadata' },
+  { slug: 'adobe-stock-video-title-description-guide', title: 'Adobe Stock Video Titles and Descriptions: What Contributors Should Write', focus: 'Adobe Stock video titles, stock footage descriptions, contributor metadata' },
+  { slug: 'pond5-keyword-count-strategy', title: 'How Many Keywords Should You Use on Pond5?', focus: 'Pond5 keywords, keyword count, stock footage metadata strategy' },
+  { slug: 'blackbox-editorial-metadata-guide', title: 'Blackbox Editorial Metadata: Dates, Locations, Captions, and Keywords', focus: 'Blackbox editorial metadata, editorial date, location, caption, stock footage' },
+  { slug: 'stock-footage-csv-export-errors', title: 'Common Stock Footage CSV Export Errors and How to Catch Them', focus: 'CSV export errors, stock footage upload, metadata validation' },
+  { slug: 'buyer-search-intent-stock-footage', title: 'How Buyer Search Intent Should Shape Your Stock Footage Keywords', focus: 'buyer search intent, stock footage keywords, metadata strategy' },
+  { slug: 'metadata-for-travel-stock-footage', title: 'Metadata Tips for Travel Stock Footage Contributors', focus: 'travel stock footage, destination keywords, stock video metadata' },
+  { slug: 'metadata-for-business-stock-footage', title: 'Metadata Tips for Business and Office Stock Footage', focus: 'business stock footage, office video keywords, commercial buyer search' },
+  { slug: 'metadata-for-seasonal-stock-footage', title: 'How to Keyword Seasonal Stock Footage for Year Round Search', focus: 'seasonal stock footage, holiday video keywords, evergreen metadata' },
+  { slug: 'avoid-spammy-stock-footage-keywords', title: 'How to Avoid Spammy Keywords in Stock Footage Metadata', focus: 'spammy keywords, stock footage metadata quality, keyword relevance' },
+  { slug: 'batch-keywording-stock-footage', title: 'Batch Keywording Stock Footage Without Making Every Clip Sound the Same', focus: 'batch keywording, stock footage metadata variation, similar clips' },
+  { slug: 'stock-footage-title-formulas', title: 'Stock Footage Title Formulas That Stay Clear and Searchable', focus: 'stock footage titles, searchable video titles, metadata formulas' },
+  { slug: 'description-writing-stock-footage', title: 'How to Write Better Stock Footage Descriptions Without Overdoing It', focus: 'stock footage descriptions, metadata writing, buyer clarity' },
+  { slug: 'blackbox-vs-direct-upload-metadata', title: 'Blackbox vs Direct Upload Metadata: What Contributors Should Change', focus: 'Blackbox, direct upload, Shutterstock, Adobe Stock, Pond5 metadata' },
+  { slug: 'stock-footage-keyword-audit', title: 'How to Audit Keywords Before Submitting Stock Footage', focus: 'keyword audit, stock footage submission, metadata checklist' },
+  { slug: 'clipmeta-vs-manual-keywording', title: 'AI Metadata vs Manual Keywording for Stock Footage: Where Each Works Best', focus: 'AI metadata, manual keywording, stock footage workflow' },
+  { slug: 'metadata-for-drone-real-estate-footage', title: 'How to Keyword Drone Real Estate and Property Footage', focus: 'drone real estate footage, property video keywords, stock footage metadata' },
+  { slug: 'metadata-for-nature-wildlife-footage', title: 'How to Keyword Nature and Wildlife Footage for Stock Sites', focus: 'nature footage, wildlife footage, stock video keywords' },
+  { slug: 'stock-footage-upload-workflow', title: 'A Cleaner Stock Footage Upload Workflow from File Names to CSV', focus: 'stock footage upload workflow, file naming, CSV export, metadata' },
 ];
 
 function todayLocalISO() {
@@ -76,8 +96,12 @@ function choosePost(calendar, today) {
   const due = publishable.filter(p => p.scheduledFor <= today).sort((a, b) => String(b.scheduledFor).localeCompare(String(a.scheduledFor)))[0];
   if (due) return due;
 
-  const usedSlugs = new Set(calendar.calendar.map(p => p.slug));
-  const topic = TOPIC_POOL.find(t => !usedSlugs.has(t.slug)) || TOPIC_POOL[Math.floor(Math.random() * TOPIC_POOL.length)];
+  const usedSlugs = new Set(calendar.calendar.map(p => p.slug).filter(Boolean));
+  const topic = TOPIC_POOL.find(t => !usedSlugs.has(t.slug)) || {
+    slug: `stock-footage-metadata-tips-${today}`,
+    title: `Stock Footage Metadata Tips for ${today}`,
+    focus: 'stock footage metadata, daily contributor workflow, upload quality checks',
+  };
   const newPost = { id: Math.max(0, ...calendar.calendar.map(p => Number(p.id) || 0)) + 1, ...topic, scheduledFor: today, status: 'scheduled' };
   calendar.calendar.push(newPost);
   return newPost;
