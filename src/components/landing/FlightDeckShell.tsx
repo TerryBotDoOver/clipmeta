@@ -17,10 +17,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
  */
 export function FlightDeckShell({
   children,
-  hideNavChip = false,
 }: {
   children: React.ReactNode;
-  hideNavChip?: boolean;
 }) {
   const [authState, setAuthState] = useState<"loading" | "signed-in" | "signed-out">("loading");
 
@@ -87,21 +85,13 @@ export function FlightDeckShell({
               <img src="/logo-icon.svg" className="relative h-6 w-6" alt="ClipMeta" />
             </div>
             <span className="tracking-tight">ClipMeta</span>
-            {!hideNavChip && (
-              <span className="hud-chip ml-1 hidden lg:inline-flex">v2.0 · LIVE</span>
-            )}
           </Link>
           <div className="hidden items-center gap-1 sm:flex">
             <Link
               href="/tools/metadata-grader"
               className="group relative rounded-full px-4 py-1.5 text-sm font-medium text-white/70 transition hover:bg-white/5 hover:text-white"
             >
-              <span className="inline-flex items-center gap-1.5">
-                Free Grader
-                <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
-                  New
-                </span>
-              </span>
+              Free Grader
             </Link>
             <Link
               href="/pricing"

@@ -111,7 +111,6 @@ export default function BlogPage() {
 
       {/* Header */}
       <section className="mx-auto max-w-5xl px-6 py-16 text-center md:py-24">
-        <p className="hud-chip mx-auto mb-4 inline-flex">BLOG · FIELD NOTES</p>
         <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl">
           Guides for <span className="gradient-text">stock footage contributors.</span>
         </h1>
