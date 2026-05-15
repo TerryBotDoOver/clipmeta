@@ -715,10 +715,10 @@ const CHUNK_SIZE = 32 * 1024 * 1024;
 const MULTIPART_CONCURRENCY = 2;
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
 
-// Hard timeout per chunk. Keep this short enough that one bad part cannot hold
-// both upload workers and make the rest of the batch look frozen.
-const CHUNK_TIMEOUT_MS = 2 * 60 * 1000;
-const MULTIPART_PART_MAX_RETRIES = 3;
+// Abort only when a chunk stops making progress. Slow but moving uploads should
+// keep going; truly dead chunks should fail quickly enough to free the queue.
+const CHUNK_STALL_TIMEOUT_MS = 90 * 1000;
+const MULTIPART_PART_MAX_RETRIES = 5;
 const MULTIPART_RETRY_BASE_DELAY_MS = 1500;
 const MULTIPART_RETRY_MAX_DELAY_MS = 8000;
 
@@ -730,25 +730,64 @@ function uploadChunkXHR(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.timeout = CHUNK_TIMEOUT_MS;
+    let settled = false;
+    let stallTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const cleanup = () => {
+      settled = true;
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = null;
+      signal?.removeEventListener("abort", abortUpload);
+    };
+
+    const fail = (error: Error) => {
+      if (settled) return;
+      cleanup();
+      reject(error);
+      try {
+        xhr.abort();
+      } catch {
+        // Ignore abort errors after the request is already closing.
+      }
+    };
+
+    const succeed = (etag: string) => {
+      if (settled) return;
+      cleanup();
+      resolve(etag);
+    };
+
+    const resetStallTimer = () => {
+      if (settled) return;
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = setTimeout(
+        () => fail(new Error("Chunk upload stalled with no progress.")),
+        CHUNK_STALL_TIMEOUT_MS
+      );
+    };
+
+    const abortUpload = () => fail(new Error("Upload cancelled."));
+
     if (onChunkProgress) {
+      xhr.upload.addEventListener("loadstart", resetStallTimer);
       xhr.upload.addEventListener("progress", (e) => {
+        resetStallTimer();
         if (e.lengthComputable) onChunkProgress(e.loaded, e.total);
       });
     }
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         const etag = xhr.getResponseHeader("ETag") || "";
-        resolve(etag);
+        succeed(etag);
       } else {
-        reject(new Error(`Chunk upload failed with status ${xhr.status}`));
+        fail(new Error(`Chunk upload failed with status ${xhr.status}`));
       }
     });
-    xhr.addEventListener("error", () => reject(new Error("Network error during chunk upload.")));
-    xhr.addEventListener("timeout", () => reject(new Error("Chunk upload timed out (connection stuck).")));
-    xhr.addEventListener("abort", () => reject(new Error("Upload cancelled.")));
-    if (signal) signal.addEventListener("abort", () => xhr.abort());
+    xhr.addEventListener("error", () => fail(new Error("Network error during chunk upload.")));
+    xhr.addEventListener("abort", () => fail(new Error("Upload cancelled.")));
+    if (signal) signal.addEventListener("abort", abortUpload);
     xhr.open("PUT", url);
+    resetStallTimer();
     xhr.send(blob);
   });
 }
