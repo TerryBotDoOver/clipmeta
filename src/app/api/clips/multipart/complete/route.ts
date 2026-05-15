@@ -13,15 +13,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const normalizedParts = parts
+      .map((p: { partNumber?: number; etag?: string; PartNumber?: number; ETag?: string }) => ({
+        PartNumber: p.partNumber ?? p.PartNumber,
+        ETag: p.etag ?? p.ETag,
+      }))
+      .filter((p: { PartNumber?: number; ETag?: string }) => typeof p.PartNumber === "number" && typeof p.ETag === "string");
+
+    if (normalizedParts.length !== parts.length) {
+      return NextResponse.json(
+        { message: "Each multipart part must include a part number and ETag." },
+        { status: 400 }
+      );
+    }
+
     const command = new CompleteMultipartUploadCommand({
       Bucket: R2_BUCKET,
       Key: storage_path,
       UploadId: upload_id,
       MultipartUpload: {
-        Parts: parts.map((p: { partNumber: number; etag: string }) => ({
-          PartNumber: p.partNumber,
-          ETag: p.etag,
-        })),
+        Parts: normalizedParts,
       },
     });
 

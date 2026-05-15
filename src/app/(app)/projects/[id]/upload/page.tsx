@@ -2,11 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { UploadForm } from "@/components/UploadForm";
+import { UppyUploadForm } from "@/components/UppyUploadForm";
 import { PLAN_FILE_SIZE_LIMITS, formatFileSize, getPlanDisplayName, normalizePlan } from "@/lib/plans";
 
 type UploadPageProps = {
   params: Promise<{ id: string }>;
 };
+
+const UPPY_UPLOAD_EXPERIMENT_USER_IDS = new Set(["93f38fdf-4506-4dfc-89a2-28767bc0b37d"]);
+const UPPY_UPLOAD_EXPERIMENT_EMAILS = new Set(["dabears4389@gmail.com"]);
 
 export default async function ProjectUploadPage({ params }: UploadPageProps) {
   const { id } = await params;
@@ -47,6 +51,9 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
   const userPlan = normalizePlan(rawPlan);
   const planLabel = getPlanDisplayName(rawPlan);
   const maxFileSizeBytes = PLAN_FILE_SIZE_LIMITS[userPlan];
+  const useUppyUploadExperiment =
+    UPPY_UPLOAD_EXPERIMENT_USER_IDS.has(user.id) ||
+    UPPY_UPLOAD_EXPERIMENT_EMAILS.has(user.email?.toLowerCase() ?? "");
 
   const { data: clips } = await supabase
     .from("clips")
@@ -109,7 +116,11 @@ export default async function ProjectUploadPage({ params }: UploadPageProps) {
             Upload a clip
           </h2>
           <div className="mt-6">
-            <UploadForm projectId={project.id} projectSlug={project.slug} maxFileSizeBytes={maxFileSizeBytes} userPlan={userPlan} />
+            {useUppyUploadExperiment ? (
+              <UppyUploadForm projectId={project.id} projectSlug={project.slug} maxFileSizeBytes={maxFileSizeBytes} userPlan={userPlan} />
+            ) : (
+              <UploadForm projectId={project.id} projectSlug={project.slug} maxFileSizeBytes={maxFileSizeBytes} userPlan={userPlan} />
+            )}
           </div>
         </section>
 
