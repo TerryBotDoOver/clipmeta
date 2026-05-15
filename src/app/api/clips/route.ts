@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
-import { PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
+import { PLAN_FILE_SIZE_LIMITS, PLANS, entitlementPlanFromProfile, getUsagePeriodStart } from "@/lib/plans";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -63,6 +63,18 @@ export async function POST(req: NextRequest) {
     const bonusClips: number = profile?.bonus_clips ?? 0;
     const rolloverClips: number = profile?.rollover_clips ?? 0;
     const limit = planConfig.clips + rolloverClips + bonusClips;
+    const fileSize = typeof file_size_bytes === "number" ? file_size_bytes : Number(file_size_bytes ?? 0);
+    const fileSizeLimit = PLAN_FILE_SIZE_LIMITS[plan] ?? PLAN_FILE_SIZE_LIMITS.free;
+
+    if (Number.isFinite(fileSize) && fileSize > fileSizeLimit) {
+      const limitLabel = fileSizeLimit >= 1024 * 1024 * 1024
+        ? `${(fileSizeLimit / (1024 * 1024 * 1024)).toFixed(0)}GB`
+        : `${(fileSizeLimit / (1024 * 1024)).toFixed(0)}MB`;
+      return NextResponse.json(
+        { message: `File too large. Your ${plan} plan allows up to ${limitLabel} per file.` },
+        { status: 413 }
+      );
+    }
 
     // Free plan: daily limit (count from clips table today).
     // Paid plans: count from clip_history.created since billing_period_start (authoritative).
