@@ -718,9 +718,9 @@ const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // Use multipart for files > 50 MB
 // Abort only when a chunk stops making progress. Slow but moving uploads should
 // keep going; truly dead chunks should fail quickly enough to free the queue.
 const CHUNK_STALL_TIMEOUT_MS = 90 * 1000;
-const MULTIPART_PART_MAX_RETRIES = 5;
+const MULTIPART_PART_MAX_RETRIES = 8;
 const MULTIPART_RETRY_BASE_DELAY_MS = 1500;
-const MULTIPART_RETRY_MAX_DELAY_MS = 8000;
+const MULTIPART_RETRY_MAX_DELAY_MS = 15000;
 
 function uploadChunkXHR(
   url: string,

@@ -9,8 +9,14 @@ type UploadPageProps = {
   params: Promise<{ id: string }>;
 };
 
-const UPPY_UPLOAD_EXPERIMENT_USER_IDS = new Set(["93f38fdf-4506-4dfc-89a2-28767bc0b37d"]);
-const UPPY_UPLOAD_EXPERIMENT_EMAILS = new Set(["dabears4389@gmail.com"]);
+const UPPY_UPLOAD_EXPERIMENT_USER_IDS = new Set([
+  "93f38fdf-4506-4dfc-89a2-28767bc0b37d",
+  "687a87f2-d7a3-4fe7-bc72-6d822f98cc42",
+]);
+const UPPY_UPLOAD_EXPERIMENT_EMAILS = new Set([
+  "dabears4389@gmail.com",
+  "andrew@airoma.com.au",
+]);
 
 export default async function ProjectUploadPage({ params }: UploadPageProps) {
   const { id } = await params;
