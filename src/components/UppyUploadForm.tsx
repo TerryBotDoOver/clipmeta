@@ -572,6 +572,7 @@ export function UppyUploadForm({ projectId, projectSlug, maxFileSizeBytes, userP
             const errorMessage = file.error ?? clipState?.error;
             const canRetry = Boolean(errorMessage);
             const retryClipSetup = clipState?.status === "error" && file.progress.uploadComplete && Boolean(file.meta.storagePath);
+            const showProgress = progress > 0 && !file.progress.uploadComplete && !errorMessage;
 
             return (
               <div key={file.id} className="rounded-xl border border-border p-4">
@@ -600,7 +601,7 @@ export function UppyUploadForm({ projectId, projectSlug, maxFileSizeBytes, userP
                     )}
                   </div>
                 </div>
-                {progress > 0 && <SmoothProgressBar progress={progress} />}
+                {showProgress && <SmoothProgressBar progress={progress} />}
                 {errorMessage && <p className="mt-3 text-xs font-semibold text-red-400">{errorMessage}</p>}
               </div>
             );
