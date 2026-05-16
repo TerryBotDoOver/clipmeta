@@ -492,7 +492,7 @@ export function UppyUploadForm({ projectId, projectSlug, maxFileSizeBytes, userP
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm text-primary">
-        Enhanced uploader enabled for this account. Larger clips use more resilient multipart handling.
+        Enhanced uploader enabled. Larger clips use more resilient multipart handling.
       </div>
 
       <div
